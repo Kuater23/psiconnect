@@ -16,8 +16,9 @@ dependencies:
   hooks_riverpod: ^2.4.8
   webview_flutter_web: ^0.2.2+3
   webview_flutter: ^4.4.2
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.16.0
+  firebase_core: ^3.3.0
+  firebase_auth: ^5.1.4
+  cloud_firestore_web: ^4.1.1
 
 dev_dependencies:
   flutter_test:

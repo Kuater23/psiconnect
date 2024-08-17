@@ -39,13 +39,13 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR_WEB_API_KEY',
-    appId: 'YOUR_WEB_APP_ID',
-    messagingSenderId: 'YOUR_WEB_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-    measurementId: 'YOUR_MEASUREMENT_ID',
+    apiKey: 'AIzaSyATXxqOAOH-ViKl8UlLgoeeSRoFRakeK_U',
+    appId: '1:953533544770:web:2a3e104a25b63a807870db',
+    messagingSenderId: '953533544770',
+    projectId: 'psiconnect-eb98a',
+    authDomain: 'psiconnect-eb98a.firebaseapp.com',
+    databaseURL: 'https://psiconnect-eb98a-default-rtdb.firebaseio.com',
+    storageBucket: 'psiconnect-eb98a.appspot.com',
   );
 
   static const FirebaseOptions android = FirebaseOptions(

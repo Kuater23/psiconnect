@@ -10,24 +10,39 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  String _errorMessage = '';
 
   void _register() async {
     String email = _emailController.text;
     String password = _passwordController.text;
 
     try {
-      await _auth.createUserWithEmailAndPassword(
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Registro exitoso')),
-      );
-      Navigator.pushNamed(context, '/login');
+      // Navegar a la página principal o mostrar un mensaje de éxito
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message}')),
-      );
+      setState(() {
+        _errorMessage = e.message ?? 'Error desconocido';
+      });
+    }
+  }
+
+  void _registerWithGoogle() async {
+    GoogleAuthProvider googleProvider = GoogleAuthProvider();
+    googleProvider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+    googleProvider.setCustomParameters({
+      'login_hint': 'user@example.com'
+    });
+
+    try {
+      UserCredential userCredential = await _auth.signInWithPopup(googleProvider);
+      // Navegar a la página principal o mostrar un mensaje de éxito
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _errorMessage = e.message ?? 'Error desconocido';
+      });
     }
   }
 
@@ -35,46 +50,54 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Registrar'),
+        title: Text('Register Page'),
       ),
-      body: Center(
+      body: Center( // Envolver en Center para centrar todo
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Form(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextFormField(
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Ajustar el tamaño de la columna
+            children: [
+              Container(
+                width: 300, // Ajusta el ancho según sea necesario
+                child: TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
-                    labelText: 'Correo electrónico',
+                    labelText: 'Email',
                   ),
+                  keyboardType: TextInputType.emailAddress,
                 ),
-                SizedBox(height: 16.0),
-                TextFormField(
+              ),
+              Container(
+                width: 300, // Ajusta el ancho según sea necesario
+                child: TextField(
                   controller: _passwordController,
                   decoration: InputDecoration(
-                    labelText: 'Contraseña',
+                    labelText: 'Password',
                   ),
                   obscureText: true,
+                  keyboardType: TextInputType.visiblePassword,
                 ),
-                SizedBox(height: 16.0),
-                ElevatedButton(
-                  onPressed: _register,
-                  child: Text('Registrar'),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _register,
+                child: Text('Register'),
+              ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: _registerWithGoogle,
+                child: Text('Register with Google'),
+              ),
+              if (_errorMessage.isNotEmpty)
+                Text(
+                  _errorMessage,
+                  style: TextStyle(color: Colors.red),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 }
