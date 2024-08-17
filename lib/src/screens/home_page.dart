@@ -15,7 +15,7 @@ final contactKey = new GlobalKey();
 final currentPageProvider = StateProvider<GlobalKey>((_) => homeKey);
 final scrolledProvider = StateProvider<bool>((_) => false);
 
-class MyWebPage extends HookConsumerWidget {
+class HomePage extends HookConsumerWidget {
   void onScroll(ScrollController controller, WidgetRef ref) {
     final isScrolled = ref.read(scrolledProvider);
 

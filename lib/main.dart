@@ -21,7 +21,7 @@ void main() async {
         title: "Psiconnect",
         initialRoute: '/',
         routes: {
-          '/': (context) => MyWebPage(),
+          '/': (context) => HomePage(),
           '/login': (context) => LoginPage(),
           '/register': (context) => RegisterPage(),
                 
