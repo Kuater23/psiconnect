@@ -1,0 +1,31 @@
+name: Psiconnect
+description: psiconnect
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.3 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.0.11
+
+  url_launcher: ^6.2.1
+  url_strategy: ^0.3.0
+  hooks_riverpod: ^2.4.8
+  webview_flutter_web: ^0.2.2+3
+  webview_flutter: ^4.4.2
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.16.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/images/screenshots/
