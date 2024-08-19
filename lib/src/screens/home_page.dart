@@ -1,54 +1,76 @@
+import 'package:Psiconnect/src/content/contact_content.dart';
+import 'package:Psiconnect/src/content/feature_content.dart';
+import 'package:Psiconnect/src/content/home_content.dart';
+import 'package:Psiconnect/src/content/screenshots_content.dart';
+import 'package:Psiconnect/src/navigation_bar/nav_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:Psiconnect/src/service/auth_service.dart'; // Importación corregida
-import 'login_page.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 
-// Define the scrolledProvider
-final scrolledProvider = StateProvider<bool>((ref) => false);
+final homeKey = new GlobalKey();
+final featureKey = new GlobalKey();
+final screenshotKey = new GlobalKey(); //luka putito
+final contactKey = new GlobalKey();
+
+final currentPageProvider = StateProvider<GlobalKey>((_) => homeKey);
+final scrolledProvider = StateProvider<bool>((_) => false);
 
 class HomePage extends HookConsumerWidget {
-  final AuthService _authService = AuthService();
-
   void onScroll(ScrollController controller, WidgetRef ref) {
-    if (controller.offset > 100) {
+    final isScrolled = ref.read(scrolledProvider);
+
+    if (controller.position.pixels > 5 && !isScrolled) {
       ref.read(scrolledProvider.notifier).state = true;
-    } else {
+    } else if (controller.position.pixels <= 5 && isScrolled) {
       ref.read(scrolledProvider.notifier).state = false;
     }
   }
 
+  void scrollTo(GlobalKey key) => Scrollable.ensureVisible(key.currentContext!,
+      duration: Duration(milliseconds: 500));
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = useState<User?>(FirebaseAuth.instance.currentUser);
-    final scrollController = useScrollController();
+    final _controller = useScrollController();
 
+    // How to set a listener: https://stackoverflow.com/a/63832263/3479489
     useEffect(() {
-      scrollController.addListener(() => onScroll(scrollController, ref));
-      return () => scrollController.removeListener(() => onScroll(scrollController, ref));
-    }, [scrollController]);
+      _controller.addListener(() => onScroll(_controller, ref));
+      return _controller.dispose;
+    }, [_controller]);
+
+    double width = MediaQuery.of(context).size.width;
+    double maxWith = width > 1200 ? 1200 : width;
+
+    ref
+        .watch(currentPageProvider.notifier)
+        .addListener(scrollTo, fireImmediately: false);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Home Page'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: () async {
-              await _authService.signOut();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => LoginPage()),
-              );
-            },
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Container(
+          width: maxWith,
+          child: Column(
+            children: [
+              NavBar(),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _controller,
+                  child: Column(
+                    children: <Widget>[
+                      HomeContent(key: homeKey),
+                      FeaturesContent(key: featureKey),
+                      ScreenshotsContent(key: screenshotKey),
+                      ContactContent(key: contactKey),
+                      SizedBox(height: 50)
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: ListView(
-        controller: scrollController,
-        children: [
-          // Tu contenido aquí
-        ],
+        ),
       ),
     );
   }
