@@ -2,55 +2,78 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Método para registrar un nuevo usuario
-  Future<User?> registerWithEmailAndPassword(String email, String password) async {
-    try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-      User? user = result.user;
-      // Añadir usuario a Firestore
-      await _firestore.collection('users').doc(user?.uid).set({
-        'email': email,
-        'role': 'patient', // o el rol que desees asignar por defecto
-      });
-      return user;
-    } catch (e) {
-      print('Error registering user: $e');
-      return null;
-    }
-  }
-
-  // Método para iniciar sesión
+  // Método para iniciar sesión con email y contraseña
   Future<User?> signInWithEmailAndPassword(String email, String password) async {
     try {
-      UserCredential result = await _auth.signInWithEmailAndPassword(email: email, password: password);
-      return result.user;
+      UserCredential userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      User? user = userCredential.user;
+
+      // Añadir usuario a Firestore si es un nuevo usuario
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        await _firestore.collection('users').doc(user?.uid).set({
+          'email': user?.email,
+          'role': 'patient', // o el rol que desees asignar por defecto
+        });
+      }
+
+      return user;
     } catch (e) {
-      print('Error signing in: $e');
+      print('Error en signInWithEmailAndPassword: $e');
       return null;
     }
   }
 
-  // Método para cerrar sesión
-  Future<void> signOut() async {
-    await _auth.signOut();
+  // Método para iniciar sesión con Google utilizando FirebaseAuth
+  Future<User?> signInWithGoogle() async {
+    try {
+      // Iniciar el flujo de autenticación de Google
+      final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+
+      // Puedes usar signInWithPopup o signInWithRedirect
+      UserCredential result = await _firebaseAuth.signInWithPopup(googleProvider);
+      // UserCredential result = await _firebaseAuth.signInWithRedirect(googleProvider);
+      
+      User? user = result.user;
+
+      // Añadir usuario a Firestore si es un nuevo usuario
+      if (result.additionalUserInfo?.isNewUser ?? false) {
+        await _firestore.collection('users').doc(user?.uid).set({
+          'email': user?.email,
+          'role': 'patient', // o el rol que desees asignar por defecto
+        });
+      }
+
+      return user;
+    } catch (e) {
+      print('Error signing in with Google: $e');
+      return null;
+    }
   }
 
-  // Método para obtener el rol del usuario
-  Future<String?> getUserRole(User user) async {
+  // Método para registrar con email y contraseña
+  Future<User?> registerWithEmailAndPassword(String email, String password, String role) async {
     try {
-      DocumentSnapshot snapshot = await _firestore.collection('users').doc(user.uid).get();
-      if (snapshot.exists) {
-        var data = snapshot.data() as Map<String, dynamic>;
-        return data['role'] as String?;
-      } else {
-        print('No such document!');
-        return null;
-      }
+      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      User? user = userCredential.user;
+
+      // Añadir usuario a Firestore
+      await _firestore.collection('users').doc(user?.uid).set({
+        'email': user?.email,
+        'role': role,
+      });
+
+      return user;
     } catch (e) {
-      print('Error getting user role: $e');
+      print('Error en registerWithEmailAndPassword: $e');
       return null;
     }
   }
