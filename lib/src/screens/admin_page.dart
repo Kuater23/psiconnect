@@ -22,6 +22,7 @@ class _AdminPageState extends State<AdminPage> {
       builder: (context) {
         final TextEditingController emailController = TextEditingController();
         final TextEditingController roleController = TextEditingController();
+        final TextEditingController passwordController = TextEditingController(); // Nuevo controlador para la contraseña
         return AlertDialog(
           title: Text('Add User'),
           content: Column(
@@ -34,6 +35,11 @@ class _AdminPageState extends State<AdminPage> {
               TextField(
                 controller: roleController,
                 decoration: InputDecoration(labelText: 'Role'),
+              ),
+              TextField(
+                controller: passwordController, // Nuevo campo de texto para la contraseña
+                decoration: InputDecoration(labelText: 'Password'),
+                obscureText: true, // Ocultar el texto para la contraseña
               ),
             ],
           ),
@@ -67,6 +73,7 @@ class _AdminPageState extends State<AdminPage> {
       builder: (context) {
         final TextEditingController emailController = TextEditingController(text: userDoc['email']);
         final TextEditingController roleController = TextEditingController(text: userDoc['role']);
+        final TextEditingController passwordController = TextEditingController(); // Nuevo controlador para la contraseña
         return AlertDialog(
           title: Text('Edit User'),
           content: Column(
@@ -79,6 +86,11 @@ class _AdminPageState extends State<AdminPage> {
               TextField(
                 controller: roleController,
                 decoration: InputDecoration(labelText: 'Role'),
+              ),
+              TextField(
+                controller: passwordController, // Nuevo campo de texto para la contraseña
+                decoration: InputDecoration(labelText: 'Password'),
+                obscureText: true, // Ocultar el texto para la contraseña
               ),
             ],
           ),

@@ -5,7 +5,8 @@ import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/professional_page.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/patient_page.dart';
-import 'package:Psiconnect/src/screens/register_page.dart'; // Asegúrate de importar la página de registro
+import 'package:Psiconnect/src/screens/register_page.dart';
+// Asegúrate de importar la página de registro
 
 class LoginPage extends StatefulWidget {
   @override
@@ -21,7 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Login')),
-      backgroundColor: Color.fromARGB(255, 0, 153, 255), // Establece el color de fondo aquí
+      backgroundColor: Color.fromARGB(255, 1, 40, 45), // Establece el color de fondo aquí
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
