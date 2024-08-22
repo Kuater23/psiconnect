@@ -25,7 +25,7 @@ class DesktopNavBar extends HookConsumerWidget {
   @override
 Widget build(BuildContext context, WidgetRef ref) {
   final isScrolled = ref.watch(scrolledProvider);
-  final navBarColor = isScrolled ? Colors.blue : Colors.white;
+  final navBarColor = isScrolled ? Color.fromARGB(1, 40, 45, 0) : Colors.white;
 
   return Container(
     color: navBarColor,
