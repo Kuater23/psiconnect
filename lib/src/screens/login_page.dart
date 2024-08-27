@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
-import 'package:Psiconnect/src/screens/professional_page.dart';
-import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
+import 'package:Psiconnect/src/screens/register_page.dart'; // Asegúrate de importar la página de registro
+import 'package:Psiconnect/src/screens/home_page.dart'; // Asegúrate de importar la página principal
+import 'package:Psiconnect/src/screens/admin_page.dart'; // Asegúrate de importar la página de Admin
+import 'package:Psiconnect/src/screens/patient_page.dart'; // Asegúrate de importar la página de Paciente
+import 'package:Psiconnect/src/screens/professional_page.dart'; // Asegúrate de importar la página de Profesional
 
 class LoginPage extends StatefulWidget {
   @override
@@ -19,103 +20,130 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
-      body: Center(
-        child: SizedBox(
-          width: 300, // Ajusta el ancho según sea necesario
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: 'Email'),
+      appBar: AppBar(
+        title: Text('Login'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Container(
+            width: 300, // Ajusta el ancho de la Card aquí
+            child: Card(
+              elevation: 4.0,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: _emailController,
+                            decoration: InputDecoration(labelText: 'Email'),
+                          ),
+                          TextField(
+                            controller: _passwordController,
+                            decoration: InputDecoration(labelText: 'Password'),
+                            obscureText: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () async {
+                        User? user = await _authService.signInWithEmailAndPassword(
+                          _emailController.text,
+                          _passwordController.text,
+                        );
+                        if (user != null) {
+                          String role = await _authService.getUserRole(user.uid);
+                          if (role == 'admin') {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => AdminPage()),
+                            );
+                          } else if (role == 'patient') {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => PatientPage()),
+                            );
+                          } else if (role == 'professional') {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => ProfessionalPage()),
+                            );
+                          } else {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => HomePage()),
+                            );
+                          }
+                        } else {
+                          // Mostrar un mensaje de error
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Login failed')),
+                          );
+                        }
+                      },
+                      child: Text('Login'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        User? user = await _authService.signInWithGoogle();
+                        if (user != null) {
+                          String role = await _authService.getUserRole(user.uid);
+                          if (role == 'admin') {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => AdminPage()),
+                            );
+                          } else if (role == 'patient') {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => PatientPage()),
+                            );
+                          } else if (role == 'professional') {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => ProfessionalPage()),
+                            );
+                          } else {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => HomePage()),
+                            );
+                          }
+                        } else {
+                          // Mostrar un mensaje de error
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Google login failed')),
+                          );
+                        }
+                      },
+                      child: Text('Login with Google'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => RegisterPage()),
+                        );
+                      },
+                      child: Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
+                    ),
+                  ],
+                ),
               ),
-              TextField(
-                controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Password'),
-                obscureText: true,
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  // Lógica para iniciar sesión con email y contraseña
-                  User? user = await _authService.signInWithEmailAndPassword(
-                    _emailController.text,
-                    _passwordController.text,
-                  );
-                  if (user != null) {
-                    // Obtener el rol del usuario desde Firestore
-                    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .get();
-                    String role = userDoc['role'];
-
-                    // Navegar a la pantalla correspondiente según el rol
-                    if (role == 'patient') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => PatientPage()),
-                      );
-                    } else if (role == 'professional') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => ProfessionalPage()),
-                      );
-                    } else if (role == 'admin') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => AdminPage()),
-                      );
-                    }
-                  } else {
-                    // Manejo de error o cancelación del inicio de sesión
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error al iniciar sesión')),
-                    );
-                  }
-                },
-                child: Text('Login'),
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  User? user = await _authService.signInWithGoogle();
-                  if (user != null) {
-                    // Obtener el rol del usuario desde Firestore
-                    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .get();
-                    String role = userDoc['role'];
-
-                    // Navegar a la pantalla correspondiente según el rol
-                    if (role == 'patient') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => PatientPage()),
-                      );
-                    } else if (role == 'professional') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => ProfessionalPage()),
-                      );
-                    } else if (role == 'admin') {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => AdminPage()),
-                      );
-                    }
-                  } else {
-                    // Manejo de error o cancelación del inicio de sesión
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error al iniciar sesión')),
-                    );
-                  }
-                },
-                child: Text('Login with Google'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

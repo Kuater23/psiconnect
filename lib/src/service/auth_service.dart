@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -75,6 +76,21 @@ class AuthService {
     } catch (e) {
       print('Error en registerWithEmailAndPassword: $e');
       return null;
+    }
+  }
+
+  // Método para obtener el rol del usuario
+  Future<String> getUserRole(String uid) async {
+    try {
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        return userDoc['role'] ?? 'unknown';
+      } else {
+        return 'unknown';
+      }
+    } catch (e) {
+      print('Error en getUserRole: $e');
+      return 'unknown';
     }
   }
 }
