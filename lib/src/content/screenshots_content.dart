@@ -5,7 +5,8 @@ class ScreenshotsContent extends ResponsiveWidget {
   const ScreenshotsContent({Key? key}) : super(key: key);
 
   @override
-  Widget buildDesktop(BuildContext context) => ScreenshotsContentResponsive(200);
+  Widget buildDesktop(BuildContext context) =>
+      ScreenshotsContentResponsive(200);
 
   @override
   Widget buildMobile(BuildContext context) => ScreenshotsContentResponsive(24);
