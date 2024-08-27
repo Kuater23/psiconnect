@@ -78,4 +78,19 @@ class AuthService {
       return null;
     }
   }
+
+  // Método para obtener el rol del usuario
+  Future<String> getUserRole(String uid) async {
+    try {
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        return userDoc['role'] ?? 'unknown';
+      } else {
+        return 'unknown';
+      }
+    } catch (e) {
+      print('Error en getUserRole: $e');
+      return 'unknown';
+    }
+  }
 }
