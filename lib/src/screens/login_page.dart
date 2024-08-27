@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
-import 'package:Psiconnect/src/screens/professional_page.dart';
-import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
-import 'package:Psiconnect/src/screens/register_page.dart';
-// Asegúrate de importar la página de registro
+import 'package:Psiconnect/src/screens/register_page.dart'; // Asegúrate de importar la página de registro
+import 'package:Psiconnect/src/screens/home_page.dart'; // Asegúrate de importar la página principal
+import 'package:Psiconnect/src/screens/admin_page.dart'; // Asegúrate de importar la página de Admin
+import 'package:Psiconnect/src/screens/patient_page.dart'; // Asegúrate de importar la página de Paciente
+import 'package:Psiconnect/src/screens/professional_page.dart'; // Asegúrate de importar la página de Profesional
 
 class LoginPage extends StatefulWidget {
   @override
@@ -21,53 +20,58 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
-      backgroundColor: Color.fromARGB(255, 1, 40, 45), // Establece el color de fondo aquí
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+      appBar: AppBar(
+        title: Text('Login'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
           child: Container(
-            width: 400.0, // Establece el ancho deseado aquí
-            height: 400.0, // Establece el largo deseado aquí
+            width: 300, // Ajusta el ancho de la Card aquí
             child: Card(
-              color: Color.fromARGB(255, 158, 216, 255), // Establece el color de la Card aquí
-              elevation: 8.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
+              elevation: 4.0,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center, // Centra los elementos verticalmente
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
-                      controller: _emailController,
-                      decoration: InputDecoration(labelText: 'Email'),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: _emailController,
+                            decoration: InputDecoration(labelText: 'Email'),
+                          ),
+                          TextField(
+                            controller: _passwordController,
+                            decoration: InputDecoration(labelText: 'Password'),
+                            obscureText: true,
+                          ),
+                        ],
+                      ),
                     ),
-                    SizedBox(height: 16.0),
-                    TextField(
-                      controller: _passwordController,
-                      decoration: InputDecoration(labelText: 'Password'),
-                      obscureText: true,
-                    ),
-                    SizedBox(height: 16.0),
+                    SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () async {
-                        // Lógica para iniciar sesión con email y contraseña
                         User? user = await _authService.signInWithEmailAndPassword(
                           _emailController.text,
                           _passwordController.text,
                         );
                         if (user != null) {
-                          // Obtener el rol del usuario desde Firestore
-                          DocumentSnapshot userDoc = await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .get();
-                          String role = userDoc['role'];
-
-                          // Navegar a la pantalla correspondiente según el rol
-                          if (role == 'patient') {
+                          String role = await _authService.getUserRole(user.uid);
+                          if (role == 'admin') {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => AdminPage()),
+                            );
+                          } else if (role == 'patient') {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(builder: (context) => PatientPage()),
@@ -77,35 +81,32 @@ class _LoginPageState extends State<LoginPage> {
                               context,
                               MaterialPageRoute(builder: (context) => ProfessionalPage()),
                             );
-                          } else if (role == 'admin') {
+                          } else {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => AdminPage()),
+                              MaterialPageRoute(builder: (context) => HomePage()),
                             );
                           }
                         } else {
-                          // Manejo de error o cancelación del inicio de sesión
+                          // Mostrar un mensaje de error
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error al iniciar sesión')),
+                            SnackBar(content: Text('Login failed')),
                           );
                         }
                       },
                       child: Text('Login'),
                     ),
-                    SizedBox(height: 16.0),
                     ElevatedButton(
                       onPressed: () async {
                         User? user = await _authService.signInWithGoogle();
                         if (user != null) {
-                          // Obtener el rol del usuario desde Firestore
-                          DocumentSnapshot userDoc = await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .get();
-                          String role = userDoc['role'];
-
-                          // Navegar a la pantalla correspondiente según el rol
-                          if (role == 'patient') {
+                          String role = await _authService.getUserRole(user.uid);
+                          if (role == 'admin') {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => AdminPage()),
+                            );
+                          } else if (role == 'patient') {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(builder: (context) => PatientPage()),
@@ -115,33 +116,29 @@ class _LoginPageState extends State<LoginPage> {
                               context,
                               MaterialPageRoute(builder: (context) => ProfessionalPage()),
                             );
-                          } else if (role == 'admin') {
+                          } else {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => AdminPage()),
+                              MaterialPageRoute(builder: (context) => HomePage()),
                             );
                           }
                         } else {
-                          // Manejo de error o cancelación del inicio de sesión
+                          // Mostrar un mensaje de error
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error al iniciar sesión')),
+                            SnackBar(content: Text('Google login failed')),
                           );
                         }
                       },
                       child: Text('Login with Google'),
-                      style: ElevatedButton.styleFrom(
-                       // primary: Colors.red, // Color del botón de Google
-                      ),
                     ),
-                    SizedBox(height: 16.0),
                     TextButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
+                        Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => RegisterPage()),
                         );
                       },
-                      child: Text('¿No tienes cuenta? Regístrate aquí'),
+                      child: Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
                     ),
                   ],
                 ),
