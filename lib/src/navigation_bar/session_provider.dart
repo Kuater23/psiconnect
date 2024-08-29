@@ -23,5 +23,5 @@ class SessionNotifier extends StateNotifier<User?> {
 
 }
 
-}
+
 
