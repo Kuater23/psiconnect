@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
 import 'package:Psiconnect/src/screens/patient_page.dart';
@@ -18,18 +19,37 @@ void main() async {
   setPathUrlStrategy();
   runApp(
     ProviderScope(
-      child: MaterialApp(
-        title: "Psiconnect",
-        initialRoute: '/',
-        routes: {
-          '/': (context) => HomePage(),
-          '/login': (context) => LoginPage(),
-          '/register': (context) => RegisterPage(),
-          '/patient': (context) => PatientPage(),
-          '/professional': (context) => ProfessionalPage(),
-          '/admin': (context) => AdminPage(),
-        },
-      ),
+      child: MyApp(),
     ),
   );
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: "Psiconnect",
+      initialRoute: '/',
+      routes: {
+        '/': (context) => HomePage(),
+        '/login': (context) => LoginPage(),
+        '/register': (context) => RegisterPage(),
+        '/patient': (context) => PatientPageWrapper(),
+        '/professional': (context) => ProfessionalPage(),
+        '/admin': (context) => AdminPage(),
+      },
+    );
+  }
+}
+
+class PatientPageWrapper extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      return PatientPage(email: user.email!);
+    } else {
+      return LoginPage(); // Redirige al login si no hay usuario autenticado
+    }
+  }
 }

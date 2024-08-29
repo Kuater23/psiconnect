@@ -20,4 +20,8 @@ class SessionNotifier extends StateNotifier<User?> {
     FirebaseAuth.instance.signOut();
     state = null;
   }
+
 }
+
+}
+
