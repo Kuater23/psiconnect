@@ -130,8 +130,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         child: TextField(
                           controller: _nroMatriculaController,
                           decoration: InputDecoration(
-                            labelText: 'NRO matrícula',
-                            hintText: 'Enter your NRO matrícula',
+                            labelText: 'Matricula Nacional',
+                            hintText: 'Enter your Matricula Nacional',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10.0),
                             ),

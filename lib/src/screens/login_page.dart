@@ -57,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 20), // Espacio entre los TextFields y el primer botón
                     ElevatedButton(
                       onPressed: () async {
                         User? user = await _authService.signInWithEmailAndPassword(
@@ -96,6 +96,7 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       child: Text('Login'),
                     ),
+                    SizedBox(height: 10), // Espacio entre el primer y segundo botón
                     ElevatedButton(
                       onPressed: () async {
                         User? user = await _authService.signInWithGoogle();
@@ -131,6 +132,7 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       child: Text('Login with Google'),
                     ),
+                    SizedBox(height: 10), // Espacio entre el segundo botón y el TextButton
                     TextButton(
                       onPressed: () {
                         Navigator.push(
