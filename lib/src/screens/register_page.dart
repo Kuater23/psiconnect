@@ -1,3 +1,4 @@
+import 'package:Psiconnect/main.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -50,10 +51,12 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                            borderSide:
+                                BorderSide(color: Colors.blue, width: 2.0),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                            borderSide:
+                                BorderSide(color: Colors.grey, width: 1.0),
                           ),
                           labelStyle: TextStyle(
                             color: Colors.grey,
@@ -78,10 +81,12 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                            borderSide:
+                                BorderSide(color: Colors.blue, width: 2.0),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                            borderSide:
+                                BorderSide(color: Colors.grey, width: 1.0),
                           ),
                           labelStyle: TextStyle(
                             color: Colors.grey,
@@ -108,10 +113,12 @@ class _RegisterPageState extends State<RegisterPage> {
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                              borderSide:
+                                  BorderSide(color: Colors.blue, width: 2.0),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                              borderSide:
+                                  BorderSide(color: Colors.grey, width: 1.0),
                             ),
                             labelStyle: TextStyle(
                               color: Colors.grey,
@@ -136,10 +143,12 @@ class _RegisterPageState extends State<RegisterPage> {
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.blue, width: 2.0),
+                              borderSide:
+                                  BorderSide(color: Colors.blue, width: 2.0),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.grey, width: 1.0),
+                              borderSide:
+                                  BorderSide(color: Colors.grey, width: 1.0),
                             ),
                             labelStyle: TextStyle(
                               color: Colors.grey,
@@ -173,8 +182,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     ElevatedButton(
                       onPressed: () async {
                         // Lógica para registrar con email y contraseña
-                        String role = isProfessional ? 'professional' : 'patient';
-                        User? user = await _authService.registerWithEmailAndPassword(
+                        String role =
+                            isProfessional ? 'professional' : 'patient';
+                        User? user =
+                            await _authService.registerWithEmailAndPassword(
                           _emailController.text,
                           _passwordController.text,
                           role,
@@ -184,12 +195,14 @@ class _RegisterPageState extends State<RegisterPage> {
                           if (role == 'patient') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => PatientPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => PatientPageWrapper()),
                             );
                           } else if (role == 'professional') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => ProfessionalPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => ProfessionalPage()),
                             );
                           }
                         } else {
@@ -207,7 +220,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         User? user = await _authService.signInWithGoogle();
                         if (user != null) {
                           // Obtener el rol del usuario desde Firestore
-                          DocumentSnapshot userDoc = await FirebaseFirestore.instance
+                          DocumentSnapshot userDoc = await FirebaseFirestore
+                              .instance
                               .collection('users')
                               .doc(user.uid)
                               .get();
@@ -217,17 +231,20 @@ class _RegisterPageState extends State<RegisterPage> {
                           if (role == 'patient') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => PatientPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => PatientPageWrapper()),
                             );
                           } else if (role == 'professional') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => ProfessionalPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => ProfessionalPage()),
                             );
                           } else if (role == 'admin') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => AdminPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => AdminPage()),
                             );
                           }
                         } else {
@@ -244,10 +261,13 @@ class _RegisterPageState extends State<RegisterPage> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => LoginPage()), // Redirige a la página de inicio de sesión
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  LoginPage()), // Redirige a la página de inicio de sesión
                         );
                       },
-                      child: Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
+                      child: Text(
+                          '¿Todavía no tienes una cuenta? Créala aquí mismo'),
                     ),
                   ],
                 ),

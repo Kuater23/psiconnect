@@ -3,6 +3,7 @@ import 'package:Psiconnect/src/widgets/responsive_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/navigation_bar/providers.dart';
+import 'package:Psiconnect/src/navigation_bar/session_provider.dart'; // Importa el sessionProvider
 
 class NavBar extends ResponsiveWidget {
   final Function(GlobalKey) scrollTo;
@@ -63,6 +64,7 @@ class DesktopNavBar extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isScrolled = ref.watch(scrolledProvider);
     final navBarColor = isScrolled ? Colors.blue : Colors.white;
+    final user = ref.watch(sessionProvider);
 
     return Container(
       color: navBarColor,
@@ -92,17 +94,25 @@ class DesktopNavBar extends HookConsumerWidget {
                 NavBarButton(
                     text: 'Contacto', onTap: () => scrollTo(contactKey)),
                 SizedBox(width: 10),
-                NavBarButton(
-                    text: 'Inicio de sesión',
-                    onTap: () {
-                      Navigator.pushNamed(context, '/login');
-                    }),
-                SizedBox(width: 10),
-                NavBarButton(
-                    text: 'Registrarse',
-                    onTap: () {
-                      Navigator.pushNamed(context, '/register');
-                    }),
+                if (user != null)
+                  NavBarButton(
+                      text: 'Perfil',
+                      onTap: () {
+                        Navigator.pushNamed(context, '/patient');
+                      })
+                else ...[
+                  NavBarButton(
+                      text: 'Iniciar sesión',
+                      onTap: () {
+                        Navigator.pushNamed(context, '/login');
+                      }),
+                  SizedBox(width: 10),
+                  NavBarButton(
+                      text: 'Registrarse',
+                      onTap: () {
+                        Navigator.pushNamed(context, '/register');
+                      }),
+                ],
               ],
             ),
           ],
@@ -130,9 +140,37 @@ class MobileNavBar extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Implementación para la barra de navegación móvil
+    final user = ref.watch(sessionProvider);
+
     return Container(
-        // Aquí puedes añadir la implementación para la versión móvil
-        );
+      // Implementación para la barra de navegación móvil
+      child: Column(
+        children: [
+          NavBarButton(text: 'Inicio', onTap: () => scrollTo(homeKey)),
+          NavBarButton(
+              text: 'Sobre nosotros', onTap: () => scrollTo(featureKey)),
+          NavBarButton(text: 'Servicios', onTap: () => scrollTo(screenshotKey)),
+          NavBarButton(text: 'Contacto', onTap: () => scrollTo(contactKey)),
+          if (user != null)
+            NavBarButton(
+                text: 'Perfil',
+                onTap: () {
+                  Navigator.pushNamed(context, '/patient');
+                })
+          else ...[
+            NavBarButton(
+                text: 'Iniciar sesión',
+                onTap: () {
+                  Navigator.pushNamed(context, '/login');
+                }),
+            NavBarButton(
+                text: 'Registrarse',
+                onTap: () {
+                  Navigator.pushNamed(context, '/register');
+                }),
+          ],
+        ],
+      ),
+    );
   }
 }
