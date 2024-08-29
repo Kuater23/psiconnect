@@ -18,12 +18,12 @@ dependencies:
   webview_flutter: ^4.4.2
   firebase_core: ^3.3.0
   firebase_auth: ^5.1.4
-  
   cloud_firestore: ^5.2.1
   google_sign_in: ^6.2.1
   photo_view: ^0.15.0
   table_calendar: ^3.1.2
-
+  http: ^0.13.3
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

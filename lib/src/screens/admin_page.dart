@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AdminPage extends StatefulWidget {
   @override
@@ -7,22 +8,80 @@ class AdminPage extends StatefulWidget {
 }
 
 class _AdminPageState extends State<AdminPage> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+  List<Map<String, dynamic>> _users = [];
 
-  Future<List<DocumentSnapshot>> _fetchUsers() async {
-    QuerySnapshot snapshot = await _firestore.collection('users').get();
-    return snapshot.docs;
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
   }
 
-  void _addUser() {
+  Future<void> _fetchUsers() async {
+    final url = Uri.parse('http://localhost:3000/users');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _users = List<Map<String, dynamic>>.from(json.decode(response.body));
+      });
+    } else {
+      print('Error fetching users: ${response.body}');
+    }
+  }
+
+  Future<void> deleteUser(String uid) async {
+    final url = Uri.parse('http://localhost:3000/deleteUser');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'uid': uid}),
+    );
+
+    if (response.statusCode == 200) {
+      _fetchUsers();
+    } else {
+      print('Error deleting user: ${response.body}');
+    }
+  }
+
+  Future<void> addUser(String email, String password, String displayName) async {
+    final url = Uri.parse('http://localhost:3000/addUser');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'email': email, 'password': password, 'displayName': displayName}),
+    );
+
+    if (response.statusCode == 200) {
+      _fetchUsers();
+    } else {
+      print('Error adding user: ${response.body}');
+    }
+  }
+
+  Future<void> updateUser(String uid, String email, String displayName) async {
+    final url = Uri.parse('http://localhost:3000/updateUser');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'uid': uid, 'email': email, 'displayName': displayName}),
+    );
+
+    if (response.statusCode == 200) {
+      _fetchUsers();
+    } else {
+      print('Error updating user: ${response.body}');
+    }
+  }
+
+  void _showAddUserDialog() {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final displayNameController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) {
-        final TextEditingController emailController = TextEditingController();
-        final TextEditingController roleController = TextEditingController();
-        final TextEditingController passwordController = TextEditingController(); // Nuevo controlador para la contraseña
         return AlertDialog(
           title: Text('Add User'),
           content: Column(
@@ -33,13 +92,13 @@ class _AdminPageState extends State<AdminPage> {
                 decoration: InputDecoration(labelText: 'Email'),
               ),
               TextField(
-                controller: roleController,
-                decoration: InputDecoration(labelText: 'Role'),
+                controller: passwordController,
+                decoration: InputDecoration(labelText: 'Password'),
+                obscureText: true,
               ),
               TextField(
-                controller: passwordController, // Nuevo campo de texto para la contraseña
-                decoration: InputDecoration(labelText: 'Password'),
-                obscureText: true, // Ocultar el texto para la contraseña
+                controller: displayNameController,
+                decoration: InputDecoration(labelText: 'Display Name'),
               ),
             ],
           ),
@@ -51,13 +110,12 @@ class _AdminPageState extends State<AdminPage> {
               child: Text('Cancel'),
             ),
             TextButton(
-              onPressed: () async {
-                await _firestore.collection('users').add({
-                  'email': emailController.text,
-                  'role': roleController.text,
-                });
+              onPressed: () {
+                final email = emailController.text;
+                final password = passwordController.text;
+                final displayName = displayNameController.text;
+                addUser(email, password, displayName);
                 Navigator.of(context).pop();
-                setState(() {});
               },
               child: Text('Add'),
             ),
@@ -67,13 +125,13 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
-  void _editUser(DocumentSnapshot userDoc) {
+  void _showEditUserDialog(Map<String, dynamic> user) {
+    final emailController = TextEditingController(text: user['email'] ?? '');
+    final displayNameController = TextEditingController(text: user['displayName'] ?? '');
+
     showDialog(
       context: context,
       builder: (context) {
-        final TextEditingController emailController = TextEditingController(text: userDoc['email']);
-        final TextEditingController roleController = TextEditingController(text: userDoc['role']);
-        final TextEditingController passwordController = TextEditingController(); // Nuevo controlador para la contraseña
         return AlertDialog(
           title: Text('Edit User'),
           content: Column(
@@ -84,13 +142,8 @@ class _AdminPageState extends State<AdminPage> {
                 decoration: InputDecoration(labelText: 'Email'),
               ),
               TextField(
-                controller: roleController,
-                decoration: InputDecoration(labelText: 'Role'),
-              ),
-              TextField(
-                controller: passwordController, // Nuevo campo de texto para la contraseña
-                decoration: InputDecoration(labelText: 'Password'),
-                obscureText: true, // Ocultar el texto para la contraseña
+                controller: displayNameController,
+                decoration: InputDecoration(labelText: 'Display Name'),
               ),
             ],
           ),
@@ -102,43 +155,13 @@ class _AdminPageState extends State<AdminPage> {
               child: Text('Cancel'),
             ),
             TextButton(
-              onPressed: () async {
-                await _firestore.collection('users').doc(userDoc.id).update({
-                  'email': emailController.text,
-                  'role': roleController.text,
-                });
-                Navigator.of(context).pop();
-                setState(() {});
-              },
-              child: Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _deleteUser(String userId) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Delete User'),
-          content: Text('Are you sure you want to delete this user?'),
-          actions: [
-            TextButton(
               onPressed: () {
+                final email = emailController.text;
+                final displayName = displayNameController.text;
+                updateUser(user['id'], email, displayName);
                 Navigator.of(context).pop();
               },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await _firestore.collection('users').doc(userId).delete();
-                Navigator.of(context).pop();
-                setState(() {});
-              },
-              child: Text('Delete'),
+              child: Text('Update'),
             ),
           ],
         );
@@ -152,88 +175,37 @@ class _AdminPageState extends State<AdminPage> {
       appBar: AppBar(
         title: Text('Admin Page'),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Container(
-            width: 400.0, // Establece el ancho deseado aquí
-            child: Column(
-              children: [
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    labelText: 'Buscar usuario',
-                    suffixIcon: IconButton(
-                      icon: Icon(Icons.search),
-                      onPressed: () {
-                        setState(() {
-                          _searchQuery = _searchController.text;
-                        });
-                      },
-                    ),
+      body: _users.isEmpty
+          ? Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              itemCount: _users.length,
+              itemBuilder: (context, index) {
+                final user = _users[index];
+                return ListTile(
+                  title: Text(user['displayName'] ?? 'No Name'),
+                  subtitle: Text(user['email'] ?? 'No Email'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.edit),
+                        onPressed: () {
+                          _showEditUserDialog(user);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () {
+                          deleteUser(user['id']);
+                        },
+                      ),
+                    ],
                   ),
-                ),
-                SizedBox(height: 16.0),
-                Expanded(
-                  child: FutureBuilder<List<DocumentSnapshot>>(
-                    future: _fetchUsers(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return Center(child: Text('No users found'));
-                      } else {
-                        List<DocumentSnapshot> users = snapshot.data!;
-                        List<DocumentSnapshot> filteredUsers = users.where((user) {
-                          return user['email']
-                              .toString()
-                              .toLowerCase()
-                              .contains(_searchQuery.toLowerCase());
-                        }).toList();
-                        return ListView.builder(
-                          itemCount: filteredUsers.length,
-                          itemBuilder: (context, index) {
-                            DocumentSnapshot userDoc = filteredUsers[index];
-                            Map<String, dynamic> user = userDoc.data() as Map<String, dynamic>;
-                            return Card(
-                              margin: EdgeInsets.all(8.0),
-                              child: ListTile(
-                                title: Text(user['email'] ?? 'No Email'),
-                                subtitle: Text('Role: ${user['role'] ?? 'No Role'}'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(Icons.edit),
-                                      onPressed: () {
-                                        _editUser(userDoc);
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.delete),
-                                      onPressed: () {
-                                        _deleteUser(userDoc.id);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ],
+                );
+              },
             ),
-          ),
-        ),
-      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _addUser,
+        onPressed: _showAddUserDialog,
         child: Icon(Icons.add),
       ),
     );
