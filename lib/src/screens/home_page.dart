@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-final homeKey = new GlobalKey();
-final featureKey = new GlobalKey();
-final screenshotKey = new GlobalKey(); //luka putito
-final contactKey = new GlobalKey();
+final homeKey = GlobalKey();
+final featureKey = GlobalKey();
+final screenshotKey = GlobalKey();
+final contactKey = GlobalKey();
 
 final currentPageProvider = StateProvider<GlobalKey>((_) => homeKey);
 final scrolledProvider = StateProvider<bool>((_) => false);
@@ -53,7 +53,13 @@ class HomePage extends HookConsumerWidget {
           width: maxWith,
           child: Column(
             children: [
-              NavBar(),
+              NavBar(
+                scrollTo: scrollTo,
+                homeKey: homeKey,
+                featureKey: featureKey,
+                screenshotKey: screenshotKey,
+                contactKey: contactKey,
+              ),
               Expanded(
                 child: SingleChildScrollView(
                   controller: _controller,
