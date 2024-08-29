@@ -24,7 +24,6 @@ class AuthService {
           'role': 'patient', // o el rol que desees asignar por defecto
         });
       }
-
       return user;
     } catch (e) {
       print('Error en signInWithEmailAndPassword: $e');
