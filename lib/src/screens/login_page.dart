@@ -1,3 +1,4 @@
+import 'package:Psiconnect/main.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
@@ -6,13 +7,15 @@ import 'package:Psiconnect/src/screens/home_page.dart'; // Asegúrate de importa
 import 'package:Psiconnect/src/screens/admin_page.dart'; // Asegúrate de importar la página de Admin
 import 'package:Psiconnect/src/screens/patient_page.dart'; // Asegúrate de importar la página de Paciente
 import 'package:Psiconnect/src/screens/professional_page.dart'; // Asegúrate de importar la página de Profesional
+import 'package:hooks_riverpod/hooks_riverpod.dart'; // Importa hooks_riverpod
+import 'package:Psiconnect/src/navigation_bar/session_provider.dart'; // Importa el sessionProvider
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   @override
   _LoginPageState createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -57,34 +60,43 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 20),
+                    SizedBox(height: 20), // Espacio entre los TextFields y el primer botón
                     ElevatedButton(
                       onPressed: () async {
-                        User? user = await _authService.signInWithEmailAndPassword(
+                        User? user =
+                            await _authService.signInWithEmailAndPassword(
                           _emailController.text,
                           _passwordController.text,
                         );
                         if (user != null) {
-                          String role = await _authService.getUserRole(user.uid);
+                          String role =
+                              await _authService.getUserRole(user.uid);
+                          ref
+                              .read(sessionProvider.notifier)
+                              .logIn(user); // Actualiza el estado de la sesión
                           if (role == 'admin') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => AdminPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => AdminPage()),
                             );
                           } else if (role == 'patient') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => PatientPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => PatientPageWrapper()),
                             );
                           } else if (role == 'professional') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => ProfessionalPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => ProfessionalPage()),
                             );
                           } else {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => HomePage()),
+                              MaterialPageRoute(
+                                  builder: (context) => HomePage()),
                             );
                           }
                         } else {
@@ -96,30 +108,39 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       child: Text('Login'),
                     ),
+                    SizedBox(height: 10), // Espacio entre el primer y segundo botón
                     ElevatedButton(
                       onPressed: () async {
                         User? user = await _authService.signInWithGoogle();
                         if (user != null) {
-                          String role = await _authService.getUserRole(user.uid);
+                          String role =
+                              await _authService.getUserRole(user.uid);
+                          ref
+                              .read(sessionProvider.notifier)
+                              .logIn(user); // Actualiza el estado de la sesión
                           if (role == 'admin') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => AdminPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => AdminPage()),
                             );
                           } else if (role == 'patient') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => PatientPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => PatientPageWrapper()),
                             );
                           } else if (role == 'professional') {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => ProfessionalPage()),
+                              MaterialPageRoute(
+                                  builder: (context) => ProfessionalPage()),
                             );
                           } else {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => HomePage()),
+                              MaterialPageRoute(
+                                  builder: (context) => HomePage()),
                             );
                           }
                         } else {
@@ -131,14 +152,17 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       child: Text('Login with Google'),
                     ),
+                    SizedBox(height: 10), // Espacio entre el segundo botón y el TextButton
                     TextButton(
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => RegisterPage()),
+                          MaterialPageRoute(
+                              builder: (context) => RegisterPage()),
                         );
                       },
-                      child: Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
+                      child: Text(
+                          '¿Todavía no tienes una cuenta? Créala aquí mismo'),
                     ),
                   ],
                 ),
