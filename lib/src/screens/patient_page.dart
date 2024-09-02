@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart'; // Importa hooks_riverpod
-import 'package:Psiconnect/src/navigation_bar/session_provider.dart'; // Importa el sessionProvider
-import 'package:Psiconnect/src/screens/home_page.dart'; // Importa la página de inicio
-import 'package:table_calendar/table_calendar.dart'; // Importa table_calendar
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
+import 'package:Psiconnect/src/screens/home_page.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PatientPage extends ConsumerStatefulWidget {
   final String email;
@@ -13,7 +15,6 @@ class PatientPage extends ConsumerStatefulWidget {
   _PatientPageState createState() => _PatientPageState();
 }
 
-//asd asdasd
 class _PatientPageState extends ConsumerState<PatientPage> {
   final _formKey = GlobalKey<FormState>();
   final PageController _pageController = PageController();
@@ -25,15 +26,81 @@ class _PatientPageState extends ConsumerState<PatientPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _allergiesController = TextEditingController();
-  final TextEditingController _chronicDiseasesController =
-      TextEditingController();
-  final TextEditingController _currentMedicationsController =
-      TextEditingController();
+  final TextEditingController _chronicDiseasesController = TextEditingController();
+  final TextEditingController _currentMedicationsController = TextEditingController();
 
   // Variables para el calendario
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+
+  Future<void> _savePersonalInfo() async {
+    if (_formKey.currentState!.validate()) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final uid = user.uid;
+
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'name': _nameController.text,
+          'age': int.parse(_ageController.text),
+          'gender': _genderController.text,
+        }, SetOptions(merge: true));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Información personal guardada')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: Usuario no autenticado')),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveContactInfo() async {
+    if (_formKey.currentState!.validate()) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final uid = user.uid;
+
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'phone': _phoneController.text,
+          'address': _addressController.text,
+        }, SetOptions(merge: true));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Información de contacto guardada')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: Usuario no autenticado')),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveMedicalHistory() async {
+    if (_formKey.currentState!.validate()) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final uid = user.uid;
+
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'allergies': _allergiesController.text,
+          'chronicDiseases': _chronicDiseasesController.text,
+          'currentMedications': _currentMedicationsController.text,
+        }, SetOptions(merge: true));
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Antecedentes médicos guardados')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: Usuario no autenticado')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +178,6 @@ class _PatientPageState extends ConsumerState<PatientPage> {
               padding: const EdgeInsets.all(16.0),
               child: ElevatedButton(
                 onPressed: () {
-                  // Actualiza el estado de la sesión y redirige al menú de login
                   ref.read(sessionProvider.notifier).logOut();
                   Navigator.pushReplacementNamed(context, '/login');
                 },
@@ -167,6 +233,8 @@ class _PatientPageState extends ConsumerState<PatientPage> {
     );
   }
 
+  String _selectedGender = 'Masculino'; // Variable para almacenar el valor seleccionado
+
   Widget _buildPersonalInfoSection() {
     return Padding(
       padding: EdgeInsets.all(16.0),
@@ -203,25 +271,30 @@ class _PatientPageState extends ConsumerState<PatientPage> {
                 return null;
               },
             ),
-            TextFormField(
-              controller: _genderController,
+            DropdownButtonFormField<String>(
+              value: _selectedGender,
               decoration: InputDecoration(labelText: 'Género'),
+              items: ['Masculino', 'Femenino', 'Otro'].map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+              }).toList(),
+              onChanged: (newValue) {
+              setState(() {
+                _selectedGender = newValue!;
+              });
+              },
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Por favor ingrese su género';
-                }
-                return null;
+              if (value == null || value.isEmpty) {
+                return 'Por favor seleccione su género';
+              }
+              return null;
               },
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Información guardada')),
-                  );
-                }
-              },
+              onPressed: _savePersonalInfo,
               child: Text('Guardar'),
             ),
           ],
@@ -273,13 +346,7 @@ class _PatientPageState extends ConsumerState<PatientPage> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Información guardada')),
-                  );
-                }
-              },
+              onPressed: _saveContactInfo,
               child: Text('Guardar'),
             ),
           ],
@@ -335,13 +402,7 @@ class _PatientPageState extends ConsumerState<PatientPage> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Información guardada')),
-                  );
-                }
-              },
+              onPressed: _saveMedicalHistory,
               child: Text('Guardar'),
             ),
           ],
