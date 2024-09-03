@@ -1,9 +1,15 @@
+import 'package:Psiconnect/main.dart';
 import 'package:Psiconnect/src/navigation_bar/nav_bar_button.dart';
 import 'package:Psiconnect/src/widgets/responsive_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/navigation_bar/providers.dart';
 import 'package:Psiconnect/src/navigation_bar/session_provider.dart'; // Importa el sessionProvider
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:Psiconnect/src/screens/admin_page.dart';
+import 'package:Psiconnect/src/screens/patient_page.dart';
+import 'package:Psiconnect/src/screens/professional_page.dart';
 
 class NavBar extends ResponsiveWidget {
   final Function(GlobalKey) scrollTo;
@@ -97,8 +103,17 @@ class DesktopNavBar extends HookConsumerWidget {
                 if (user != null)
                   NavBarButton(
                       text: 'Perfil',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/patient');
+                      onTap: () async {
+                        User? currentUser = FirebaseAuth.instance.currentUser;
+                        if (currentUser != null) {
+                          DocumentSnapshot userDoc = await FirebaseFirestore
+                              .instance
+                              .collection('users')
+                              .doc(currentUser.uid)
+                              .get();
+                          String role = userDoc['role'];
+                          _navigateToRolePage(context, role);
+                        }
                       })
                 else ...[
                   NavBarButton(
@@ -119,6 +134,29 @@ class DesktopNavBar extends HookConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _navigateToRolePage(BuildContext context, String role) {
+    if (role == 'admin') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => AdminPage()),
+      );
+    } else if (role == 'patient') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
+      );
+    } else if (role == 'professional') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProfessionalPage()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unknown role')),
+      );
+    }
   }
 }
 
@@ -154,8 +192,16 @@ class MobileNavBar extends HookConsumerWidget {
           if (user != null)
             NavBarButton(
                 text: 'Perfil',
-                onTap: () {
-                  Navigator.pushNamed(context, '/patient');
+                onTap: () async {
+                  User? currentUser = FirebaseAuth.instance.currentUser;
+                  if (currentUser != null) {
+                    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(currentUser.uid)
+                        .get();
+                    String role = userDoc['role'];
+                    _navigateToRolePage(context, role);
+                  }
                 })
           else ...[
             NavBarButton(
@@ -172,5 +218,28 @@ class MobileNavBar extends HookConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _navigateToRolePage(BuildContext context, String role) {
+    if (role == 'admin') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => AdminPage()),
+      );
+    } else if (role == 'patient') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
+      );
+    } else if (role == 'professional') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProfessionalPage()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unknown role')),
+      );
+    }
   }
 }

@@ -2,13 +2,13 @@ import 'package:Psiconnect/main.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
-import 'package:Psiconnect/src/screens/register_page.dart'; // Asegúrate de importar la página de registro
-import 'package:Psiconnect/src/screens/home_page.dart'; // Asegúrate de importar la página principal
-import 'package:Psiconnect/src/screens/admin_page.dart'; // Asegúrate de importar la página de Admin
-import 'package:Psiconnect/src/screens/patient_page.dart'; // Asegúrate de importar la página de Paciente
-import 'package:Psiconnect/src/screens/professional_page.dart'; // Asegúrate de importar la página de Profesional
-import 'package:hooks_riverpod/hooks_riverpod.dart'; // Importa hooks_riverpod
-import 'package:Psiconnect/src/navigation_bar/session_provider.dart'; // Importa el sessionProvider
+import 'package:Psiconnect/src/screens/register_page.dart';
+import 'package:Psiconnect/src/screens/home_page.dart';
+import 'package:Psiconnect/src/screens/admin_page.dart';
+import 'package:Psiconnect/src/screens/patient_page.dart';
+import 'package:Psiconnect/src/screens/professional_page.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   @override
@@ -36,7 +36,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         padding: const EdgeInsets.all(16.0),
         child: Center(
           child: Container(
-            width: 300, // Ajusta el ancho de la Card aquí
+            width: 300,
             child: Card(
               elevation: 4.0,
               child: Padding(
@@ -60,7 +60,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 20), // Espacio entre los TextFields y el primer botón
+                    SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () async {
                         User? user =
@@ -71,36 +71,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         if (user != null) {
                           String role =
                               await _authService.getUserRole(user.uid);
-                          ref
-                              .read(sessionProvider.notifier)
-                              .logIn(user); // Actualiza el estado de la sesión
-                          if (role == 'admin') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => AdminPage()),
-                            );
-                          } else if (role == 'patient') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => PatientPageWrapper()),
-                            );
-                          } else if (role == 'professional') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => ProfessionalPage()),
-                            );
-                          } else {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => HomePage()),
-                            );
-                          }
+                          ref.read(sessionProvider.notifier).logIn(user);
+                          _navigateToRolePage(context, role);
                         } else {
-                          // Mostrar un mensaje de error
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Login failed')),
                           );
@@ -108,43 +81,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       },
                       child: Text('Login'),
                     ),
-                    SizedBox(height: 10), // Espacio entre el primer y segundo botón
+                    SizedBox(height: 10),
                     ElevatedButton(
                       onPressed: () async {
                         User? user = await _authService.signInWithGoogle();
                         if (user != null) {
                           String role =
                               await _authService.getUserRole(user.uid);
-                          ref
-                              .read(sessionProvider.notifier)
-                              .logIn(user); // Actualiza el estado de la sesión
-                          if (role == 'admin') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => AdminPage()),
-                            );
-                          } else if (role == 'patient') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => PatientPageWrapper()),
-                            );
-                          } else if (role == 'professional') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => ProfessionalPage()),
-                            );
-                          } else {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => HomePage()),
-                            );
-                          }
+                          ref.read(sessionProvider.notifier).logIn(user);
+                          _navigateToRolePage(context, role);
                         } else {
-                          // Mostrar un mensaje de error
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Google login failed')),
                           );
@@ -152,7 +98,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       },
                       child: Text('Login with Google'),
                     ),
-                    SizedBox(height: 10), // Espacio entre el segundo botón y el TextButton
+                    SizedBox(height: 10),
                     TextButton(
                       onPressed: () {
                         Navigator.push(
@@ -172,5 +118,29 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ),
       ),
     );
+  }
+
+  void _navigateToRolePage(BuildContext context, String role) {
+    if (role == 'admin') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => AdminPage()),
+      );
+    } else if (role == 'patient') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
+      );
+    } else if (role == 'professional') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => ProfessionalPage()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+      );
+    }
   }
 }
