@@ -1,3 +1,4 @@
+import 'package:Psiconnect/main.dart';
 import 'package:Psiconnect/src/content/contact_content.dart';
 import 'package:Psiconnect/src/content/feature_content.dart';
 import 'package:Psiconnect/src/content/home_content.dart';
@@ -6,6 +7,11 @@ import 'package:Psiconnect/src/navigation_bar/nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:Psiconnect/src/screens/admin_page.dart';
+import 'package:Psiconnect/src/screens/patient_page.dart';
+import 'package:Psiconnect/src/screens/professional_page.dart';
 
 final homeKey = GlobalKey();
 final featureKey = GlobalKey();
@@ -48,6 +54,25 @@ class HomePage extends HookConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('Home'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.person),
+            onPressed: () async {
+              User? user = FirebaseAuth.instance.currentUser;
+              if (user != null) {
+                DocumentSnapshot userDoc = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .get();
+                String role = userDoc['role'];
+                _navigateToRolePage(context, role);
+              }
+            },
+          ),
+        ],
+      ),
       body: Center(
         child: Container(
           width: maxWith,
@@ -79,5 +104,28 @@ class HomePage extends HookConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _navigateToRolePage(BuildContext context, String role) {
+    if (role == 'admin') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => AdminPage()),
+      );
+    } else if (role == 'patient') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
+      );
+    } else if (role == 'professional') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => ProfessionalPage()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unknown role')),
+      );
+    }
   }
 }
