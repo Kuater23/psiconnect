@@ -6,7 +6,7 @@ import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/professional_page.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/patient_page.dart';
-import 'package:Psiconnect/src/screens/login_page.dart'; // Asegúrate de importar la página de inicio de sesión
+import 'package:Psiconnect/src/screens/login_page.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -19,7 +19,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _dniController = TextEditingController();
   final TextEditingController _nroMatriculaController = TextEditingController();
-  bool isProfessional = false; // Variable para controlar el switch
+  bool isProfessional = false;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class _RegisterPageState extends State<RegisterPage> {
       body: Center(
         child: SingleChildScrollView(
           child: Container(
-            width: 350, // Ajusta el ancho según sea necesario
+            width: 350,
             child: Card(
               margin: EdgeInsets.all(16.0),
               elevation: 8.0,
@@ -41,7 +41,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 300, // Ajusta el ancho según sea necesario
+                      width: 300,
                       child: TextField(
                         controller: _emailController,
                         decoration: InputDecoration(
@@ -71,7 +71,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     SizedBox(height: 16.0),
                     Container(
-                      width: 300, // Ajusta el ancho según sea necesario
+                      width: 300,
                       child: TextField(
                         controller: _passwordController,
                         decoration: InputDecoration(
@@ -103,7 +103,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(height: 16.0),
                     if (isProfessional) ...[
                       Container(
-                        width: 300, // Ajusta el ancho según sea necesario
+                        width: 300,
                         child: TextField(
                           controller: _dniController,
                           decoration: InputDecoration(
@@ -133,7 +133,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       SizedBox(height: 16.0),
                       Container(
-                        width: 300, // Ajusta el ancho según sea necesario
+                        width: 300,
                         child: TextField(
                           controller: _nroMatriculaController,
                           decoration: InputDecoration(
@@ -181,7 +181,6 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () async {
-                        // Lógica para registrar con email y contraseña
                         String role =
                             isProfessional ? 'professional' : 'patient';
                         User? user =
@@ -191,22 +190,16 @@ class _RegisterPageState extends State<RegisterPage> {
                           role,
                         );
                         if (user != null) {
-                          // Navegar a la pantalla correspondiente según el rol
-                          if (role == 'patient') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => PatientPageWrapper()),
-                            );
-                          } else if (role == 'professional') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => ProfessionalPage()),
-                            );
-                          }
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(user.uid)
+                              .set({
+                            'email': _emailController.text,
+                            'role': role,
+                            // Otros campos que quieras almacenar
+                          });
+                          _navigateToRolePage(context, role);
                         } else {
-                          // Manejo de error o cancelación del registro
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Error al registrar')),
                           );
@@ -219,36 +212,14 @@ class _RegisterPageState extends State<RegisterPage> {
                       onPressed: () async {
                         User? user = await _authService.signInWithGoogle();
                         if (user != null) {
-                          // Obtener el rol del usuario desde Firestore
                           DocumentSnapshot userDoc = await FirebaseFirestore
                               .instance
                               .collection('users')
                               .doc(user.uid)
                               .get();
                           String role = userDoc['role'];
-
-                          // Navegar a la pantalla correspondiente según el rol
-                          if (role == 'patient') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => PatientPageWrapper()),
-                            );
-                          } else if (role == 'professional') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => ProfessionalPage()),
-                            );
-                          } else if (role == 'admin') {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => AdminPage()),
-                            );
-                          }
+                          _navigateToRolePage(context, role);
                         } else {
-                          // Manejo de error o cancelación del inicio de sesión
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Error al iniciar sesión')),
                           );
@@ -261,9 +232,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  LoginPage()), // Redirige a la página de inicio de sesión
+                          MaterialPageRoute(builder: (context) => LoginPage()),
                         );
                       },
                       child: Text(
@@ -277,5 +246,28 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
+  }
+
+  void _navigateToRolePage(BuildContext context, String role) {
+    if (role == 'admin') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => AdminPage()),
+      );
+    } else if (role == 'patient') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
+      );
+    } else if (role == 'professional') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => ProfessionalPage()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unknown role')),
+      );
+    }
   }
 }
