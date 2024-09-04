@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:Psiconnect/src/screens/home_page.dart'; // Asegúrate de importar tu HomePage
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -92,6 +93,16 @@ class _ProfessionalPageState extends ConsumerState<ProfessionalPage> {
                 fontSize: 24,
               ),
             ),
+          ),
+          ListTile(
+            title: Text('Home'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomePage()),
+              );
+            },
           ),
           ListTile(
             title: Text('Professional Home'),
