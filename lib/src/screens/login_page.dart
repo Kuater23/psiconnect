@@ -176,27 +176,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       });
     }
   }
+  
 
-  // Función para navegar a la página correspondiente según el rol del usuario
+  // Función para navegar a la HomePage tras un inicio de sesión exitoso
   void _navigateToRolePage(BuildContext context, String role) {
-    Widget page;
-    switch (role) {
-      case 'admin':
-        page = AdminPage();
-        break;
-      case 'patient':
-        page = PatientPageWrapper();
-        break;
-      case 'professional':
-        page = ProfessionalPage();
-        break;
-      default:
-        page = HomePage();
-        break;
-    }
+    // En lugar de redirigir a la página basada en el rol, siempre redirigimos a HomePage
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => page),
+      MaterialPageRoute(builder: (context) => HomePage()),
     );
   }
 
