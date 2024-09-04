@@ -54,25 +54,25 @@ class HomePage extends HookConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text('Home'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.person),
-            onPressed: () async {
-              User? user = FirebaseAuth.instance.currentUser;
-              if (user != null) {
-                DocumentSnapshot userDoc = await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .get();
-                String role = userDoc['role'];
-                _navigateToRolePage(context, role);
-              }
-            },
-          ),
-        ],
-      ),
+      //appBar: AppBar(
+      //title: Text('Home'),
+      //actions: [
+      //IconButton(
+      //icon: Icon(Icons.person),
+      //onPressed: () async {
+      //User? user = FirebaseAuth.instance.currentUser;
+      //if (user != null) {
+      //DocumentSnapshot userDoc = await FirebaseFirestore.instance
+      //.collection('users')
+      //  .doc(user.uid)
+      //    .get();
+      // String role = userDoc['role'];
+      //  _navigateToRolePage(context, role);
+      // }
+      // },
+      // ),
+      //],
+      //),
       body: Center(
         child: Container(
           width: maxWith,
