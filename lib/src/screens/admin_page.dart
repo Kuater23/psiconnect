@@ -17,7 +17,7 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   Future<void> _fetchUsers() async {
-    final url = Uri.parse('http://localhost:3000/users');
+    final url = Uri.parse('https://your-secure-api.com/users'); // Cambia a HTTPS
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -25,12 +25,12 @@ class _AdminPageState extends State<AdminPage> {
         _users = List<Map<String, dynamic>>.from(json.decode(response.body));
       });
     } else {
-      print('Error fetching users: ${response.body}');
+      _showErrorSnackBar('Error fetching users: ${response.body}');
     }
   }
 
   Future<void> deleteUser(String uid) async {
-    final url = Uri.parse('http://localhost:3000/deleteUser');
+    final url = Uri.parse('https://your-secure-api.com/deleteUser'); // Cambia a HTTPS
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -40,12 +40,17 @@ class _AdminPageState extends State<AdminPage> {
     if (response.statusCode == 200) {
       _fetchUsers();
     } else {
-      print('Error deleting user: ${response.body}');
+      _showErrorSnackBar('Error deleting user: ${response.body}');
     }
   }
 
   Future<void> addUser(String email, String password, String displayName) async {
-    final url = Uri.parse('http://localhost:3000/addUser');
+    if (email.isEmpty || password.isEmpty || displayName.isEmpty) {
+      _showErrorSnackBar('Please fill in all fields');
+      return;
+    }
+
+    final url = Uri.parse('https://your-secure-api.com/addUser'); // Cambia a HTTPS
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -54,13 +59,19 @@ class _AdminPageState extends State<AdminPage> {
 
     if (response.statusCode == 200) {
       _fetchUsers();
+      _showSuccessSnackBar('User added successfully');
     } else {
-      print('Error adding user: ${response.body}');
+      _showErrorSnackBar('Error adding user: ${response.body}');
     }
   }
 
   Future<void> updateUser(String uid, String email, String displayName) async {
-    final url = Uri.parse('http://localhost:3000/updateUser');
+    if (email.isEmpty || displayName.isEmpty) {
+      _showErrorSnackBar('Please fill in all fields');
+      return;
+    }
+
+    final url = Uri.parse('https://your-secure-api.com/updateUser'); // Cambia a HTTPS
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -69,8 +80,9 @@ class _AdminPageState extends State<AdminPage> {
 
     if (response.statusCode == 200) {
       _fetchUsers();
+      _showSuccessSnackBar('User updated successfully');
     } else {
-      print('Error updating user: ${response.body}');
+      _showErrorSnackBar('Error updating user: ${response.body}');
     }
   }
 
@@ -169,6 +181,18 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: TextStyle(color: Colors.red))),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: TextStyle(color: Colors.green))),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,7 +200,12 @@ class _AdminPageState extends State<AdminPage> {
         title: Text('Admin Page'),
       ),
       body: _users.isEmpty
-          ? Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Text(
+                'No users found. Add new users using the button below.',
+                style: TextStyle(fontSize: 18),
+              ),
+            )
           : ListView.builder(
               itemCount: _users.length,
               itemBuilder: (context, index) {

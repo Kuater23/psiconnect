@@ -29,77 +29,59 @@ class _PatientPageState extends ConsumerState<PatientPage> {
   final TextEditingController _chronicDiseasesController = TextEditingController();
   final TextEditingController _currentMedicationsController = TextEditingController();
 
+  // Variable para almacenar el género seleccionado
+  String _selectedGender = 'Masculino';
+
   // Variables para el calendario
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
+  // Función modularizada para guardar datos en Firestore
+  Future<void> _saveData(Map<String, dynamic> data) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final uid = user.uid;
+      await FirebaseFirestore.instance.collection('users').doc(uid).set(data, SetOptions(merge: true));
+      _showSnackBar('Datos guardados correctamente');
+    } else {
+      _showSnackBar('Error: Usuario no autenticado');
+    }
+  }
+
   Future<void> _savePersonalInfo() async {
     if (_formKey.currentState!.validate()) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final uid = user.uid;
-
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'name': _nameController.text,
-          'age': int.parse(_ageController.text),
-          'gender': _genderController.text,
-        }, SetOptions(merge: true));
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Información personal guardada')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: Usuario no autenticado')),
-        );
-      }
+      await _saveData({
+        'name': _nameController.text,
+        'age': int.parse(_ageController.text),
+        'gender': _genderController.text,
+      });
     }
   }
 
   Future<void> _saveContactInfo() async {
     if (_formKey.currentState!.validate()) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final uid = user.uid;
-
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'phone': _phoneController.text,
-          'address': _addressController.text,
-        }, SetOptions(merge: true));
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Información de contacto guardada')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: Usuario no autenticado')),
-        );
-      }
+      await _saveData({
+        'phone': _phoneController.text,
+        'address': _addressController.text,
+      });
     }
   }
 
   Future<void> _saveMedicalHistory() async {
     if (_formKey.currentState!.validate()) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final uid = user.uid;
-
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
-          'allergies': _allergiesController.text,
-          'chronicDiseases': _chronicDiseasesController.text,
-          'currentMedications': _currentMedicationsController.text,
-        }, SetOptions(merge: true));
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Antecedentes médicos guardados')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: Usuario no autenticado')),
-        );
-      }
+      await _saveData({
+        'allergies': _allergiesController.text,
+        'chronicDiseases': _chronicDiseasesController.text,
+        'currentMedications': _currentMedicationsController.text,
+      });
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -108,98 +90,7 @@ class _PatientPageState extends ConsumerState<PatientPage> {
       appBar: AppBar(
         title: Text('Ventana de Paciente'),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue,
-              ),
-              child: Text(
-                'Bienvenido ${widget.email}',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              title: Text('INFORMACIÓN PERSONAL'),
-              onTap: () {
-                Navigator.pop(context);
-                _pageController.jumpToPage(0);
-              },
-            ),
-            ListTile(
-              title: Text('CONTACTO'),
-              onTap: () {
-                Navigator.pop(context);
-                _pageController.jumpToPage(1);
-              },
-            ),
-            ListTile(
-              title: Text('ANTECEDENTES MÉDICOS'),
-              onTap: () {
-                Navigator.pop(context);
-                _pageController.jumpToPage(2);
-              },
-            ),
-            ListTile(
-              title: Text('CALENDARIO'),
-              onTap: () {
-                Navigator.pop(context);
-                _pageController.jumpToPage(3);
-              },
-            ),
-            ListTile(
-              title: Text('MIS SESIONES'),
-              onTap: () {
-                Navigator.pop(context);
-                _pageController.jumpToPage(4);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.arrow_back, color: Colors.blue),
-              title: Text(
-                'Volver a Inicio',
-                style: TextStyle(color: Colors.blue),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => HomePage()),
-                );
-              },
-            ),
-            SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  ref.read(sessionProvider.notifier).logOut();
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30.0),
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 15.0),
-                ),
-                child: Text(
-                  'SALIR',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      drawer: _buildDrawer(),
       body: Column(
         children: [
           Padding(
@@ -233,7 +124,80 @@ class _PatientPageState extends ConsumerState<PatientPage> {
     );
   }
 
-  String _selectedGender = 'Masculino'; // Variable para almacenar el valor seleccionado
+  Drawer _buildDrawer() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Colors.blue,
+            ),
+            child: Text(
+              'Bienvenido ${widget.email}',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+              ),
+            ),
+          ),
+          _buildDrawerItem('INFORMACIÓN PERSONAL', 0),
+          _buildDrawerItem('CONTACTO', 1),
+          _buildDrawerItem('ANTECEDENTES MÉDICOS', 2),
+          _buildDrawerItem('CALENDARIO', 3),
+          _buildDrawerItem('MIS SESIONES', 4),
+          ListTile(
+            leading: Icon(Icons.arrow_back, color: Colors.blue),
+            title: Text(
+              'Volver a Inicio',
+              style: TextStyle(color: Colors.blue),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomePage()),
+              );
+            },
+          ),
+          SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () {
+                ref.read(sessionProvider.notifier).logOut();
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 15.0),
+              ),
+              child: Text(
+                'SALIR',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  ListTile _buildDrawerItem(String title, int pageIndex) {
+    return ListTile(
+      title: Text(title),
+      onTap: () {
+        Navigator.pop(context);
+        _pageController.jumpToPage(pageIndex);
+      },
+    );
+  }
 
   Widget _buildPersonalInfoSection() {
     return Padding(
@@ -275,21 +239,21 @@ class _PatientPageState extends ConsumerState<PatientPage> {
               value: _selectedGender,
               decoration: InputDecoration(labelText: 'Género'),
               items: ['Masculino', 'Femenino', 'Otro'].map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
               }).toList(),
               onChanged: (newValue) {
-              setState(() {
-                _selectedGender = newValue!;
-              });
+                setState(() {
+                  _selectedGender = newValue!;
+                });
               },
               validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor seleccione su género';
-              }
-              return null;
+                if (value == null || value.isEmpty) {
+                  return 'Por favor seleccione su género';
+                }
+                return null;
               },
             ),
             SizedBox(height: 20),

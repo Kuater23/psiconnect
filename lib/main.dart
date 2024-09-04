@@ -16,7 +16,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  setPathUrlStrategy();
+  setPathUrlStrategy(); // Configura la estrategia de URL
   runApp(
     ProviderScope(
       child: MyApp(),
@@ -29,6 +29,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: "Psiconnect",
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
       initialRoute: '/',
       routes: {
         '/': (context) => HomePage(),

@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Import for locale initialization
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
-  // Ensure that all binding is initialized before running the app
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize date formatting for the desired locale
   await initializeDateFormatting('es_ES', null);
 
   runApp(MyApp());
@@ -18,7 +15,15 @@ class MyApp extends StatelessWidget {
     return ProviderScope(
       child: MaterialApp(
         theme: ThemeData(
-          brightness: Brightness.dark, // Use dark theme
+          brightness: Brightness.dark, // Tema oscuro
+          primaryColor: Colors.blue,
+          colorScheme: ColorScheme.dark().copyWith(
+            secondary: Colors.blueAccent, // Reemplazo de accentColor
+          ),
+          textTheme: TextTheme(
+            bodyLarge: TextStyle(color: Colors.white), // Reemplazo de bodyText1
+            bodyMedium: TextStyle(color: Colors.white), // Reemplazo de bodyText2
+          ),
         ),
         home: ProfessionalPage(),
       ),
@@ -66,7 +71,7 @@ class _ProfessionalPageState extends ConsumerState<ProfessionalPage> {
         title: Text('Professional Page'),
       ),
       body: Container(
-        color: Colors.black, // Set the background color to black
+        color: Colors.black,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -74,30 +79,34 @@ class _ProfessionalPageState extends ConsumerState<ProfessionalPage> {
               children: <Widget>[
                 Text(
                   'Welcome to the Professional Page!',
-                  style: TextStyle(fontSize: 24, color: Colors.white), // Set text color to white
+                  style: TextStyle(fontSize: 24, color: Colors.white),
                 ),
                 SizedBox(height: 20),
                 Flexible(
                   child: ListView(
                     children: <Widget>[
                       ListTile(
-                        leading: Icon(Icons.check, color: Colors.white), // Set icon color to white
-                        title: Text('Skill 1', style: TextStyle(color: Colors.white)), // Set text color to white
+                        leading: Icon(Icons.check, color: Colors.white),
+                        title: Text('Skill 1', style: TextStyle(color: Colors.white)),
                       ),
                       ListTile(
-                        leading: Icon(Icons.check, color: Colors.white), // Set icon color to white
-                        title: Text('Skill 2', style: TextStyle(color: Colors.white)), // Set text color to white
+                        leading: Icon(Icons.check, color: Colors.white),
+                        title: Text('Skill 2', style: TextStyle(color: Colors.white)),
                       ),
                       ListTile(
-                        leading: Icon(Icons.check, color: Colors.white), // Set icon color to white
-                        title: Text('Skill 3', style: TextStyle(color: Colors.white)), // Set text color to white
+                        leading: Icon(Icons.check, color: Colors.white),
+                        title: Text('Skill 3', style: TextStyle(color: Colors.white)),
                       ),
                     ],
                   ),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    // Navigate to another page
+                    // Implementar lógica de navegación
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => AnotherPage()),
+                    );
                   },
                   child: Text('Go to Next Page'),
                 ),
@@ -105,6 +114,21 @@ class _ProfessionalPageState extends ConsumerState<ProfessionalPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// Página de ejemplo para navegación
+class AnotherPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Another Page'),
+      ),
+      body: Center(
+        child: Text('This is the next page'),
       ),
     );
   }
