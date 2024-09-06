@@ -67,11 +67,13 @@ class DesktopNavBar extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isScrolled = ref.watch(scrolledProvider);
-    final navBarColor = isScrolled ? Colors.blue : Colors.white;
+    final navBarColor = const Color(0xFF01282D); // Color base de Psiconnect
+    final textColor = Colors.white; // Letras en blanco
     final userSession = ref.watch(sessionProvider);
 
     return Container(
-      color: navBarColor,
+      width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
+      color: navBarColor, // Fondo de Psiconnect
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
         child: Row(
@@ -87,16 +89,29 @@ class DesktopNavBar extends HookConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                NavBarButton(text: 'Inicio', onTap: () => scrollTo(homeKey)),
+                NavBarButton(
+                  text: 'Inicio',
+                  onTap: () => scrollTo(homeKey),
+                  defaultColor: textColor,
+                ),
                 SizedBox(width: 10),
                 NavBarButton(
-                    text: 'Sobre nosotros', onTap: () => scrollTo(featureKey)),
+                  text: 'Sobre nosotros',
+                  onTap: () => scrollTo(featureKey),
+                  defaultColor: textColor,
+                ),
                 SizedBox(width: 10),
                 NavBarButton(
-                    text: 'Servicios', onTap: () => scrollTo(screenshotKey)),
+                  text: 'Servicios',
+                  onTap: () => scrollTo(screenshotKey),
+                  defaultColor: textColor,
+                ),
                 SizedBox(width: 10),
                 NavBarButton(
-                    text: 'Contacto', onTap: () => scrollTo(contactKey)),
+                  text: 'Contacto',
+                  onTap: () => scrollTo(contactKey),
+                  defaultColor: textColor,
+                ),
                 SizedBox(width: 10),
                 if (userSession != null)
                   NavBarButton(
@@ -104,19 +119,22 @@ class DesktopNavBar extends HookConsumerWidget {
                     onTap: () {
                       _navigateToRolePage(context, userSession.role);
                     },
+                    defaultColor: textColor,
                   )
                 else ...[
                   NavBarButton(
                       text: 'Iniciar sesión',
                       onTap: () {
                         Navigator.pushNamed(context, '/login');
-                      }),
+                      },
+                      defaultColor: textColor),
                   SizedBox(width: 10),
                   NavBarButton(
                       text: 'Registrarse',
                       onTap: () {
                         Navigator.pushNamed(context, '/register');
-                      }),
+                      },
+                      defaultColor: textColor),
                 ],
               ],
             ),
@@ -172,31 +190,51 @@ class MobileNavBar extends HookConsumerWidget {
     final userSession = ref.watch(sessionProvider);
 
     return Container(
+      color: const Color(0xFF01282D), // Fondo de Psiconnect
+      width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
       child: Column(
         children: [
-          NavBarButton(text: 'Inicio', onTap: () => scrollTo(homeKey)),
           NavBarButton(
-              text: 'Sobre nosotros', onTap: () => scrollTo(featureKey)),
-          NavBarButton(text: 'Servicios', onTap: () => scrollTo(screenshotKey)),
-          NavBarButton(text: 'Contacto', onTap: () => scrollTo(contactKey)),
+            text: 'Inicio',
+            onTap: () => scrollTo(homeKey),
+            defaultColor: Colors.white,
+          ),
+          NavBarButton(
+            text: 'Sobre nosotros',
+            onTap: () => scrollTo(featureKey),
+            defaultColor: Colors.white,
+          ),
+          NavBarButton(
+            text: 'Servicios',
+            onTap: () => scrollTo(screenshotKey),
+            defaultColor: Colors.white,
+          ),
+          NavBarButton(
+            text: 'Contacto',
+            onTap: () => scrollTo(contactKey),
+            defaultColor: Colors.white,
+          ),
           if (userSession != null)
             NavBarButton(
               text: 'Perfil',
               onTap: () {
                 _navigateToRolePage(context, userSession.role);
               },
+              defaultColor: Colors.white,
             )
           else ...[
             NavBarButton(
                 text: 'Iniciar sesión',
                 onTap: () {
                   Navigator.pushNamed(context, '/login');
-                }),
+                },
+                defaultColor: Colors.white),
             NavBarButton(
                 text: 'Registrarse',
                 onTap: () {
                   Navigator.pushNamed(context, '/register');
-                }),
+                },
+                defaultColor: Colors.white),
           ],
         ],
       ),
