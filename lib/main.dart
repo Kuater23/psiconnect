@@ -16,7 +16,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  setPathUrlStrategy(); // Configura la estrategia de URL
+  setPathUrlStrategy(); // Configura la estrategia de URL para evitar el "#"
   runApp(
     ProviderScope(
       child: MyApp(),
@@ -33,10 +33,10 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      initialRoute: '/',
+      initialRoute: '/',  // Siempre apunta al HomePage al iniciar
       routes: {
-        '/': (context) => HomePage(),
-        '/login': (context) => LoginPage(),
+        '/': (context) => HomePage(),      // HomePage siempre es el inicio
+        '/login': (context) => LoginPage(), // LoginPage accesible desde el NavBar
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
         '/professional': (context) => ProfessionalPage(),
