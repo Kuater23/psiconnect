@@ -22,25 +22,31 @@ class DesktopContactContent extends StatelessWidget {
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
     return Container(
-      color: Colors.blue,
+      color: Colors.blue, // Fondo azul para distinguir la sección
+      width: width, // Ocupar todo el ancho disponible
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              width: width * .4,
+              width: width * .4, // Ajustar el ancho para el contenido de texto
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     "Contact Information Section",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 40,
+                      color: Colors.white,
+                    ),
                   ),
                   SizedBox(height: 25),
                   Text(
-                    'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+                    'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+                    style: TextStyle(color: Colors.white), // Texto en blanco
                   ),
                 ],
               ),
@@ -63,25 +69,35 @@ class DesktopContactContent extends StatelessWidget {
 class MobileContactContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
+
     return Container(
-      color: Colors.blue,
+      color: Colors.blue, // Fondo azul para móviles
+      width: width, // Ocupar todo el ancho disponible en móviles
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
               "Contact Information Section",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 40,
+                color: Colors.white,
+              ),
             ),
             SizedBox(height: 25),
             Text(
-              'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+              'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+              style: TextStyle(color: Colors.white), // Texto en blanco
+              textAlign: TextAlign.center,
             ),
             SizedBox(height: 24),
             Container(
               height: 400,
-              width: 400,
+              width: width * 0.9, // Ajustar el tamaño para móviles
               child: WebViewWidget(
                 controller: _webController,
               ),
