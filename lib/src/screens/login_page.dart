@@ -4,9 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/register_page.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
-import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
-import 'package:Psiconnect/src/screens/professional_page.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 
@@ -119,7 +116,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // Validar que los campos de entrada no estén vacíos
   bool _validateInputs() {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showErrorSnackBar('Please enter both email and password');
+      _showErrorSnackBar('Por favor, ingresa tanto el correo como la contraseña.');
       return false;
     }
     return true;
@@ -138,14 +135,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _passwordController.text,
       );
       if (user != null) {
-        String role = await _authService.getUserRole(user.uid);
         ref.read(sessionProvider.notifier).logIn(user.email!, _passwordController.text);
-        _navigateToRolePage(context, role);
+        _navigateToHomePage(context);
       } else {
-        _showErrorSnackBar('Login failed');
+        _showErrorSnackBar('Error en el inicio de sesión');
       }
     } catch (e) {
-      _showErrorSnackBar('An error occurred during login');
+      _showErrorSnackBar('Ocurrió un error durante el inicio de sesión');
     } finally {
       setState(() {
         _isLoading = false;
@@ -162,25 +158,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     try {
       User? user = await _authService.signInWithGoogle();
       if (user != null) {
-        String role = await _authService.getUserRole(user.uid);
-        ref.read(sessionProvider.notifier).logIn(user.email!, 'google_auth'); // Usar un marcador o token para Google
-        _navigateToRolePage(context, role);
+        ref.read(sessionProvider.notifier).logIn(user.email!, 'google_auth');
+        _navigateToHomePage(context);
       } else {
-        _showErrorSnackBar('Google login failed');
+        _showErrorSnackBar('Error en el inicio de sesión con Google');
       }
     } catch (e) {
-      _showErrorSnackBar('An error occurred during Google login');
+      _showErrorSnackBar('Ocurrió un error durante el inicio de sesión con Google');
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
   }
-  
 
   // Función para navegar a la HomePage tras un inicio de sesión exitoso
-  void _navigateToRolePage(BuildContext context, String role) {
-    // En lugar de redirigir a la página basada en el rol, siempre redirigimos a HomePage
+  void _navigateToHomePage(BuildContext context) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => HomePage()),

@@ -39,21 +39,19 @@ class HomePage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final _controller = useScrollController();
 
-    // How to set a listener: https://stackoverflow.com/a/63832263/3479489
     useEffect(() {
       _controller.addListener(() => onScroll(_controller, ref));
       return _controller.dispose;
     }, [_controller]);
 
-    double width = MediaQuery.of(context).size.width;
-    double maxWith = width > 1200 ? 1200 : width;
+    double width = MediaQuery.of(context).size.width; // Usar todo el ancho disponible
 
     ref
         .watch(currentPageProvider.notifier)
         .addListener(scrollTo, fireImmediately: false);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color.fromARGB(255, 255, 255, 255), // Color de fondo de Psiconnect
       //appBar: AppBar(
       //title: Text('Home'),
       //actions: [
@@ -73,35 +71,30 @@ class HomePage extends HookConsumerWidget {
       // ),
       //],
       //),
-      body: Center(
-        child: Container(
-          width: maxWith,
-          child: Column(
-            children: [
-              NavBar(
-                scrollTo: scrollTo,
-                homeKey: homeKey,
-                featureKey: featureKey,
-                screenshotKey: screenshotKey,
-                contactKey: contactKey,
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _controller,
-                  child: Column(
-                    children: <Widget>[
-                      HomeContent(key: homeKey),
-                      FeaturesContent(key: featureKey),
-                      ScreenshotsContent(key: screenshotKey),
-                      ContactContent(key: contactKey),
-                      SizedBox(height: 50)
-                    ],
-                  ),
-                ),
-              ),
-            ],
+      body: Column(
+        children: [
+          NavBar(
+            scrollTo: scrollTo,
+            homeKey: homeKey,
+            featureKey: featureKey,
+            screenshotKey: screenshotKey,
+            contactKey: contactKey,
           ),
-        ),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _controller,
+              child: Column(
+                children: <Widget>[
+                  HomeContent(key: homeKey),
+                  FeaturesContent(key: featureKey),
+                  ScreenshotsContent(key: screenshotKey),
+                  ContactContent(key: contactKey),
+                  SizedBox(height: 50),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
