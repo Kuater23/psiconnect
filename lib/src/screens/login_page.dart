@@ -4,9 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/register_page.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
-import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
-import 'package:Psiconnect/src/screens/professional_page.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 
@@ -19,6 +16,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -44,72 +42,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: Column(
-                        children: [
-                          TextField(
-                            controller: _emailController,
-                            decoration: InputDecoration(labelText: 'Email'),
-                          ),
-                          TextField(
-                            controller: _passwordController,
-                            decoration: InputDecoration(labelText: 'Password'),
-                            obscureText: true,
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildTextFields(),
                     SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () async {
-                        User? user =
-                            await _authService.signInWithEmailAndPassword(
-                          _emailController.text,
-                          _passwordController.text,
-                        );
-                        if (user != null) {
-                          String role =
-                              await _authService.getUserRole(user.uid);
-                          ref.read(sessionProvider.notifier).logIn(user);
-                          _navigateToRolePage(context, role);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Login failed')),
-                          );
-                        }
-                      },
-                      child: Text('Login'),
-                    ),
+                    _buildLoginButton(context, ref),
                     SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: () async {
-                        User? user = await _authService.signInWithGoogle();
-                        if (user != null) {
-                          String role =
-                              await _authService.getUserRole(user.uid);
-                          ref.read(sessionProvider.notifier).logIn(user);
-                          _navigateToRolePage(context, role);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Google login failed')),
-                          );
-                        }
-                      },
-                      child: Text('Login with Google'),
-                    ),
+                    _buildGoogleLoginButton(context, ref),
                     SizedBox(height: 10),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => RegisterPage()),
-                        );
-                      },
-                      child: Text(
-                          '¿Todavía no tienes una cuenta? Créala aquí mismo'),
-                    ),
+                    _buildRegisterButton(context),
+                    if (_isLoading) CircularProgressIndicator(),
                   ],
                 ),
               ),
@@ -120,27 +60,130 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  void _navigateToRolePage(BuildContext context, String role) {
-    if (role == 'admin') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => AdminPage()),
-      );
-    } else if (role == 'patient') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
-      );
-    } else if (role == 'professional') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => ProfessionalPage()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
+  // Función para construir los campos de texto
+  Widget _buildTextFields() {
+    return Column(
+      children: [
+        TextField(
+          controller: _emailController,
+          decoration: InputDecoration(labelText: 'Email'),
+          keyboardType: TextInputType.emailAddress,
+        ),
+        TextField(
+          controller: _passwordController,
+          decoration: InputDecoration(labelText: 'Password'),
+          obscureText: true,
+        ),
+      ],
+    );
+  }
+
+  // Función para construir el botón de inicio de sesión
+  Widget _buildLoginButton(BuildContext context, WidgetRef ref) {
+    return ElevatedButton(
+      onPressed: () async {
+        if (_validateInputs()) {
+          _signInWithEmailAndPassword(context, ref);
+        }
+      },
+      child: Text('Login'),
+    );
+  }
+
+  // Función para construir el botón de inicio de sesión con Google
+  Widget _buildGoogleLoginButton(BuildContext context, WidgetRef ref) {
+    return ElevatedButton(
+      onPressed: () async {
+        _signInWithGoogle(context, ref);
+      },
+      child: Text('Login with Google'),
+    );
+  }
+
+  // Función para construir el botón de registro
+  Widget _buildRegisterButton(BuildContext context) {
+    return TextButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => RegisterPage()),
+        );
+      },
+      child: Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
+    );
+  }
+
+  // Validar que los campos de entrada no estén vacíos
+  bool _validateInputs() {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showErrorSnackBar('Por favor, ingresa tanto el correo como la contraseña.');
+      return false;
     }
+    return true;
+  }
+
+  // Función para manejar el inicio de sesión con email y contraseña
+  Future<void> _signInWithEmailAndPassword(
+      BuildContext context, WidgetRef ref) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      User? user = await _authService.signInWithEmailAndPassword(
+        _emailController.text,
+        _passwordController.text,
+      );
+      if (user != null) {
+        ref.read(sessionProvider.notifier).logIn(user.email!, _passwordController.text);
+        _navigateToHomePage(context);
+      } else {
+        _showErrorSnackBar('Error en el inicio de sesión');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Ocurrió un error durante el inicio de sesión');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Función para manejar el inicio de sesión con Google
+  Future<void> _signInWithGoogle(BuildContext context, WidgetRef ref) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      User? user = await _authService.signInWithGoogle();
+      if (user != null) {
+        ref.read(sessionProvider.notifier).logIn(user.email!, 'google_auth');
+        _navigateToHomePage(context);
+      } else {
+        _showErrorSnackBar('Error en el inicio de sesión con Google');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Ocurrió un error durante el inicio de sesión con Google');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Función para navegar a la HomePage tras un inicio de sesión exitoso
+  void _navigateToHomePage(BuildContext context) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomePage()),
+    );
+  }
+
+  // Función para mostrar un SnackBar con un mensaje de error
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 }

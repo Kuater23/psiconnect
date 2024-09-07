@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Import for locale initialization
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:Psiconnect/src/screens/home_page.dart'; // Asegúrate de importar tu HomePage
 
 void main() async {
-  // Ensure that all binding is initialized before running the app
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize date formatting for the desired locale
   await initializeDateFormatting('es_ES', null);
 
   runApp(MyApp());
@@ -18,7 +16,15 @@ class MyApp extends StatelessWidget {
     return ProviderScope(
       child: MaterialApp(
         theme: ThemeData(
-          brightness: Brightness.dark, // Use dark theme
+          brightness: Brightness.dark,
+          primaryColor: Colors.blue,
+          colorScheme: ColorScheme.dark().copyWith(
+            secondary: Colors.blueAccent,
+          ),
+          textTheme: TextTheme(
+            bodyLarge: TextStyle(color: Colors.white),
+            bodyMedium: TextStyle(color: Colors.white),
+          ),
         ),
         home: ProfessionalPage(),
       ),
@@ -32,78 +38,128 @@ class ProfessionalPage extends ConsumerStatefulWidget {
 }
 
 class _ProfessionalPageState extends ConsumerState<ProfessionalPage> {
-  final _formKey = GlobalKey<FormState>();
   final PageController _pageController = PageController();
-
-  // Controladores para los campos de texto
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _genderController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _allergiesController = TextEditingController();
-  final TextEditingController _chronicDiseasesController = TextEditingController();
-  final TextEditingController _currentMedicationsController = TextEditingController();
+  String _pageTitle = 'Professional Page'; // Título de la página
 
   @override
   void dispose() {
     _pageController.dispose();
-    _nameController.dispose();
-    _ageController.dispose();
-    _genderController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _allergiesController.dispose();
-    _chronicDiseasesController.dispose();
-    _currentMedicationsController.dispose();
     super.dispose();
+  }
+
+  void _onMenuItemSelected(int pageIndex, String title) {
+    setState(() {
+      _pageTitle = title;
+    });
+    _pageController.jumpToPage(pageIndex);
+    Navigator.pop(context); // Cerrar el drawer
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Professional Page'),
+        title: Text(_pageTitle),
       ),
-      body: Container(
-        color: Colors.black, // Set the background color to black
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: <Widget>[
-                Text(
-                  'Welcome to the Professional Page!',
-                  style: TextStyle(fontSize: 24, color: Colors.white), // Set text color to white
-                ),
-                SizedBox(height: 20),
-                Flexible(
-                  child: ListView(
-                    children: <Widget>[
-                      ListTile(
-                        leading: Icon(Icons.check, color: Colors.white), // Set icon color to white
-                        title: Text('Skill 1', style: TextStyle(color: Colors.white)), // Set text color to white
-                      ),
-                      ListTile(
-                        leading: Icon(Icons.check, color: Colors.white), // Set icon color to white
-                        title: Text('Skill 2', style: TextStyle(color: Colors.white)), // Set text color to white
-                      ),
-                      ListTile(
-                        leading: Icon(Icons.check, color: Colors.white), // Set icon color to white
-                        title: Text('Skill 3', style: TextStyle(color: Colors.white)), // Set text color to white
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    // Navigate to another page
-                  },
-                  child: Text('Go to Next Page'),
-                ),
-              ],
+      drawer: _buildDrawer(context),
+      body: PageView(
+        controller: _pageController,
+        physics: NeverScrollableScrollPhysics(), // Deshabilita el swipe
+        children: [
+          _buildSection('Professional Home', Colors.black),
+          _buildSection('Información Profesional', Colors.blueGrey),
+          _buildSection('Horarios de Atención', Colors.green),
+          _buildSection('Lista de Pacientes', Colors.orange),
+          _buildSection('Calendario', Colors.purple),
+        ],
+      ),
+    );
+  }
+
+  // Drawer (Menú lateral) para la ProfessionalPage
+  Drawer _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Colors.blue,
+            ),
+            child: Text(
+              'Profesional',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+              ),
             ),
           ),
+          ListTile(
+            title: Text('Home'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => HomePage()),
+              );
+            },
+          ),
+          ListTile(
+            title: Text('Professional Home'),
+            onTap: () => _onMenuItemSelected(0, 'Professional Page'),
+          ),
+          ListTile(
+            title: Text('Información Profesional'),
+            onTap: () => _onMenuItemSelected(1, 'Información Profesional'),
+          ),
+          ListTile(
+            title: Text('Horarios de Atención'),
+            onTap: () => _onMenuItemSelected(2, 'Horarios de Atención'),
+          ),
+          ListTile(
+            title: Text('Lista de Pacientes'),
+            onTap: () => _onMenuItemSelected(3, 'Lista de Pacientes'),
+          ),
+          ListTile(
+            title: Text('Calendario'),
+            onTap: () => _onMenuItemSelected(4, 'Calendario'),
+          ),
+          SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 15.0),
+              ),
+              child: Text(
+                'SALIR',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Sección para cada opción del menú con diferentes colores de fondo
+  Widget _buildSection(String title, Color color) {
+    return Container(
+      color: color,
+      child: Center(
+        child: Text(
+          title,
+          style: TextStyle(fontSize: 24, color: Colors.white),
         ),
       ),
     );

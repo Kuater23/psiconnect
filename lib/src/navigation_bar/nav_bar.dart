@@ -4,9 +4,7 @@ import 'package:Psiconnect/src/widgets/responsive_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/navigation_bar/providers.dart';
-import 'package:Psiconnect/src/navigation_bar/session_provider.dart'; // Importa el sessionProvider
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/patient_page.dart';
 import 'package:Psiconnect/src/screens/professional_page.dart';
@@ -69,64 +67,74 @@ class DesktopNavBar extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isScrolled = ref.watch(scrolledProvider);
-    final navBarColor = isScrolled ? Colors.blue : Colors.white;
-    final user = ref.watch(sessionProvider);
+    final navBarColor = const Color(0xFF01282D); // Color base de Psiconnect
+    final textColor = Colors.white; // Letras en blanco
+    final userSession = ref.watch(sessionProvider);
 
     return Container(
-      color: navBarColor,
+      width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
+      color: navBarColor, // Fondo de Psiconnect
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
         child: Row(
           children: [
             // Logo a la izquierda
             Image.asset(
-              'assets/images/logo.png', // Ruta de la imagen del logo
-              height: 40, // Altura del logo
+              'assets/images/logo.png',
+              height: 40,
             ),
-            Spacer(), // Espacio flexible entre el logo y los botones
+            Spacer(),
             // Botones alineados a la derecha
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                NavBarButton(text: 'Inicio', onTap: () => scrollTo(homeKey)),
+                NavBarButton(
+                  text: 'Inicio',
+                  onTap: () => scrollTo(homeKey),
+                  defaultColor: textColor,
+                ),
                 SizedBox(width: 10),
                 NavBarButton(
-                    text: 'Sobre nosotros', onTap: () => scrollTo(featureKey)),
+                  text: 'Sobre nosotros',
+                  onTap: () => scrollTo(featureKey),
+                  defaultColor: textColor,
+                ),
                 SizedBox(width: 10),
                 NavBarButton(
-                    text: 'Servicios', onTap: () => scrollTo(screenshotKey)),
+                  text: 'Servicios',
+                  onTap: () => scrollTo(screenshotKey),
+                  defaultColor: textColor,
+                ),
                 SizedBox(width: 10),
                 NavBarButton(
-                    text: 'Contacto', onTap: () => scrollTo(contactKey)),
+                  text: 'Contacto',
+                  onTap: () => scrollTo(contactKey),
+                  defaultColor: textColor,
+                ),
                 SizedBox(width: 10),
-                if (user != null)
+                if (userSession != null)
                   NavBarButton(
-                      text: 'Perfil',
-                      onTap: () async {
-                        User? currentUser = FirebaseAuth.instance.currentUser;
-                        if (currentUser != null) {
-                          DocumentSnapshot userDoc = await FirebaseFirestore
-                              .instance
-                              .collection('users')
-                              .doc(currentUser.uid)
-                              .get();
-                          String role = userDoc['role'];
-                          _navigateToRolePage(context, role);
-                        }
-                      })
+                    text: 'Perfil',
+                    onTap: () {
+                      _navigateToRolePage(context, userSession.role);
+                    },
+                    defaultColor: textColor,
+                  )
                 else ...[
                   NavBarButton(
                       text: 'Iniciar sesión',
                       onTap: () {
                         Navigator.pushNamed(context, '/login');
-                      }),
+                      },
+                      defaultColor: textColor),
                   SizedBox(width: 10),
                   NavBarButton(
                       text: 'Registrarse',
                       onTap: () {
                         Navigator.pushNamed(context, '/register');
-                      }),
+                      },
+                      defaultColor: textColor),
                 ],
               ],
             ),
@@ -137,26 +145,27 @@ class DesktopNavBar extends HookConsumerWidget {
   }
 
   void _navigateToRolePage(BuildContext context, String role) {
-    if (role == 'admin') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => AdminPage()),
-      );
-    } else if (role == 'patient') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
-      );
-    } else if (role == 'professional') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ProfessionalPage()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unknown role')),
-      );
+    Widget page;
+    switch (role) {
+      case 'admin':
+        page = AdminPage();
+        break;
+      case 'patient':
+        page = PatientPageWrapper();
+        break;
+      case 'professional':
+        page = ProfessionalPage();
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unknown role')),
+        );
+        return;
     }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
   }
 }
 
@@ -178,42 +187,54 @@ class MobileNavBar extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(sessionProvider);
+    final userSession = ref.watch(sessionProvider);
 
     return Container(
-      // Implementación para la barra de navegación móvil
+      color: const Color(0xFF01282D), // Fondo de Psiconnect
+      width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
       child: Column(
         children: [
-          NavBarButton(text: 'Inicio', onTap: () => scrollTo(homeKey)),
           NavBarButton(
-              text: 'Sobre nosotros', onTap: () => scrollTo(featureKey)),
-          NavBarButton(text: 'Servicios', onTap: () => scrollTo(screenshotKey)),
-          NavBarButton(text: 'Contacto', onTap: () => scrollTo(contactKey)),
-          if (user != null)
+            text: 'Inicio',
+            onTap: () => scrollTo(homeKey),
+            defaultColor: Colors.white,
+          ),
+          NavBarButton(
+            text: 'Sobre nosotros',
+            onTap: () => scrollTo(featureKey),
+            defaultColor: Colors.white,
+          ),
+          NavBarButton(
+            text: 'Servicios',
+            onTap: () => scrollTo(screenshotKey),
+            defaultColor: Colors.white,
+          ),
+          NavBarButton(
+            text: 'Contacto',
+            onTap: () => scrollTo(contactKey),
+            defaultColor: Colors.white,
+          ),
+          if (userSession != null)
             NavBarButton(
-                text: 'Perfil',
-                onTap: () async {
-                  User? currentUser = FirebaseAuth.instance.currentUser;
-                  if (currentUser != null) {
-                    DocumentSnapshot userDoc = await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(currentUser.uid)
-                        .get();
-                    String role = userDoc['role'];
-                    _navigateToRolePage(context, role);
-                  }
-                })
+              text: 'Perfil',
+              onTap: () {
+                _navigateToRolePage(context, userSession.role);
+              },
+              defaultColor: Colors.white,
+            )
           else ...[
             NavBarButton(
                 text: 'Iniciar sesión',
                 onTap: () {
                   Navigator.pushNamed(context, '/login');
-                }),
+                },
+                defaultColor: Colors.white),
             NavBarButton(
                 text: 'Registrarse',
                 onTap: () {
                   Navigator.pushNamed(context, '/register');
-                }),
+                },
+                defaultColor: Colors.white),
           ],
         ],
       ),
@@ -221,25 +242,26 @@ class MobileNavBar extends HookConsumerWidget {
   }
 
   void _navigateToRolePage(BuildContext context, String role) {
-    if (role == 'admin') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => AdminPage()),
-      );
-    } else if (role == 'patient') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
-      );
-    } else if (role == 'professional') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => ProfessionalPage()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unknown role')),
-      );
+    Widget page;
+    switch (role) {
+      case 'admin':
+        page = AdminPage();
+        break;
+      case 'patient':
+        page = PatientPageWrapper();
+        break;
+      case 'professional':
+        page = ProfessionalPage();
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unknown role')),
+        );
+        return;
     }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
   }
 }

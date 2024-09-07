@@ -18,14 +18,17 @@ class FeaturesContent extends ResponsiveWidget {
 }
 
 class FeaturesContentResponsive extends StatelessWidget {
-  final horizontalPadding;
+  final double horizontalPadding;
 
   const FeaturesContentResponsive(this.horizontalPadding);
 
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
+
     return Container(
-      color: Colors.blue,
+      width: width, // Ocupar todo el ancho disponible
+      color: Colors.blue, // Color de fondo para la sección de características
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
         child: Column(
@@ -38,7 +41,7 @@ class FeaturesContentResponsive extends StatelessWidget {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               child: Text(
-                'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
+                'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
               ),
             ),
             SizedBox(height: 24),

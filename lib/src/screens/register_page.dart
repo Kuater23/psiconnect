@@ -20,6 +20,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _dniController = TextEditingController();
   final TextEditingController _nroMatriculaController = TextEditingController();
   bool isProfessional = false;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -40,201 +41,55 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 300,
-                      child: TextField(
+                    _buildTextField(
                         controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'Enter your email',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.blue, width: 2.0),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey, width: 1.0),
-                          ),
-                          labelStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 16.0,
-                          ),
-                          hintStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.0,
-                          ),
-                        ),
-                      ),
-                    ),
+                        labelText: 'Email',
+                        hintText: 'Enter your email'),
                     SizedBox(height: 16.0),
-                    Container(
-                      width: 300,
-                      child: TextField(
+                    _buildTextField(
                         controller: _passwordController,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          hintText: 'Enter your password',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.blue, width: 2.0),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey, width: 1.0),
-                          ),
-                          labelStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 16.0,
-                          ),
-                          hintStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 14.0,
-                          ),
-                        ),
-                        obscureText: true,
-                      ),
-                    ),
+                        labelText: 'Password',
+                        hintText: 'Enter your password',
+                        obscureText: true),
                     SizedBox(height: 16.0),
                     if (isProfessional) ...[
-                      Container(
-                        width: 300,
-                        child: TextField(
+                      _buildTextField(
                           controller: _dniController,
-                          decoration: InputDecoration(
-                            labelText: 'DNI',
-                            hintText: 'Enter your DNI',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.0),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: Colors.blue, width: 2.0),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: Colors.grey, width: 1.0),
-                            ),
-                            labelStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 16.0,
-                            ),
-                            hintStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14.0,
-                            ),
-                          ),
-                        ),
-                      ),
+                          labelText: 'DNI',
+                          hintText: 'Enter your DNI'),
                       SizedBox(height: 16.0),
-                      Container(
-                        width: 300,
-                        child: TextField(
+                      _buildTextField(
                           controller: _nroMatriculaController,
-                          decoration: InputDecoration(
-                            labelText: 'Matricula Nacional',
-                            hintText: 'Enter your Matricula Nacional',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.0),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: Colors.blue, width: 2.0),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: Colors.grey, width: 1.0),
-                            ),
-                            labelStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 16.0,
-                            ),
-                            hintStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14.0,
-                            ),
-                          ),
-                        ),
-                      ),
+                          labelText: 'Matricula Nacional',
+                          hintText: 'Enter your Matricula Nacional'),
                       SizedBox(height: 16.0),
                     ],
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Paciente'),
-                        Switch(
-                          value: isProfessional,
-                          onChanged: (value) {
-                            setState(() {
-                              isProfessional = value;
-                            });
-                          },
-                        ),
-                        Text('Profesional'),
-                      ],
+                    _buildRoleSwitch(),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _registerUser,
+                      child: _isLoading
+                          ? CircularProgressIndicator()
+                          : Text('Register'),
                     ),
                     SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: () async {
-                        String role =
-                            isProfessional ? 'professional' : 'patient';
-                        User? user =
-                            await _authService.registerWithEmailAndPassword(
-                          _emailController.text,
-                          _passwordController.text,
-                          role,
-                        );
-                        if (user != null) {
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .set({
-                            'email': _emailController.text,
-                            'role': role,
-                            // Otros campos que quieras almacenar
-                          });
-                          _navigateToRolePage(context, role);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error al registrar')),
-                          );
-                        }
-                      },
-                      child: Text('Register'),
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () async {
-                        User? user = await _authService.signInWithGoogle();
-                        if (user != null) {
-                          DocumentSnapshot userDoc = await FirebaseFirestore
-                              .instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .get();
-                          String role = userDoc['role'];
-                          _navigateToRolePage(context, role);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error al iniciar sesión')),
-                          );
-                        }
-                      },
-                      child: Text('Register with Google'),
+                      onPressed: _isLoading ? null : _registerWithGoogle,
+                      child: _isLoading
+                          ? CircularProgressIndicator()
+                          : Text('Register with Google'),
                     ),
                     SizedBox(height: 20),
                     TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => LoginPage()),
-                        );
-                      },
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => LoginPage()),
+                              );
+                            },
                       child: Text(
                           '¿Todavía no tienes una cuenta? Créala aquí mismo'),
                     ),
@@ -248,26 +103,179 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  void _navigateToRolePage(BuildContext context, String role) {
-    if (role == 'admin') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => AdminPage()),
-      );
-    } else if (role == 'patient') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
-      );
-    } else if (role == 'professional') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => ProfessionalPage()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unknown role')),
-      );
+  // Construir campos de texto
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String labelText,
+    required String hintText,
+    bool obscureText = false,
+  }) {
+    return Container(
+      width: 300,
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: labelText,
+          hintText: hintText,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.blue, width: 2.0),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey, width: 1.0),
+          ),
+          labelStyle: TextStyle(
+            color: Colors.grey,
+            fontSize: 16.0,
+          ),
+          hintStyle: TextStyle(
+            color: Colors.grey,
+            fontSize: 14.0,
+          ),
+        ),
+        obscureText: obscureText,
+      ),
+    );
+  }
+
+  // Construir interruptor de rol
+  Widget _buildRoleSwitch() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text('Paciente'),
+        Switch(
+          value: isProfessional,
+          onChanged: (value) {
+            setState(() {
+              isProfessional = value;
+            });
+          },
+        ),
+        Text('Profesional'),
+      ],
+    );
+  }
+
+  // Validar los campos de entrada
+  bool _validateInputs() {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showErrorSnackBar('Please fill in all fields');
+      return false;
     }
+    if (isProfessional &&
+        (_dniController.text.isEmpty || _nroMatriculaController.text.isEmpty)) {
+      _showErrorSnackBar(
+          'Please fill in DNI and Matricula Nacional for professionals');
+      return false;
+    }
+    return true;
+  }
+
+  // Registrar usuario con email y contraseña
+  Future<void> _registerUser() async {
+    if (!_validateInputs()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      String role = isProfessional ? 'professional' : 'patient';
+      User? user = await _authService.registerWithEmailAndPassword(
+        _emailController.text,
+        _passwordController.text,
+        role,
+      );
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'email': _emailController.text,
+          'role': role,
+          if (isProfessional)
+            'dni': _dniController.text,
+          if (isProfessional)
+            'matricula': _nroMatriculaController.text,
+        });
+        _navigateToRolePage(context, role);
+      } else {
+        _showErrorSnackBar('Error al registrar');
+      }
+    } catch (e) {
+      _showErrorSnackBar('An error occurred during registration');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Registrar usuario con Google
+  Future<void> _registerWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      User? user = await _authService.signInWithGoogle();
+      if (user != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        String role = userDoc.exists
+            ? userDoc['role']
+            : 'patient'; // Asignar rol por defecto si no existe
+        if (!userDoc.exists) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+            'email': user.email,
+            'role': role,
+          });
+        }
+        _navigateToRolePage(context, role);
+      } else {
+        _showErrorSnackBar('Error al iniciar sesión con Google');
+      }
+    } catch (e) {
+      _showErrorSnackBar('An error occurred during Google registration');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Navegar a la página correspondiente según el rol
+  void _navigateToRolePage(BuildContext context, String role) {
+    Widget page;
+    switch (role) {
+      case 'admin':
+        page = AdminPage();
+        break;
+      case 'patient':
+        page = PatientPageWrapper();
+        break;
+      case 'professional':
+        page = ProfessionalPage();
+        break;
+      default:
+        page = LoginPage();
+        break;
+    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
+  }
+
+  // Mostrar un SnackBar con un mensaje de error
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 }

@@ -24,16 +24,20 @@ class DesktopHomeContent extends StatelessWidget {
 
     return Container(
       height: height * .65,
+      width: width, // Ocupar todo el ancho disponible
       child: Row(
         children: [
-          Container(
-            width: width * .3,
+          Expanded(
+            flex: 1, // Proporciona espacio para la imagen
             child: Align(
-                alignment: Alignment.bottomRight,
-                child: Image.asset('assets/images/app_screen.png')),
+              alignment: Alignment.bottomRight,
+              child: Image.asset('assets/images/app_screen.png',
+                  fit: BoxFit.contain),
+            ),
           ),
           SizedBox(width: 24),
           Expanded(
+            flex: 2, // Proporciona más espacio para el contenido de texto
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,11 +48,10 @@ class DesktopHomeContent extends StatelessWidget {
                 ),
                 SizedBox(height: 24),
                 Text(
-                  'Administrá tus pacientes, historias clínicas, agenda, archivos, turnos, sesiones, videollamadas, pagos, notificaciones de WhatsApp y mucho más de una manera simple y eficaz. ',
+                  'Administrá tus pacientes, historias clínicas, agenda, archivos, turnos, sesiones, videollamadas, pagos, notificaciones de WhatsApp y mucho más de una manera simple y eficaz.',
                 ),
                 SizedBox(height: 24),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     GestureDetector(
                       onTap: () => launchUrlString(googlePlayURL),
@@ -87,12 +90,12 @@ class MobileHomeContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            "Basic Landing Webpage",
+            "Psiconnect",
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
           ),
           SizedBox(height: 24),
           Text(
-            'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.',
+            'Administrá tus pacientes, historias clínicas, agenda, archivos, turnos, sesiones, videollamadas, pagos, notificaciones de WhatsApp y mucho más de una manera simple y eficaz.',
           ),
           SizedBox(height: 24),
           GestureDetector(
