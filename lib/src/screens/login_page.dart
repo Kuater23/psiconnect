@@ -1,4 +1,3 @@
-import 'package:Psiconnect/main.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
@@ -14,6 +13,7 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   final AuthService _authService = AuthService();
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -22,9 +22,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Login'),
+        title: const Text('Login'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -33,24 +33,41 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Center(
-          child: Container(
-            width: 300,
-            child: Card(
-              elevation: 4.0,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildTextFields(),
-                    SizedBox(height: 20),
-                    _buildLoginButton(context, ref),
-                    SizedBox(height: 10),
-                    _buildGoogleLoginButton(context, ref),
-                    SizedBox(height: 10),
-                    _buildRegisterButton(context),
-                    if (_isLoading) CircularProgressIndicator(),
-                  ],
+          child: SingleChildScrollView(
+            child: Container(
+              width: 350,
+              child: Card(
+                margin: const EdgeInsets.all(16.0),
+                elevation: 8.0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15.0),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Logo
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20.0),
+                          child: Image.asset(
+                            'assets/images/logo.png', // Asegúrate de tener el logo en esta ruta
+                            height: 100,
+                          ),
+                        ),
+                        _buildTextFields(),
+                        const SizedBox(height: 20),
+                        _buildLoginButton(context, ref),
+                        const SizedBox(height: 10),
+                        _buildGoogleLoginButton(context, ref),
+                        const SizedBox(height: 10),
+                        _buildRegisterButton(context),
+                        if (_isLoading) const CircularProgressIndicator(),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -64,15 +81,68 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildTextFields() {
     return Column(
       children: [
-        TextField(
+        TextFormField(
           controller: _emailController,
-          decoration: InputDecoration(labelText: 'Email'),
+          decoration: InputDecoration(
+            labelText: 'Email',
+            hintText: 'Ingrese su email',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: Colors.blue, width: 2.0),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: Colors.grey, width: 1.0),
+            ),
+            labelStyle: const TextStyle(
+              color: Colors.grey,
+              fontSize: 16.0,
+            ),
+            hintStyle: const TextStyle(
+              color: Colors.grey,
+              fontSize: 14.0,
+            ),
+          ),
           keyboardType: TextInputType.emailAddress,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Por favor ingrese su email';
+            }
+            return null;
+          },
         ),
-        TextField(
+        const SizedBox(height: 16.0),
+        TextFormField(
           controller: _passwordController,
-          decoration: InputDecoration(labelText: 'Password'),
+          decoration: InputDecoration(
+            labelText: 'Contraseña',
+            hintText: 'Ingrese su contraseña',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: Colors.blue, width: 2.0),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: Colors.grey, width: 1.0),
+            ),
+            labelStyle: const TextStyle(
+              color: Colors.grey,
+              fontSize: 16.0,
+            ),
+            hintStyle: const TextStyle(
+              color: Colors.grey,
+              fontSize: 14.0,
+            ),
+          ),
           obscureText: true,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Por favor ingrese su contraseña';
+            }
+            return null;
+          },
         ),
       ],
     );
@@ -82,11 +152,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildLoginButton(BuildContext context, WidgetRef ref) {
     return ElevatedButton(
       onPressed: () async {
-        if (_validateInputs()) {
+        if (_formKey.currentState!.validate()) {
           _signInWithEmailAndPassword(context, ref);
         }
       },
-      child: Text('Login'),
+      child: const Text('Login'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.blueAccent,
+        padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 30.0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30.0),
+        ),
+      ),
     );
   }
 
@@ -96,7 +173,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       onPressed: () async {
         _signInWithGoogle(context, ref);
       },
-      child: Text('Login with Google'),
+      child: const Text('Login with Google'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.redAccent,
+        padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 30.0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30.0),
+        ),
+      ),
     );
   }
 
@@ -109,14 +193,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           MaterialPageRoute(builder: (context) => RegisterPage()),
         );
       },
-      child: Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
+      child: const Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
     );
   }
 
   // Validar que los campos de entrada no estén vacíos
   bool _validateInputs() {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showErrorSnackBar('Por favor, ingresa tanto el correo como la contraseña.');
+      _showErrorSnackBar(
+          'Por favor, ingresa tanto el correo como la contraseña.');
       return false;
     }
     return true;
@@ -135,7 +220,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _passwordController.text,
       );
       if (user != null) {
-        ref.read(sessionProvider.notifier).logIn(user.email!, _passwordController.text);
+        ref
+            .read(sessionProvider.notifier)
+            .logIn(user.email!, _passwordController.text);
         _navigateToHomePage(context);
       } else {
         _showErrorSnackBar('Error en el inicio de sesión');
@@ -164,7 +251,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _showErrorSnackBar('Error en el inicio de sesión con Google');
       }
     } catch (e) {
-      _showErrorSnackBar('Ocurrió un error durante el inicio de sesión con Google');
+      _showErrorSnackBar(
+          'Ocurrió un error durante el inicio de sesión con Google');
     } finally {
       setState(() {
         _isLoading = false;
@@ -183,7 +271,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // Función para mostrar un SnackBar con un mensaje de error
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        margin: const EdgeInsets.all(10.0),
+      ),
     );
   }
 }
