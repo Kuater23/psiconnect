@@ -5,8 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/professional_page.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
 import 'package:Psiconnect/src/screens/login_page.dart';
+import 'package:Psiconnect/src/screens/patient_page.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -15,85 +15,153 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final AuthService _authService = AuthService();
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final TextEditingController _dniController = TextEditingController();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _nroMatriculaController = TextEditingController();
   bool isProfessional = false;
   bool _isLoading = false;
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _dniController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _nroMatriculaController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Register')),
+      appBar: AppBar(title: const Text('Registro')),
       body: Center(
         child: SingleChildScrollView(
           child: Container(
             width: 350,
             child: Card(
-              margin: EdgeInsets.all(16.0),
+              margin: const EdgeInsets.all(16.0),
               elevation: 8.0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
+                borderRadius: BorderRadius.circular(15.0),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildTextField(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Logo
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20.0),
+                        child: Image.asset(
+                          'assets/images/logo.png', // Asegúrate de tener el logo en esta ruta
+                          height: 100,
+                        ),
+                      ),
+                      _buildTextField(
+                        controller: _dniController,
+                        labelText: 'DNI',
+                        hintText: 'Ingrese su DNI',
+                      ),
+                      const SizedBox(height: 16.0),
+                      _buildTextField(
+                        controller: _firstNameController,
+                        labelText: 'Nombre',
+                        hintText: 'Ingrese su nombre',
+                      ),
+                      const SizedBox(height: 16.0),
+                      _buildTextField(
+                        controller: _lastNameController,
+                        labelText: 'Apellido',
+                        hintText: 'Ingrese su apellido',
+                      ),
+                      const SizedBox(height: 16.0),
+                      _buildTextField(
                         controller: _emailController,
                         labelText: 'Email',
-                        hintText: 'Enter your email'),
-                    SizedBox(height: 16.0),
-                    _buildTextField(
+                        hintText: 'Ingrese su email',
+                      ),
+                      const SizedBox(height: 16.0),
+                      _buildTextField(
                         controller: _passwordController,
-                        labelText: 'Password',
-                        hintText: 'Enter your password',
-                        obscureText: true),
-                    SizedBox(height: 16.0),
-                    if (isProfessional) ...[
+                        labelText: 'Contraseña',
+                        hintText: 'Ingrese su contraseña',
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 16.0),
                       _buildTextField(
-                          controller: _dniController,
-                          labelText: 'DNI',
-                          hintText: 'Enter your DNI'),
-                      SizedBox(height: 16.0),
-                      _buildTextField(
+                        controller: _confirmPasswordController,
+                        labelText: 'Re-Contraseña',
+                        hintText: 'Confirme su contraseña',
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 16.0),
+                      if (isProfessional) ...[
+                        _buildTextField(
                           controller: _nroMatriculaController,
-                          labelText: 'Matricula Nacional',
-                          hintText: 'Enter your Matricula Nacional'),
-                      SizedBox(height: 16.0),
+                          labelText: 'Matrícula Nacional',
+                          hintText: 'Ingrese su Matrícula Nacional',
+                        ),
+                        const SizedBox(height: 16.0),
+                      ],
+                      _buildRoleSwitch(),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _registerUser,
+                        child: _isLoading
+                            ? const CircularProgressIndicator()
+                            : const Text('Registrar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 15.0, horizontal: 30.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _registerWithGoogle,
+                        child: _isLoading
+                            ? const CircularProgressIndicator()
+                            : const Text('Registrar con Google'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors
+                              .blueAccent, // Color similar al botón de registro
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 15.0, horizontal: 30.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TextButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => LoginPage()),
+                                );
+                              },
+                        child: const Text(
+                            '¿Todavía no tienes una cuenta? Créala aquí mismo'),
+                      ),
                     ],
-                    _buildRoleSwitch(),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _registerUser,
-                      child: _isLoading
-                          ? CircularProgressIndicator()
-                          : Text('Register'),
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _registerWithGoogle,
-                      child: _isLoading
-                          ? CircularProgressIndicator()
-                          : Text('Register with Google'),
-                    ),
-                    SizedBox(height: 20),
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => LoginPage()),
-                              );
-                            },
-                      child: Text(
-                          '¿Todavía no tienes una cuenta? Créala aquí mismo'),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -112,7 +180,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }) {
     return Container(
       width: 300,
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         decoration: InputDecoration(
           labelText: labelText,
@@ -121,21 +189,27 @@ class _RegisterPageState extends State<RegisterPage> {
             borderRadius: BorderRadius.circular(10.0),
           ),
           focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue, width: 2.0),
+            borderSide: const BorderSide(color: Colors.blue, width: 2.0),
           ),
           enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey, width: 1.0),
+            borderSide: const BorderSide(color: Colors.grey, width: 1.0),
           ),
-          labelStyle: TextStyle(
+          labelStyle: const TextStyle(
             color: Colors.grey,
             fontSize: 16.0,
           ),
-          hintStyle: TextStyle(
+          hintStyle: const TextStyle(
             color: Colors.grey,
             fontSize: 14.0,
           ),
         ),
         obscureText: obscureText,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Por favor ingrese $labelText';
+          }
+          return null;
+        },
       ),
     );
   }
@@ -145,7 +219,7 @@ class _RegisterPageState extends State<RegisterPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('Paciente'),
+        const Text('Paciente'),
         Switch(
           value: isProfessional,
           onChanged: (value) {
@@ -154,21 +228,25 @@ class _RegisterPageState extends State<RegisterPage> {
             });
           },
         ),
-        Text('Profesional'),
+        const Text('Profesional'),
       ],
     );
   }
 
   // Validar los campos de entrada
   bool _validateInputs() {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showErrorSnackBar('Please fill in all fields');
+    if (!_formKey.currentState!.validate()) {
+      _showErrorSnackBar('Por favor complete todos los campos');
+      return false;
+    }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showErrorSnackBar('Las contraseñas no coinciden');
       return false;
     }
     if (isProfessional &&
         (_dniController.text.isEmpty || _nroMatriculaController.text.isEmpty)) {
       _showErrorSnackBar(
-          'Please fill in DNI and Matricula Nacional for professionals');
+          'Por favor complete DNI y Matrícula Nacional para profesionales');
       return false;
     }
     return true;
@@ -191,19 +269,19 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       if (user != null) {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'dni': _dniController.text,
+          'first_name': _firstNameController.text,
+          'last_name': _lastNameController.text,
           'email': _emailController.text,
           'role': role,
-          if (isProfessional)
-            'dni': _dniController.text,
-          if (isProfessional)
-            'matricula': _nroMatriculaController.text,
+          if (isProfessional) 'matricula': _nroMatriculaController.text,
         });
         _navigateToRolePage(context, role);
       } else {
         _showErrorSnackBar('Error al registrar');
       }
     } catch (e) {
-      _showErrorSnackBar('An error occurred during registration');
+      _showErrorSnackBar('Ocurrió un error durante el registro');
     } finally {
       setState(() {
         _isLoading = false;
@@ -241,7 +319,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _showErrorSnackBar('Error al iniciar sesión con Google');
       }
     } catch (e) {
-      _showErrorSnackBar('An error occurred during Google registration');
+      _showErrorSnackBar('Ocurrió un error durante el registro con Google');
     } finally {
       setState(() {
         _isLoading = false;
@@ -275,7 +353,18 @@ class _RegisterPageState extends State<RegisterPage> {
   // Mostrar un SnackBar con un mensaje de error
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        margin: const EdgeInsets.all(10.0),
+      ),
     );
   }
 }

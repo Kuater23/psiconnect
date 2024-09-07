@@ -6,7 +6,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/navigation_bar/providers.dart';
 import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
 import 'package:Psiconnect/src/screens/professional_page.dart';
 
 class NavBar extends ResponsiveWidget {
