@@ -30,13 +30,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: "Psiconnect",
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primaryColor: Color.fromRGBO(
+            1, 40, 45, 1), // Usa primaryColor en lugar de primarySwatch
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      initialRoute: '/',  // Siempre apunta al HomePage al iniciar
+      initialRoute: '/', // Siempre apunta al HomePage al iniciar
       routes: {
-        '/': (context) => HomePage(),      // HomePage siempre es el inicio
-        '/login': (context) => LoginPage(), // LoginPage accesible desde el NavBar
+        '/': (context) => HomePage(), // HomePage siempre es el inicio
+        '/login': (context) =>
+            LoginPage(), // LoginPage accesible desde el NavBar
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
         '/professional': (context) => ProfessionalPage(),
