@@ -13,7 +13,6 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   final AuthService _authService = AuthService();
-  final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -22,9 +21,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login'),
+        title: Text('Login'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -33,41 +32,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Center(
-          child: SingleChildScrollView(
-            child: Container(
-              width: 350,
-              child: Card(
-                margin: const EdgeInsets.all(16.0),
-                elevation: 8.0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Logo
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 20.0),
-                          child: Image.asset(
-                            'assets/images/logo.png', // Asegúrate de tener el logo en esta ruta
-                            height: 100,
-                          ),
-                        ),
-                        _buildTextFields(),
-                        const SizedBox(height: 20),
-                        _buildLoginButton(context, ref),
-                        const SizedBox(height: 10),
-                        _buildGoogleLoginButton(context, ref),
-                        const SizedBox(height: 10),
-                        _buildRegisterButton(context),
-                        if (_isLoading) const CircularProgressIndicator(),
-                      ],
-                    ),
-                  ),
+          child: Container(
+            width: 300,
+            child: Card(
+              elevation: 4.0,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTextFields(),
+                    SizedBox(height: 20),
+                    _buildLoginButton(context, ref),
+                    SizedBox(height: 10),
+                    _buildGoogleLoginButton(context, ref),
+                    SizedBox(height: 10),
+                    _buildRegisterButton(context),
+                    if (_isLoading) CircularProgressIndicator(),
+                  ],
                 ),
               ),
             ),
@@ -81,68 +63,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildTextFields() {
     return Column(
       children: [
-        TextFormField(
+        TextField(
           controller: _emailController,
-          decoration: InputDecoration(
-            labelText: 'Email',
-            hintText: 'Ingrese su email',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.blue, width: 2.0),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.grey, width: 1.0),
-            ),
-            labelStyle: const TextStyle(
-              color: Colors.grey,
-              fontSize: 16.0,
-            ),
-            hintStyle: const TextStyle(
-              color: Colors.grey,
-              fontSize: 14.0,
-            ),
-          ),
+          decoration: InputDecoration(labelText: 'Email'),
           keyboardType: TextInputType.emailAddress,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Por favor ingrese su email';
-            }
-            return null;
-          },
         ),
-        const SizedBox(height: 16.0),
-        TextFormField(
+        TextField(
           controller: _passwordController,
-          decoration: InputDecoration(
-            labelText: 'Contraseña',
-            hintText: 'Ingrese su contraseña',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.blue, width: 2.0),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.grey, width: 1.0),
-            ),
-            labelStyle: const TextStyle(
-              color: Colors.grey,
-              fontSize: 16.0,
-            ),
-            hintStyle: const TextStyle(
-              color: Colors.grey,
-              fontSize: 14.0,
-            ),
-          ),
+          decoration: InputDecoration(labelText: 'Password'),
           obscureText: true,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Por favor ingrese su contraseña';
-            }
-            return null;
-          },
         ),
       ],
     );
@@ -152,18 +81,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildLoginButton(BuildContext context, WidgetRef ref) {
     return ElevatedButton(
       onPressed: () async {
-        if (_formKey.currentState!.validate()) {
+        if (_validateInputs()) {
           _signInWithEmailAndPassword(context, ref);
         }
       },
-      child: const Text('Login'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.blueAccent,
-        padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 30.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30.0),
-        ),
-      ),
+      child: Text('Login'),
     );
   }
 
@@ -173,14 +95,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       onPressed: () async {
         _signInWithGoogle(context, ref);
       },
-      child: const Text('Login with Google'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.redAccent,
-        padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 30.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30.0),
-        ),
-      ),
+      child: Text('Login with Google'),
     );
   }
 
@@ -193,7 +108,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           MaterialPageRoute(builder: (context) => RegisterPage()),
         );
       },
-      child: const Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
+      child: Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
     );
   }
 
@@ -271,18 +186,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // Función para mostrar un SnackBar con un mensaje de error
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white),
-        ),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        margin: const EdgeInsets.all(10.0),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 }

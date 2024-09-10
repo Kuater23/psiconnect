@@ -51,25 +51,6 @@ class HomePage extends HookConsumerWidget {
     return Scaffold(
       backgroundColor:
           Color.fromARGB(255, 255, 255, 255), // Color de fondo de Psiconnect
-      //appBar: AppBar(
-      //title: Text('Home'),
-      //actions: [
-      //IconButton(
-      //icon: Icon(Icons.person),
-      //onPressed: () async {
-      //User? user = FirebaseAuth.instance.currentUser;
-      //if (user != null) {
-      //DocumentSnapshot userDoc = await FirebaseFirestore.instance
-      //.collection('users')
-      //  .doc(user.uid)
-      //    .get();
-      // String role = userDoc['role'];
-      //  _navigateToRolePage(context, role);
-      // }
-      // },
-      // ),
-      //],
-      //),
       body: Column(
         children: [
           NavBar(
