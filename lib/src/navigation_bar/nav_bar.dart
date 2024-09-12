@@ -6,7 +6,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/navigation_bar/providers.dart';
 import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
 import 'package:Psiconnect/src/screens/professional_page.dart';
 
 class NavBar extends ResponsiveWidget {
@@ -67,7 +66,8 @@ class DesktopNavBar extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isScrolled = ref.watch(scrolledProvider);
-    final navBarColor = const Color(0xFF01282D); // Color base de Psiconnect
+    final navBarColor =
+        Color.fromRGBO(1, 40, 45, 1); // Color base de Psiconnect
     final textColor = Colors.white; // Letras en blanco
     final userSession = ref.watch(sessionProvider);
 
@@ -81,7 +81,7 @@ class DesktopNavBar extends HookConsumerWidget {
             // Logo a la izquierda
             Image.asset(
               'assets/images/logo.png',
-              height: 40,
+              height: 80,
             ),
             Spacer(),
             // Botones alineados a la derecha
@@ -190,7 +190,7 @@ class MobileNavBar extends HookConsumerWidget {
     final userSession = ref.watch(sessionProvider);
 
     return Container(
-      color: const Color(0xFF01282D), // Fondo de Psiconnect
+      color: const Color.fromRGBO(1, 40, 45, 1), // Fondo de Psiconnect
       width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
       child: Column(
         children: [

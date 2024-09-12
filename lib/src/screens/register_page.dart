@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/professional_page.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
 import 'package:Psiconnect/src/screens/login_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -19,6 +18,17 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _dniController = TextEditingController();
   final TextEditingController _nroMatriculaController = TextEditingController();
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _dniFocusNode = FocusNode();
+  final FocusNode _nroMatriculaFocusNode = FocusNode();
+  final ValueNotifier<String?> _emailErrorNotifier =
+      ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _passwordErrorNotifier =
+      ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _dniErrorNotifier = ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _nroMatriculaErrorNotifier =
+      ValueNotifier<String?>(null);
   bool isProfessional = false;
   bool _isLoading = false;
 
@@ -41,29 +51,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildTextField(
-                        controller: _emailController,
-                        labelText: 'Email',
-                        hintText: 'Enter your email'),
-                    SizedBox(height: 16.0),
-                    _buildTextField(
-                        controller: _passwordController,
-                        labelText: 'Password',
-                        hintText: 'Enter your password',
-                        obscureText: true),
-                    SizedBox(height: 16.0),
-                    if (isProfessional) ...[
-                      _buildTextField(
-                          controller: _dniController,
-                          labelText: 'DNI',
-                          hintText: 'Enter your DNI'),
-                      SizedBox(height: 16.0),
-                      _buildTextField(
-                          controller: _nroMatriculaController,
-                          labelText: 'Matricula Nacional',
-                          hintText: 'Enter your Matricula Nacional'),
-                      SizedBox(height: 16.0),
-                    ],
+                    _buildLogo(),
+                    SizedBox(height: 20),
+                    _buildTextFields(),
+                    SizedBox(height: 20),
                     _buildRoleSwitch(),
                     SizedBox(height: 20),
                     ElevatedButton(
@@ -90,8 +81,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                     builder: (context) => LoginPage()),
                               );
                             },
-                      child: Text(
-                          '¿Todavía no tienes una cuenta? Créala aquí mismo'),
+                      child: Text('¿Ya tienes una cuenta? Inicia sesión aquí'),
                     ),
                   ],
                 ),
@@ -103,44 +93,119 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // Construir campos de texto
+  Widget _buildLogo() {
+    return Column(
+      children: [
+        Image.asset(
+          'assets/images/logo.png',
+          height: 100,
+        ),
+        SizedBox(height: 10),
+        Text(
+          'Bienvenido a Psiconnect',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextFields() {
+    return Column(
+      children: [
+        ValueListenableBuilder<String?>(
+          valueListenable: _emailErrorNotifier,
+          builder: (context, errorText, child) {
+            return _buildTextField(
+              controller: _emailController,
+              labelText: 'Email',
+              hintText: 'Enter your email',
+              errorText: errorText,
+              focusNode: _emailFocusNode,
+              icon: Icons.email,
+            );
+          },
+        ),
+        SizedBox(height: 16.0),
+        ValueListenableBuilder<String?>(
+          valueListenable: _passwordErrorNotifier,
+          builder: (context, errorText, child) {
+            return _buildTextField(
+              controller: _passwordController,
+              labelText: 'Password',
+              hintText: 'Enter your password',
+              obscureText: true,
+              errorText: errorText,
+              focusNode: _passwordFocusNode,
+              icon: Icons.lock,
+            );
+          },
+        ),
+        SizedBox(height: 16.0),
+        if (isProfessional) ...[
+          ValueListenableBuilder<String?>(
+            valueListenable: _dniErrorNotifier,
+            builder: (context, errorText, child) {
+              return _buildTextField(
+                controller: _dniController,
+                labelText: 'DNI',
+                hintText: 'Enter your DNI',
+                errorText: errorText,
+                focusNode: _dniFocusNode,
+                icon: Icons.perm_identity,
+              );
+            },
+          ),
+          SizedBox(height: 16.0),
+          ValueListenableBuilder<String?>(
+            valueListenable: _nroMatriculaErrorNotifier,
+            builder: (context, errorText, child) {
+              return _buildTextField(
+                controller: _nroMatriculaController,
+                labelText: 'Matricula Nacional',
+                hintText: 'Enter your Matricula Nacional',
+                errorText: errorText,
+                focusNode: _nroMatriculaFocusNode,
+                icon: Icons.badge,
+              );
+            },
+          ),
+          SizedBox(height: 16.0),
+        ],
+      ],
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String labelText,
     required String hintText,
     bool obscureText = false,
+    String? errorText,
+    required FocusNode focusNode,
+    required IconData icon,
   }) {
     return Container(
       width: 300,
       child: TextField(
         controller: controller,
+        focusNode: focusNode,
         decoration: InputDecoration(
           labelText: labelText,
           hintText: hintText,
+          errorText: errorText,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10.0),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue, width: 2.0),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey, width: 1.0),
-          ),
-          labelStyle: TextStyle(
-            color: Colors.grey,
-            fontSize: 16.0,
-          ),
-          hintStyle: TextStyle(
-            color: Colors.grey,
-            fontSize: 14.0,
-          ),
+          prefixIcon: Icon(icon),
         ),
         obscureText: obscureText,
       ),
     );
   }
 
-  // Construir interruptor de rol
   Widget _buildRoleSwitch() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -159,22 +224,45 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // Validar los campos de entrada
   bool _validateInputs() {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showErrorSnackBar('Please fill in all fields');
-      return false;
+    bool isValid = true;
+    if (_emailController.text.isEmpty) {
+      _emailErrorNotifier.value = 'Por favor, ingresa el correo.';
+      _emailFocusNode.requestFocus();
+      isValid = false;
+    } else {
+      _emailErrorNotifier.value = null;
     }
-    if (isProfessional &&
-        (_dniController.text.isEmpty || _nroMatriculaController.text.isEmpty)) {
-      _showErrorSnackBar(
-          'Please fill in DNI and Matricula Nacional for professionals');
-      return false;
+
+    if (_passwordController.text.isEmpty) {
+      _passwordErrorNotifier.value = 'Por favor, ingresa la contraseña.';
+      if (isValid) _passwordFocusNode.requestFocus();
+      isValid = false;
+    } else {
+      _passwordErrorNotifier.value = null;
     }
-    return true;
+
+    if (isProfessional) {
+      if (_dniController.text.isEmpty) {
+        _dniErrorNotifier.value = 'Por favor, ingresa el DNI.';
+        if (isValid) _dniFocusNode.requestFocus();
+        isValid = false;
+      } else {
+        _dniErrorNotifier.value = null;
+      }
+
+      if (_nroMatriculaController.text.isEmpty) {
+        _nroMatriculaErrorNotifier.value = 'Por favor, ingresa la matrícula.';
+        if (isValid) _nroMatriculaFocusNode.requestFocus();
+        isValid = false;
+      } else {
+        _nroMatriculaErrorNotifier.value = null;
+      }
+    }
+
+    return isValid;
   }
 
-  // Registrar usuario con email y contraseña
   Future<void> _registerUser() async {
     if (!_validateInputs()) return;
 
@@ -193,10 +281,8 @@ class _RegisterPageState extends State<RegisterPage> {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'email': _emailController.text,
           'role': role,
-          if (isProfessional)
-            'dni': _dniController.text,
-          if (isProfessional)
-            'matricula': _nroMatriculaController.text,
+          if (isProfessional) 'dni': _dniController.text,
+          if (isProfessional) 'matricula': _nroMatriculaController.text,
         });
         _navigateToRolePage(context, role);
       } else {
@@ -211,7 +297,6 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // Registrar usuario con Google
   Future<void> _registerWithGoogle() async {
     setState(() {
       _isLoading = true;
@@ -249,7 +334,6 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // Navegar a la página correspondiente según el rol
   void _navigateToRolePage(BuildContext context, String role) {
     Widget page;
     switch (role) {
@@ -272,7 +356,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // Mostrar un SnackBar con un mensaje de error
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),

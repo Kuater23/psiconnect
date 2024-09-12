@@ -43,12 +43,17 @@ class DesktopHomeContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Psiconnect",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
+                  "Software para psicólogos y consultorios",
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 40,
+                      color: Color.fromRGBO(47, 67, 88, 1.0)),
                 ),
                 SizedBox(height: 24),
                 Text(
                   'Administrá tus pacientes, historias clínicas, agenda, archivos, turnos, sesiones, videollamadas, pagos, notificaciones de WhatsApp y mucho más de una manera simple y eficaz.',
+                  style: TextStyle(
+                      fontSize: 20, color: Color.fromRGBO(47, 67, 88, 1.0)),
                 ),
                 SizedBox(height: 24),
                 Row(
@@ -91,11 +96,16 @@ class MobileHomeContent extends StatelessWidget {
         children: [
           Text(
             "Psiconnect",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 40,
+                color: Color.fromRGBO(47, 67, 88, 1.0)),
           ),
           SizedBox(height: 24),
           Text(
             'Administrá tus pacientes, historias clínicas, agenda, archivos, turnos, sesiones, videollamadas, pagos, notificaciones de WhatsApp y mucho más de una manera simple y eficaz.',
+            style:
+                TextStyle(fontSize: 20, color: Color.fromRGBO(47, 67, 88, 1.0)),
           ),
           SizedBox(height: 24),
           GestureDetector(

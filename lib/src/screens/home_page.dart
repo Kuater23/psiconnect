@@ -7,10 +7,7 @@ import 'package:Psiconnect/src/navigation_bar/nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
 import 'package:Psiconnect/src/screens/professional_page.dart';
 
 final homeKey = GlobalKey();
@@ -44,33 +41,16 @@ class HomePage extends HookConsumerWidget {
       return _controller.dispose;
     }, [_controller]);
 
-    double width = MediaQuery.of(context).size.width; // Usar todo el ancho disponible
+    double width =
+        MediaQuery.of(context).size.width; // Usar todo el ancho disponible
 
     ref
         .watch(currentPageProvider.notifier)
         .addListener(scrollTo, fireImmediately: false);
 
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 255, 255, 255), // Color de fondo de Psiconnect
-      //appBar: AppBar(
-      //title: Text('Home'),
-      //actions: [
-      //IconButton(
-      //icon: Icon(Icons.person),
-      //onPressed: () async {
-      //User? user = FirebaseAuth.instance.currentUser;
-      //if (user != null) {
-      //DocumentSnapshot userDoc = await FirebaseFirestore.instance
-      //.collection('users')
-      //  .doc(user.uid)
-      //    .get();
-      // String role = userDoc['role'];
-      //  _navigateToRolePage(context, role);
-      // }
-      // },
-      // ),
-      //],
-      //),
+      backgroundColor:
+          Color.fromARGB(255, 255, 255, 255), // Color de fondo de Psiconnect
       body: Column(
         children: [
           NavBar(
