@@ -1,53 +1,326 @@
 import 'package:flutter/material.dart';
-import 'package:Psiconnect/src/service/auth_service.dart';
-import 'package:Psiconnect/src/screens/home_page.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:Psiconnect/src/widgets/shared_drawer.dart'; // Drawer compartido
 
-class ProfessionalHome extends ConsumerWidget {
-  final AuthService _authService = AuthService(); // Servicio de autenticación
+class ProfessionalHome extends StatefulWidget {
+  @override
+  _ProfessionalHomeState createState() => _ProfessionalHomeState();
+}
+
+class _ProfessionalHomeState extends State<ProfessionalHome> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _documentNumberController = TextEditingController(); // Número de documento
+  final _licenseNumberController = TextEditingController(); // Matrícula
+
+  String? _documentType; // Tipo de documento
+  String? uid; // UID del usuario autenticado
+  String? email; // Email del usuario autenticado
+  bool _submitted = false;
+  bool _isEditing = false;
+  bool _isLoading = true;
+  bool _hasData = false;
+  bool _isDocumentFieldsEditable = false; // Controlar la edición de los campos bloqueados
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    _loadUserData(); // Cargar los datos del usuario al iniciar la página
+  }
+
+  // Cargar los datos del usuario desde Firestore utilizando el UID
+  Future<void> _loadUserData() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      uid = user.uid;
+      email = user.email;
+
+      try {
+        // Buscar los datos del usuario en Firestore utilizando el UID
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+
+        if (userDoc.exists) {
+          Map<String, dynamic>? data = userDoc.data() as Map<String, dynamic>?;
+
+          if (data != null) {
+            setState(() {
+              _nameController.text = data['name'] ?? '';
+              _lastNameController.text = data['lastName'] ?? '';
+              _addressController.text = data['address'] ?? '';
+              _phoneController.text = data['phone'] ?? '';
+              _documentNumberController.text = data['documentNumber'] ?? '';
+              _licenseNumberController.text = data['n_matricula']?.toString() ?? ''; // Convertir el número de matrícula a string
+              _documentType = data['documentType'] ?? 'DNI'; // Tipo de documento predeterminado
+
+              _hasData = _checkMandatoryData(data); // Verificar que todos los datos obligatorios estén completos
+              _submitted = true; // Marcar como enviado
+              _isEditing = false;
+              _isLoading = false;
+            });
+          }
+        } else {
+          setState(() {
+            _isLoading = false; // Los datos no existen
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false; // Error al cargar los datos
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar los datos del usuario')),
+        );
+      }
+    } else {
+      setState(() {
+        _isLoading = false; // No hay usuario autenticado
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No hay un usuario autenticado')),
+      );
+    }
+  }
+
+  // Verificar si todos los campos obligatorios están completos
+  bool _checkMandatoryData(Map<String, dynamic> data) {
+    return data['name'] != null &&
+        data['lastName'] != null &&
+        data['address'] != null &&
+        data['phone'] != null &&
+        data['documentNumber'] != null &&
+        data['n_matricula'] != null &&
+        data['documentType'] != null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Información del Profesional'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.home),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/home'); // Redirige a la HomePage
+        title: Text('Home Profesional'),
+      ),
+      drawer: SharedDrawer(), // Utilizar el Drawer compartido
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator()) // Mostrar un spinner mientras se cargan los datos
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _hasData && !_isEditing
+                      ? _buildProfessionalInfo()
+                      : _buildForm(),
+                ],
+              ),
+            ),
+    );
+  }
+
+  // Formulario de ingreso o edición de datos
+  Widget _buildForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Complete la siguiente información',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 20),
+          TextFormField(
+            controller: _nameController,
+            decoration: InputDecoration(labelText: 'Nombre'),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Por favor ingrese su nombre';
+              }
+              return null;
             },
           ),
+          SizedBox(height: 10),
+          TextFormField(
+            controller: _lastNameController,
+            decoration: InputDecoration(labelText: 'Apellido'),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Por favor ingrese su apellido';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 10),
+          TextFormField(
+            controller: _addressController,
+            decoration: InputDecoration(labelText: 'Dirección del consultorio'),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Por favor ingrese la dirección del consultorio';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 10),
+          TextFormField(
+            controller: _phoneController,
+            decoration: InputDecoration(labelText: 'Teléfono'),
+            keyboardType: TextInputType.phone,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Por favor ingrese su número de teléfono';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _documentType,
+                  decoration: InputDecoration(labelText: 'Tipo de documento'),
+                  items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: _isDocumentFieldsEditable
+                      ? (newValue) {
+                          setState(() {
+                            _documentType = newValue;
+                          });
+                        }
+                      : null,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor seleccione el tipo de documento';
+                    }
+                    return null;
+                  },
+                  disabledHint: Text(_documentType ?? 'DNI'),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () {
+                  setState(() {
+                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
+                  });
+                },
+              )
+            ],
+          ),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _documentNumberController,
+                  decoration: InputDecoration(labelText: 'Número de documento'),
+                  enabled: _isDocumentFieldsEditable,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor ingrese su número de documento';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () {
+                  setState(() {
+                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
+                  });
+                },
+              )
+            ],
+          ),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _licenseNumberController,
+                  decoration: InputDecoration(labelText: 'Número de matrícula'),
+                  keyboardType: TextInputType.number,
+                  enabled: _isDocumentFieldsEditable,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor ingrese su número de matrícula';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () {
+                  setState(() {
+                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
+                  });
+                },
+              )
+            ],
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                // Si el formulario es válido, guardar los datos en Firestore
+                _saveUserData();
+              }
+            },
+            child: Text(_isEditing ? 'Actualizar' : 'Guardar'),
+          ),
         ],
-      ),
-      drawer: _buildDrawer(context, ref), // Menú lateral con opciones
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfessionalInfo(),
-            SizedBox(height: 20),
-            Text(
-              'Próximos Pacientes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Expanded(child: _buildUpcomingPatients()), // Resumen de los próximos pacientes
-          ],
-        ),
       ),
     );
   }
 
-  // Información básica del profesional
+  // Guardar o actualizar los datos del usuario en Firestore
+  Future<void> _saveUserData() async {
+    if (uid == null || uid!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: El UID del usuario no es válido.')),
+      );
+      return;
+    }
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      'name': _nameController.text,
+      'lastName': _lastNameController.text,
+      'address': _addressController.text,
+      'phone': _phoneController.text,
+      'email': email,
+      'documentType': _documentType,
+      'documentNumber': _documentNumberController.text,
+      'n_matricula': int.tryParse(_licenseNumberController.text) ?? 0, // Guardar matrícula como número
+    });
+
+    setState(() {
+      _submitted = true;
+      _hasData = true;
+      _isEditing = false;
+      _isDocumentFieldsEditable = false; // Deshabilitar edición de documentos después de guardar
+    });
+  }
+
+  // Muestra la información después de que se ingresen o carguen los datos
   Widget _buildProfessionalInfo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Dr. John Doe', // Reemplazar con datos dinámicos
+          'Dr. ${_nameController.text} ${_lastNameController.text}',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         Text(
@@ -56,123 +329,39 @@ class ProfessionalHome extends ConsumerWidget {
         ),
         SizedBox(height: 10),
         Text(
-          'Consultorio: Av. Siempreviva 123',
+          'Consultorio: ${_addressController.text}',
           style: TextStyle(fontSize: 16),
         ),
         Text(
-          'Teléfono: +54 9 1234-5678',
+          'Teléfono: ${_phoneController.text}',
           style: TextStyle(fontSize: 16),
         ),
         Text(
-          'Email: dr.johndoe@example.com',
+          'Tipo de Documento: $_documentType',
           style: TextStyle(fontSize: 16),
+        ),
+        Text(
+          'Número de Documento: ${_documentNumberController.text}',
+          style: TextStyle(fontSize: 16),
+        ),
+        Text(
+          'Número de Matrícula: ${_licenseNumberController.text}',
+          style: TextStyle(fontSize: 16),
+        ),
+        Text(
+          'Email: $email',
+          style: TextStyle(fontSize: 16),
+        ),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _isEditing = true;
+            });
+          },
+          child: Text('Editar'),
         ),
       ],
     );
-  }
-
-  // Resumen de los próximos pacientes
-  Widget _buildUpcomingPatients() {
-    // Datos de ejemplo, estos deberían cargarse dinámicamente
-    final List<Map<String, String>> patients = [
-      {'name': 'Paciente 1', 'date': '2024-09-15', 'time': '10:00 AM'},
-      {'name': 'Paciente 2', 'date': '2024-09-15', 'time': '11:30 AM'},
-      {'name': 'Paciente 3', 'date': '2024-09-16', 'time': '9:00 AM'},
-    ];
-
-    return ListView.builder(
-      itemCount: patients.length,
-      itemBuilder: (context, index) {
-        final patient = patients[index];
-        return Card(
-          child: ListTile(
-            title: Text(patient['name']!),
-            subtitle: Text('Fecha: ${patient['date']} - Hora: ${patient['time']}'),
-            trailing: Icon(Icons.chevron_right),
-            onTap: () {
-              // Lógica para ver detalles del paciente
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  // Menú lateral con las opciones de la página y cerrar sesión
-  Drawer _buildDrawer(BuildContext context, WidgetRef ref) {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: BoxDecoration(
-              color: Colors.blue,
-            ),
-            child: Text(
-              'Menú Profesional',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-              ),
-            ),
-          ),
-          ListTile(
-            title: Text('Inicio'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/home'); // Redirige a la HomePage sin cerrar sesión
-            },
-          ),
-          ListTile(
-            title: Text('Home Profesional'),
-            onTap: () {
-              Navigator.pushReplacementNamed(context, '/professional_home');
-            },
-          ),
-          ListTile(
-            title: Text('Citas'),
-            onTap: () {
-              Navigator.pushNamed(context, '/professional_appointments');
-            },
-          ),
-          ListTile(
-            title: Text('Archivos por Paciente'),
-            onTap: () {
-              Navigator.pushNamed(context, '/professional_files');
-            },
-          ),
-          SizedBox(height: 20),
-          ListTile(
-            title: Text('Cerrar Sesión'),
-            leading: Icon(Icons.logout),
-            onTap: () async {
-              await _signOut(context, ref); // Cerrar sesión y redirigir al login
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Cerrar sesión y redirigir a la HomePage
-  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
-    try {
-      // Llamamos al servicio de autenticación para cerrar sesión
-      await _authService.signOut();
-      
-      // Limpiamos la sesión del provider
-      ref.read(sessionProvider.notifier).logOut();
-
-      // Redirigimos a la página de inicio (HomePage)
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
-        (route) => false, // Eliminar todas las rutas previas
-      );
-    } catch (e) {
-      // Mostrar un mensaje de error si ocurre un problema
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al cerrar sesión')),
-      );
-    }
   }
 }

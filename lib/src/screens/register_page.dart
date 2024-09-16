@@ -16,21 +16,25 @@ class _RegisterPageState extends State<RegisterPage> {
   final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _dniController = TextEditingController();
-  final TextEditingController _nroMatriculaController = TextEditingController();
+  final TextEditingController _identificationNumberController = TextEditingController(); // Número de Identificación Nacional
+  final TextEditingController _nroMatriculaController = TextEditingController(); // Matrícula
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
-  final FocusNode _dniFocusNode = FocusNode();
+  final FocusNode _identificationFocusNode = FocusNode();
   final FocusNode _nroMatriculaFocusNode = FocusNode();
   final ValueNotifier<String?> _emailErrorNotifier =
       ValueNotifier<String?>(null);
   final ValueNotifier<String?> _passwordErrorNotifier =
       ValueNotifier<String?>(null);
-  final ValueNotifier<String?> _dniErrorNotifier = ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _identificationErrorNotifier = ValueNotifier<String?>(null);
   final ValueNotifier<String?> _nroMatriculaErrorNotifier =
       ValueNotifier<String?>(null);
+
   bool isProfessional = false;
   bool _isLoading = false;
+
+  // Agregamos un campo para el tipo de documento
+  String? _selectedDocumentType; // Tipo de documento seleccionado
 
   @override
   Widget build(BuildContext context) {
@@ -145,15 +149,38 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         SizedBox(height: 16.0),
         if (isProfessional) ...[
+          // Dropdown para el tipo de documento
+          DropdownButtonFormField<String>(
+            value: _selectedDocumentType,
+            decoration: InputDecoration(labelText: 'Tipo de Documento'),
+            items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (newValue) {
+              setState(() {
+                _selectedDocumentType = newValue;
+              });
+            },
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Por favor selecciona un tipo de documento';
+              }
+              return null;
+            },
+          ),
+          SizedBox(height: 16.0),
           ValueListenableBuilder<String?>(
-            valueListenable: _dniErrorNotifier,
+            valueListenable: _identificationErrorNotifier,
             builder: (context, errorText, child) {
               return _buildTextField(
-                controller: _dniController,
-                labelText: 'DNI',
-                hintText: 'Enter your DNI',
+                controller: _identificationNumberController,
+                labelText: 'Número de Identificación Nacional',
+                hintText: 'Enter your Identification Number',
                 errorText: errorText,
-                focusNode: _dniFocusNode,
+                focusNode: _identificationFocusNode,
                 icon: Icons.perm_identity,
               );
             },
@@ -164,7 +191,7 @@ class _RegisterPageState extends State<RegisterPage> {
             builder: (context, errorText, child) {
               return _buildTextField(
                 controller: _nroMatriculaController,
-                labelText: 'Matricula Nacional',
+                labelText: 'Matrícula Nacional',
                 hintText: 'Enter your Matricula Nacional',
                 errorText: errorText,
                 focusNode: _nroMatriculaFocusNode,
@@ -243,20 +270,29 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     if (isProfessional) {
-      if (_dniController.text.isEmpty) {
-        _dniErrorNotifier.value = 'Por favor, ingresa el DNI.';
-        if (isValid) _dniFocusNode.requestFocus();
+      if (_identificationNumberController.text.isEmpty) {
+        _identificationErrorNotifier.value =
+            'Por favor, ingresa el número de identificación.';
+        if (isValid) _identificationFocusNode.requestFocus();
         isValid = false;
       } else {
-        _dniErrorNotifier.value = null;
+        _identificationErrorNotifier.value = null;
       }
 
       if (_nroMatriculaController.text.isEmpty) {
-        _nroMatriculaErrorNotifier.value = 'Por favor, ingresa la matrícula.';
+        _nroMatriculaErrorNotifier.value =
+            'Por favor, ingresa el número de matrícula.';
         if (isValid) _nroMatriculaFocusNode.requestFocus();
         isValid = false;
       } else {
         _nroMatriculaErrorNotifier.value = null;
+      }
+
+      if (_selectedDocumentType == null || _selectedDocumentType!.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Por favor selecciona un tipo de documento')),
+        );
+        isValid = false;
       }
     }
 
@@ -281,7 +317,8 @@ class _RegisterPageState extends State<RegisterPage> {
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'email': _emailController.text,
           'role': role,
-          if (isProfessional) 'dni': _dniController.text,
+          if (isProfessional) 'idNumber': _identificationNumberController.text,
+          if (isProfessional) 'documentType': _selectedDocumentType,
           if (isProfessional) 'matricula': _nroMatriculaController.text,
         });
         _navigateToRolePage(context, role);
