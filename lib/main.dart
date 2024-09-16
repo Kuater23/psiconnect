@@ -19,6 +19,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Asegúrate de configurar la persistencia de sesión a nivel local
+  await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+
   setPathUrlStrategy(); // Configura la estrategia de URL para evitar el "#"
   runApp(
     ProviderScope(
@@ -59,11 +63,11 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(), // Escucha cambios en el estado de autenticación
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // Mostrar un indicador de carga mientras Firebase obtiene el estado
-          return CircularProgressIndicator();
+          // Mostrar un indicador de carga si se está restaurando la sesión
+          return LoadingScreen();
         } else if (snapshot.hasError) {
-          // Si hay un error, mostrarlo
-          return Center(child: Text('Error: ${snapshot.error}'));
+          // Muestra un mensaje de error
+          return ErrorScreen(message: 'Error: ${snapshot.error}');
         } else if (snapshot.hasData) {
           // Si hay un usuario autenticado, verificar el rol
           return _handleUserBasedOnRole(snapshot.data!);
@@ -81,24 +85,52 @@ class AuthWrapper extends StatelessWidget {
       future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator();
+          return LoadingScreen(); // Página de carga personalizada
         } else if (snapshot.hasError) {
-          return Center(child: Text('Error al obtener el rol: ${snapshot.error}'));
+          return ErrorScreen(message: 'Error al obtener el rol: ${snapshot.error}');
         } else if (snapshot.hasData) {
           final role = snapshot.data!['role']; // Suponiendo que el rol está almacenado como 'role'
           if (role == 'professional') {
             return ProfessionalHome();
           } else if (role == 'patient') {
-            return PatientPage(email: '',);
+            return PatientPage(email: user.email!);
           } else if (role == 'admin') {
             return AdminPage();
           } else {
-            return Center(child: Text('Rol desconocido'));
+            return ErrorScreen(message: 'Rol desconocido');
           }
         } else {
           return LoginPage(); // Redirigir al login si no hay datos
         }
       },
+    );
+  }
+}
+
+// Pantalla de carga personalizada
+class LoadingScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+
+// Pantalla de error personalizada
+class ErrorScreen extends StatelessWidget {
+  final String message;
+
+  ErrorScreen({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Text(message),
+      ),
     );
   }
 }
