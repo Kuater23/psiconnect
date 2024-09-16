@@ -4,6 +4,7 @@ import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/register_page.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -70,7 +71,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // Función para construir el logo
   Widget _buildLogo() {
     return Column(
       children: [
@@ -90,7 +90,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // Función para construir los campos de texto
   Widget _buildTextFields() {
     return Column(
       children: [
@@ -135,7 +134,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // Función para construir el botón de inicio de sesión
   Widget _buildLoginButton(BuildContext context, WidgetRef ref) {
     return ElevatedButton(
       onPressed: () async {
@@ -153,7 +151,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // Función para construir el botón de inicio de sesión con Google
   Widget _buildGoogleLoginButton(BuildContext context, WidgetRef ref) {
     return ElevatedButton.icon(
       onPressed: () async {
@@ -170,7 +167,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // Función para construir el botón de registro
   Widget _buildRegisterButton(BuildContext context) {
     return TextButton(
       onPressed: () {
@@ -183,7 +179,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // Validar que los campos de entrada no estén vacíos
   bool _validateInputs() {
     bool isValid = true;
 
@@ -210,7 +205,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return isValid;
   }
 
-  // Función para manejar el inicio de sesión con email y contraseña
   Future<void> _signInWithEmailAndPassword(
       BuildContext context, WidgetRef ref) async {
     setState(() {
@@ -222,11 +216,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _emailController.text,
         _passwordController.text,
       );
+
       if (user != null) {
-        ref
-            .read(sessionProvider.notifier)
-            .logIn(user.email!, _passwordController.text);
-        _navigateToHomePage(context);
+        // Recuperar el rol desde Firestore
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          String role = userDoc.get('role');
+          ref.read(sessionProvider.notifier).logIn(user.email!, role);
+          _navigateToHomePage(context);
+        } else {
+          _showErrorSnackBar('Error: No se pudo recuperar el rol del usuario.');
+        }
       } else {
         _showErrorSnackBar('Error en el inicio de sesión');
       }
@@ -239,7 +243,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  // Función para manejar el inicio de sesión con Google
   Future<void> _signInWithGoogle(BuildContext context, WidgetRef ref) async {
     setState(() {
       _isLoading = true;
@@ -247,8 +250,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     try {
       User? user = await _authService.signInWithGoogle();
+
       if (user != null) {
-        ref.read(sessionProvider.notifier).logIn(user.email!, 'google_auth');
+        // Verificar si el usuario ya existe en Firestore
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        String role;
+        if (userDoc.exists) {
+          role = userDoc.get('role');
+        } else {
+          role = 'patient'; // Asignar un rol por defecto
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+            'email': user.email,
+            'role': role,
+          });
+        }
+
+        // Guardar el rol en el sessionProvider
+        ref.read(sessionProvider.notifier).logIn(user.email!, role);
         _navigateToHomePage(context);
       } else {
         _showErrorSnackBar('Error en el inicio de sesión con Google');
@@ -262,7 +284,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  // Función para navegar a la HomePage tras un inicio de sesión exitoso
   void _navigateToHomePage(BuildContext context) {
     Navigator.pushReplacement(
       context,
@@ -270,7 +291,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // Función para manejar el cierre de sesión
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
     setState(() {
       _isLoading = true;
@@ -289,7 +309,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  // Función para navegar de regreso a la página de login tras el cierre de sesión
   void _navigateToLoginPage(BuildContext context) {
     Navigator.pushReplacement(
       context,
@@ -297,7 +316,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // Función para mostrar un SnackBar con un mensaje de error
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
