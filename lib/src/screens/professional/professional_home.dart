@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:Psiconnect/src/service/auth_service.dart';
+import 'package:Psiconnect/src/screens/home_page.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 
-class ProfessionalHome extends StatelessWidget {
+class ProfessionalHome extends ConsumerWidget {
+  final AuthService _authService = AuthService(); // Servicio de autenticación
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Información del Profesional'),
@@ -10,12 +16,12 @@ class ProfessionalHome extends StatelessWidget {
           IconButton(
             icon: Icon(Icons.home),
             onPressed: () {
-              Navigator.pushReplacementNamed(context, '/home'); // Navega al home general
+              Navigator.pushReplacementNamed(context, '/home'); // Redirige a la HomePage
             },
           ),
         ],
       ),
-      drawer: _buildDrawer(context),
+      drawer: _buildDrawer(context, ref), // Menú lateral con opciones
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -93,7 +99,7 @@ class ProfessionalHome extends StatelessWidget {
   }
 
   // Menú lateral con las opciones de la página y cerrar sesión
-  Drawer _buildDrawer(BuildContext context) {
+  Drawer _buildDrawer(BuildContext context, WidgetRef ref) {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -113,7 +119,7 @@ class ProfessionalHome extends StatelessWidget {
           ListTile(
             title: Text('Inicio'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/home'); // Navega al home general
+              Navigator.pushReplacementNamed(context, '/home'); // Redirige a la HomePage sin cerrar sesión
             },
           ),
           ListTile(
@@ -138,13 +144,35 @@ class ProfessionalHome extends StatelessWidget {
           ListTile(
             title: Text('Cerrar Sesión'),
             leading: Icon(Icons.logout),
-            onTap: () {
-              // Lógica para cerrar sesión
-              Navigator.pushReplacementNamed(context, '/login');
+            onTap: () async {
+              await _signOut(context, ref); // Cerrar sesión y redirigir al login
             },
           ),
         ],
       ),
     );
+  }
+
+  // Cerrar sesión y redirigir a la HomePage
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    try {
+      // Llamamos al servicio de autenticación para cerrar sesión
+      await _authService.signOut();
+      
+      // Limpiamos la sesión del provider
+      ref.read(sessionProvider.notifier).logOut();
+
+      // Redirigimos a la página de inicio (HomePage)
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => HomePage()),
+        (route) => false, // Eliminar todas las rutas previas
+      );
+    } catch (e) {
+      // Mostrar un mensaje de error si ocurre un problema
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cerrar sesión')),
+      );
+    }
   }
 }
