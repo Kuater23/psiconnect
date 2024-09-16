@@ -20,7 +20,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final FocusNode _passwordFocusNode = FocusNode();
   final ValueNotifier<String?> _emailErrorNotifier = ValueNotifier<String?>(null);
   final ValueNotifier<String?> _passwordErrorNotifier = ValueNotifier<String?>(null);
+  
   bool _isLoading = false;
+  bool _obscurePassword = true; // Para controlar si la contraseña se muestra o no
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +120,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             return TextField(
               controller: _passwordController,
               focusNode: _passwordFocusNode,
+              obscureText: _obscurePassword, // Control para mostrar u ocultar la contraseña
               decoration: InputDecoration(
                 labelText: 'Password',
                 errorText: errorText,
@@ -125,8 +128,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   borderRadius: BorderRadius.circular(10.0),
                 ),
                 prefixIcon: Icon(Icons.lock),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword; // Cambiar el estado para mostrar u ocultar
+                    });
+                  },
+                ),
               ),
-              obscureText: true,
             );
           },
         ),
@@ -218,7 +230,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       );
 
       if (user != null) {
-        // Recuperar el rol desde Firestore
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -252,7 +263,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       User? user = await _authService.signInWithGoogle();
 
       if (user != null) {
-        // Verificar si el usuario ya existe en Firestore
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -269,7 +279,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           });
         }
 
-        // Guardar el rol en el sessionProvider
         ref.read(sessionProvider.notifier).logIn(user.email!, role);
         _navigateToHomePage(context);
       } else {
