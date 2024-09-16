@@ -32,12 +32,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: "Psiconnect",
+      initialRoute: '/home',
       theme: ThemeData(
         primaryColor: Color.fromRGBO(1, 40, 45, 1),
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: AuthWrapper(), // Aquí se define la lógica de inicio según la autenticación
       routes: {
+        '/home': (context) => HomePage(), // Ruta a HomePage
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
