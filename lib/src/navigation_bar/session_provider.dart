@@ -30,17 +30,23 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   }
 
   Future<String> _getUserRole(String uid) async {
-    try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (doc.exists && doc.data() != null) {
-        return doc.data()!['role'] as String;
+  try {
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    if (doc.exists && doc.data() != null) {
+      print('Documento de usuario encontrado: ${doc.data()}'); // Imprime el contenido del documento
+      final role = doc.data()!['role'];
+      if (role != null) {
+        return role as String;
       } else {
-        return 'patient'; // Valor predeterminado si no se encuentra el documento
+        throw 'El campo role no está definido';
       }
-    } catch (e) {
-      print('Error obteniendo el rol del usuario: $e');
-      return 'patient'; // Valor predeterminado en caso de error
+    } else {
+      throw 'Documento de usuario no encontrado';
     }
+  } catch (e) {
+    print('Error obteniendo el rol del usuario: $e');
+    return 'unknown'; // Valor predeterminado para detectar problemas
+  }
   }
 
   Future<void> logIn(String email, String password) async {
