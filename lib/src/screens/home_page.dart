@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/professional_page.dart';
+import 'package:Psiconnect/src/screens/professional/professional_home.dart';
 
 final homeKey = GlobalKey();
 final featureKey = GlobalKey();
@@ -93,7 +93,7 @@ class HomePage extends HookConsumerWidget {
     } else if (role == 'professional') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ProfessionalPage()),
+        MaterialPageRoute(builder: (context) => ProfessionalHome()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

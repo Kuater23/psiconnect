@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
-import 'package:Psiconnect/src/screens/professional_page.dart';
+import 'package:Psiconnect/src/screens/professional/professional_home.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/login_page.dart';
 
@@ -344,7 +344,7 @@ class _RegisterPageState extends State<RegisterPage> {
         page = PatientPageWrapper();
         break;
       case 'professional':
-        page = ProfessionalPage();
+        page = ProfessionalHome();
         break;
       default:
         page = LoginPage();
