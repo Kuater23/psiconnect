@@ -26,7 +26,6 @@ class _PatientPageState extends ConsumerState<PatientPage> {
   final TextEditingController _documentController = TextEditingController();
   final TextEditingController _birthDateController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _roleController = TextEditingController();
   final TextEditingController _genderController = TextEditingController();
 
   // Variable para almacenar el género seleccionado
@@ -34,6 +33,35 @@ class _PatientPageState extends ConsumerState<PatientPage> {
 
   // Variable para almacenar el estado de edición
   bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  // Función para cargar datos del usuario desde Firestore
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final uid = user.uid;
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        setState(() {
+          _firstNameController.text = data['first_name'] ?? '';
+          _lastNameController.text = data['last_name'] ?? '';
+          _emailController.text = data['email'] ?? '';
+          _documentController.text = data['document'] ?? '';
+          _birthDateController.text = data['birth_date'] ?? '';
+          _ageController.text = data['age']?.toString() ?? '';
+          _selectedGender = data['gender'] ?? 'Masculino';
+          _genderController.text = _selectedGender;
+        });
+      }
+    }
+  }
 
   // Función modularizada para guardar datos en Firestore
   Future<void> _saveData(Map<String, dynamic> data) async {
@@ -52,6 +80,8 @@ class _PatientPageState extends ConsumerState<PatientPage> {
 
   Future<void> _savePersonalInfo() async {
     if (_formKey.currentState!.validate()) {
+      _genderController.text =
+          _selectedGender; // Asegurarse de que el controlador de género se actualice
       await _saveData({
         'first_name': _firstNameController.text,
         'last_name': _lastNameController.text,
@@ -60,7 +90,9 @@ class _PatientPageState extends ConsumerState<PatientPage> {
         'birth_date': _birthDateController.text,
         'age': int.parse(_ageController.text),
         'gender': _genderController.text,
-        'role': _roleController.text,
+      });
+      setState(() {
+        _isEditing = false;
       });
     }
   }
@@ -91,11 +123,26 @@ class _PatientPageState extends ConsumerState<PatientPage> {
     }
   }
 
-  String _getWelcomeMessage() {
+  String _getDrawerWelcomeMessage() {
     if (_firstNameController.text.isNotEmpty) {
-      return 'Bienvenido ${_firstNameController.text} a la ventana de paciente';
+      return 'Bienvenido ${_firstNameController.text}';
     } else {
-      return 'Bienvenido a la ventana de paciente';
+      return 'Bienvenido ${widget.email}';
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        _birthDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+        _calculateAge();
+      });
     }
   }
 
@@ -112,7 +159,7 @@ class _PatientPageState extends ConsumerState<PatientPage> {
             padding: const EdgeInsets.all(16.0),
             child: Center(
               child: Text(
-                _getWelcomeMessage(),
+                _getDrawerWelcomeMessage(),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -145,7 +192,7 @@ class _PatientPageState extends ConsumerState<PatientPage> {
               color: Colors.blue,
             ),
             child: Text(
-              'Bienvenido ${widget.email}',
+              _getDrawerWelcomeMessage(),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -207,6 +254,7 @@ class _PatientPageState extends ConsumerState<PatientPage> {
   }
 
   Widget _buildPersonalInfoSection() {
+    final genderItems = ['Masculino', 'Femenino', 'Otro'];
     return Padding(
       padding: EdgeInsets.all(16.0),
       child: Card(
@@ -295,9 +343,12 @@ class _PatientPageState extends ConsumerState<PatientPage> {
                     }
                     return null;
                   },
-                  onChanged: (value) {
-                    _calculateAge();
+                  onTap: () {
+                    if (_isEditing) {
+                      _selectDate(context);
+                    }
                   },
+                  readOnly: true,
                   enabled: _isEditing,
                 ),
                 TextFormField(
@@ -316,12 +367,14 @@ class _PatientPageState extends ConsumerState<PatientPage> {
                   enabled: _isEditing,
                 ),
                 DropdownButtonFormField<String>(
-                  value: _selectedGender,
+                  value: genderItems.contains(_selectedGender)
+                      ? _selectedGender
+                      : null,
                   decoration: InputDecoration(
                     labelText: 'Género',
                     icon: Icon(Icons.wc),
                   ),
-                  items: ['Masculino', 'Femenino', 'Otro'].map((String value) {
+                  items: genderItems.map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -331,6 +384,7 @@ class _PatientPageState extends ConsumerState<PatientPage> {
                       ? (newValue) {
                           setState(() {
                             _selectedGender = newValue!;
+                            _genderController.text = newValue;
                           });
                         }
                       : null,
@@ -340,20 +394,6 @@ class _PatientPageState extends ConsumerState<PatientPage> {
                     }
                     return null;
                   },
-                ),
-                TextFormField(
-                  controller: _roleController,
-                  decoration: InputDecoration(
-                    labelText: 'Rol',
-                    icon: Icon(Icons.work),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingrese su rol';
-                    }
-                    return null;
-                  },
-                  enabled: _isEditing,
                 ),
                 SizedBox(height: 20),
                 Row(
