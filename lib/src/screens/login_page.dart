@@ -17,10 +17,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
-  final ValueNotifier<String?> _emailErrorNotifier =
-      ValueNotifier<String?>(null);
-  final ValueNotifier<String?> _passwordErrorNotifier =
-      ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _emailErrorNotifier = ValueNotifier<String?>(null);
+  final ValueNotifier<String?> _passwordErrorNotifier = ValueNotifier<String?>(null);
   bool _isLoading = false;
 
   @override
@@ -142,7 +140,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return ElevatedButton(
       onPressed: () async {
         if (_validateInputs()) {
-          _signInWithEmailAndPassword(context, ref);
+          await _signInWithEmailAndPassword(context, ref);
         }
       },
       style: ElevatedButton.styleFrom(
@@ -159,7 +157,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildGoogleLoginButton(BuildContext context, WidgetRef ref) {
     return ElevatedButton.icon(
       onPressed: () async {
-        _signInWithGoogle(context, ref);
+        await _signInWithGoogle(context, ref);
       },
       icon: Icon(Icons.login),
       label: Text('Login with Google'),
@@ -188,8 +186,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // Validar que los campos de entrada no estén vacíos
   bool _validateInputs() {
     bool isValid = true;
+
     if (_emailController.text.isEmpty) {
       _emailErrorNotifier.value = 'Por favor, ingresa el correo.';
+      _emailFocusNode.requestFocus();
+      isValid = false;
+    } else if (!_emailController.text.contains('@')) {
+      _emailErrorNotifier.value = 'Correo inválido.';
       _emailFocusNode.requestFocus();
       isValid = false;
     } else {
@@ -228,7 +231,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _showErrorSnackBar('Error en el inicio de sesión');
       }
     } catch (e) {
-      _showErrorSnackBar('Ocurrió un error durante el inicio de sesión');
+      _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
       setState(() {
         _isLoading = false;
@@ -251,8 +254,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _showErrorSnackBar('Error en el inicio de sesión con Google');
       }
     } catch (e) {
-      _showErrorSnackBar(
-          'Ocurrió un error durante el inicio de sesión con Google');
+      _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
       setState(() {
         _isLoading = false;
@@ -265,6 +267,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => HomePage()),
+    );
+  }
+
+  // Función para manejar el cierre de sesión
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _authService.signOut();
+      ref.read(sessionProvider.notifier).logOut();
+      _navigateToLoginPage(context);
+    } catch (e) {
+      _showErrorSnackBar('Error al cerrar sesión: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Función para navegar de regreso a la página de login tras el cierre de sesión
+  void _navigateToLoginPage(BuildContext context) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()),
     );
   }
 
