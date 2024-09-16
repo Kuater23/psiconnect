@@ -18,22 +18,26 @@ class SessionNotifier extends StateNotifier<UserSession?> {
     _authStateChanges();
   }
 
+  // Escuchar los cambios de autenticación desde Firebase
   void _authStateChanges() {
     FirebaseAuth.instance.authStateChanges().listen((user) async {
       if (user != null) {
         try {
           final role = await _getUserRole(user.uid);
           state = UserSession(user: user, role: role);
+          print('Sesión iniciada: ${user.email}, Rol: $role');
         } catch (e) {
           print('Error obteniendo el rol en authStateChanges: $e');
           state = null; // Reiniciar el estado si hay un error
         }
       } else {
+        print('No hay sesión activa');
         state = null;
       }
     });
   }
 
+  // Función para obtener el rol del usuario desde Firestore
   Future<String> _getUserRole(String uid) async {
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
@@ -54,6 +58,7 @@ class SessionNotifier extends StateNotifier<UserSession?> {
     }
   }
 
+  // Función para iniciar sesión con email y password
   Future<void> logIn(String email, String password) async {
     try {
       final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -69,6 +74,7 @@ class SessionNotifier extends StateNotifier<UserSession?> {
     }
   }
 
+  // Función para iniciar sesión con Google
   Future<void> logInWithGoogle(User user) async {
     try {
       final role = await _getUserRole(user.uid);
@@ -80,6 +86,7 @@ class SessionNotifier extends StateNotifier<UserSession?> {
     }
   }
 
+  // Función para cerrar sesión
   Future<void> logOut() async {
     try {
       await FirebaseAuth.instance.signOut();
