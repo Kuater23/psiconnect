@@ -6,8 +6,7 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Método para iniciar sesión con email y contraseña
-  Future<User?> signInWithEmailAndPassword(
-      String email, String password) async {
+  Future<User?> signInWithEmailAndPassword(String email, String password) async {
     try {
       UserCredential userCredential =
           await _firebaseAuth.signInWithEmailAndPassword(
@@ -95,6 +94,15 @@ class AuthService {
     } catch (e) {
       print('Error en getUserRole: $e');
       return 'unknown';
+    }
+  }
+
+  // Método para cerrar sesión
+  Future<void> signOut() async {
+    try {
+      await _firebaseAuth.signOut();
+    } catch (e) {
+      print('Error en signOut: $e');
     }
   }
 }
