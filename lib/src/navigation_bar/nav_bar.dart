@@ -274,26 +274,25 @@ class MobileNavBar extends HookConsumerWidget {
   }
 
   void _navigateToRolePage(BuildContext context, String role) {
-    Widget page;
-    switch (role) {
-      case 'admin':
-        page = AdminPage();
-        break;
-      case 'patient':
-        page = PatientPageWrapper();
-        break;
-      case 'professional':
-        page = ProfessionalHome();
-        break;
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unknown role')),
-        );
-        return;
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
+  String route;
+  switch (role) {
+    case 'admin':
+      route = '/admin'; // Redirigir al panel de administración
+      break;
+    case 'patient':
+      route = '/patient'; // Redirigir a la página de paciente
+      break;
+    case 'professional':
+      route = '/professional'; // Redirigir a la página de inicio profesional
+      break;
+    default:
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Rol desconocido')),
+      );
+      return;
   }
+  
+  // Usa pushReplacementNamed para reemplazar la ruta actual sin dejar la anterior en el historial
+  Navigator.pushReplacementNamed(context, route);
+}
 }
