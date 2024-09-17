@@ -1,94 +1,88 @@
-import 'package:Psiconnect/main.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/service/auth_service.dart';
-import 'package:Psiconnect/src/screens/professional/professional_home.dart';
-import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/login_page.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class RegisterPage extends StatefulWidget {
+class RegisterPage extends ConsumerStatefulWidget {
   @override
   _RegisterPageState createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> {
   final AuthService _authService = AuthService();
+
+  // Controladores de texto
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _identificationNumberController = TextEditingController(); // Número de Identificación Nacional
-  final TextEditingController _nroMatriculaController = TextEditingController(); // Matrícula
-  final FocusNode _emailFocusNode = FocusNode();
-  final FocusNode _passwordFocusNode = FocusNode();
-  final FocusNode _identificationFocusNode = FocusNode();
-  final FocusNode _nroMatriculaFocusNode = FocusNode();
-  final ValueNotifier<String?> _emailErrorNotifier =
-      ValueNotifier<String?>(null);
-  final ValueNotifier<String?> _passwordErrorNotifier =
-      ValueNotifier<String?>(null);
-  final ValueNotifier<String?> _identificationErrorNotifier = ValueNotifier<String?>(null);
-  final ValueNotifier<String?> _nroMatriculaErrorNotifier =
-      ValueNotifier<String?>(null);
+  final TextEditingController _identificationNumberController = TextEditingController();
+  final TextEditingController _nroMatriculaController = TextEditingController();
 
-  bool isProfessional = false;
+  // Variables de estado para errores y carga
   bool _isLoading = false;
-
-  // Agregamos un campo para el tipo de documento
-  String? _selectedDocumentType; // Tipo de documento seleccionado
+  bool _isProfessional = false;
+  String? _emailError;
+  String? _passwordError;
+  String? _identificationError;
+  String? _nroMatriculaError;
+  String? _selectedDocumentType;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Register')),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            width: 350,
-            child: Card(
-              margin: EdgeInsets.all(16.0),
-              elevation: 8.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
+      appBar: AppBar(
+        title: Text('Registro'),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: Stack(
+        children: [
+          _buildContent(context),
+          if (_isLoading)
+            Container(
+              color: Colors.black45,
+              child: Center(
+                child: CircularProgressIndicator(),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildLogo(),
-                    SizedBox(height: 20),
-                    _buildTextFields(),
-                    SizedBox(height: 20),
-                    _buildRoleSwitch(),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _registerUser,
-                      child: _isLoading
-                          ? CircularProgressIndicator()
-                          : Text('Register'),
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _registerWithGoogle,
-                      child: _isLoading
-                          ? CircularProgressIndicator()
-                          : Text('Register with Google'),
-                    ),
-                    SizedBox(height: 20),
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => LoginPage()),
-                              );
-                            },
-                      child: Text('¿Ya tienes una cuenta? Inicia sesión aquí'),
-                    ),
-                  ],
-                ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        child: Container(
+          width: 350,
+          child: Card(
+            margin: EdgeInsets.all(16.0),
+            elevation: 8.0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildLogo(),
+                  SizedBox(height: 20),
+                  _buildTextFields(),
+                  SizedBox(height: 20),
+                  _buildRoleSwitch(),
+                  SizedBox(height: 20),
+                  _buildRegisterButton(),
+                  SizedBox(height: 10),
+                  _buildGoogleRegisterButton(),
+                  SizedBox(height: 20),
+                  _buildLoginButton(),
+                ],
               ),
             ),
           ),
@@ -119,40 +113,32 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildTextFields() {
     return Column(
       children: [
-        ValueListenableBuilder<String?>(
-          valueListenable: _emailErrorNotifier,
-          builder: (context, errorText, child) {
-            return _buildTextField(
-              controller: _emailController,
-              labelText: 'Email',
-              hintText: 'Enter your email',
-              errorText: errorText,
-              focusNode: _emailFocusNode,
-              icon: Icons.email,
-            );
-          },
+        _buildTextField(
+          controller: _emailController,
+          labelText: 'Email',
+          hintText: 'Ingresa tu email',
+          errorText: _emailError,
+          icon: Icons.email,
         ),
         SizedBox(height: 16.0),
-        ValueListenableBuilder<String?>(
-          valueListenable: _passwordErrorNotifier,
-          builder: (context, errorText, child) {
-            return _buildTextField(
-              controller: _passwordController,
-              labelText: 'Password',
-              hintText: 'Enter your password',
-              obscureText: true,
-              errorText: errorText,
-              focusNode: _passwordFocusNode,
-              icon: Icons.lock,
-            );
-          },
+        _buildTextField(
+          controller: _passwordController,
+          labelText: 'Contraseña',
+          hintText: 'Ingresa tu contraseña',
+          errorText: _passwordError,
+          icon: Icons.lock,
+          obscureText: true,
         ),
-        SizedBox(height: 16.0),
-        if (isProfessional) ...[
-          // Dropdown para el tipo de documento
+        if (_isProfessional) ...[
+          SizedBox(height: 16.0),
           DropdownButtonFormField<String>(
             value: _selectedDocumentType,
-            decoration: InputDecoration(labelText: 'Tipo de Documento'),
+            decoration: InputDecoration(
+              labelText: 'Tipo de Documento',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+            ),
             items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -164,42 +150,23 @@ class _RegisterPageState extends State<RegisterPage> {
                 _selectedDocumentType = newValue;
               });
             },
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor selecciona un tipo de documento';
-              }
-              return null;
-            },
           ),
           SizedBox(height: 16.0),
-          ValueListenableBuilder<String?>(
-            valueListenable: _identificationErrorNotifier,
-            builder: (context, errorText, child) {
-              return _buildTextField(
-                controller: _identificationNumberController,
-                labelText: 'Número de Identificación Nacional',
-                hintText: 'Enter your Identification Number',
-                errorText: errorText,
-                focusNode: _identificationFocusNode,
-                icon: Icons.perm_identity,
-              );
-            },
+          _buildTextField(
+            controller: _identificationNumberController,
+            labelText: 'Número de Identificación',
+            hintText: 'Ingresa tu número de identificación',
+            errorText: _identificationError,
+            icon: Icons.perm_identity,
           ),
           SizedBox(height: 16.0),
-          ValueListenableBuilder<String?>(
-            valueListenable: _nroMatriculaErrorNotifier,
-            builder: (context, errorText, child) {
-              return _buildTextField(
-                controller: _nroMatriculaController,
-                labelText: 'Matrícula Nacional',
-                hintText: 'Enter your Matricula Nacional',
-                errorText: errorText,
-                focusNode: _nroMatriculaFocusNode,
-                icon: Icons.badge,
-              );
-            },
+          _buildTextField(
+            controller: _nroMatriculaController,
+            labelText: 'Matrícula Nacional',
+            hintText: 'Ingresa tu matrícula nacional',
+            errorText: _nroMatriculaError,
+            icon: Icons.badge,
           ),
-          SizedBox(height: 16.0),
         ],
       ],
     );
@@ -209,27 +176,22 @@ class _RegisterPageState extends State<RegisterPage> {
     required TextEditingController controller,
     required String labelText,
     required String hintText,
-    bool obscureText = false,
     String? errorText,
-    required FocusNode focusNode,
     required IconData icon,
+    bool obscureText = false,
   }) {
-    return Container(
-      width: 300,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        decoration: InputDecoration(
-          labelText: labelText,
-          hintText: hintText,
-          errorText: errorText,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10.0),
-          ),
-          prefixIcon: Icon(icon),
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: labelText,
+        hintText: hintText,
+        errorText: errorText,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
         ),
-        obscureText: obscureText,
+        prefixIcon: Icon(icon),
       ),
+      obscureText: obscureText,
     );
   }
 
@@ -239,10 +201,10 @@ class _RegisterPageState extends State<RegisterPage> {
       children: [
         Text('Paciente'),
         Switch(
-          value: isProfessional,
+          value: _isProfessional,
           onChanged: (value) {
             setState(() {
-              isProfessional = value;
+              _isProfessional = value;
             });
           },
         ),
@@ -251,47 +213,81 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  Widget _buildRegisterButton() {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : () async {
+        await _registerUser();
+      },
+      child: Text('Registrarse'),
+      style: ElevatedButton.styleFrom(
+        padding: EdgeInsets.symmetric(vertical: 15),
+      ),
+    );
+  }
+
+  Widget _buildGoogleRegisterButton() {
+    return SignInButton(
+      Buttons.Google,
+      text: 'Registrarse con Google',
+      onPressed: () {
+        _registerWithGoogle();  // Function is called only when the button is pressed
+      },
+    );
+  }
+
+  Widget _buildLoginButton() {
+    return TextButton(
+      onPressed: _isLoading
+          ? null
+          : () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => LoginPage()),
+              );
+            },
+      child: Text('¿Ya tienes una cuenta? Inicia sesión aquí'),
+    );
+  }
+
   bool _validateInputs() {
     bool isValid = true;
+
+    setState(() {
+      _emailError = null;
+      _passwordError = null;
+      _identificationError = null;
+      _nroMatriculaError = null;
+    });
+
     if (_emailController.text.isEmpty) {
-      _emailErrorNotifier.value = 'Por favor, ingresa el correo.';
-      _emailFocusNode.requestFocus();
+      _emailError = 'Por favor, ingresa el correo.';
       isValid = false;
-    } else {
-      _emailErrorNotifier.value = null;
+    } else if (!_emailController.text.contains('@')) {
+      _emailError = 'Correo inválido.';
+      isValid = false;
     }
 
     if (_passwordController.text.isEmpty) {
-      _passwordErrorNotifier.value = 'Por favor, ingresa la contraseña.';
-      if (isValid) _passwordFocusNode.requestFocus();
+      _passwordError = 'Por favor, ingresa la contraseña.';
       isValid = false;
-    } else {
-      _passwordErrorNotifier.value = null;
+    } else if (_passwordController.text.length < 6) {
+      _passwordError = 'La contraseña debe tener al menos 6 caracteres.';
+      isValid = false;
     }
 
-    if (isProfessional) {
-      if (_identificationNumberController.text.isEmpty) {
-        _identificationErrorNotifier.value =
-            'Por favor, ingresa el número de identificación.';
-        if (isValid) _identificationFocusNode.requestFocus();
+    if (_isProfessional) {
+      if (_selectedDocumentType == null || _selectedDocumentType!.isEmpty) {
+        _showErrorSnackBar('Por favor, selecciona un tipo de documento.');
         isValid = false;
-      } else {
-        _identificationErrorNotifier.value = null;
+      }
+
+      if (_identificationNumberController.text.isEmpty) {
+        _identificationError = 'Por favor, ingresa el número de identificación.';
+        isValid = false;
       }
 
       if (_nroMatriculaController.text.isEmpty) {
-        _nroMatriculaErrorNotifier.value =
-            'Por favor, ingresa el número de matrícula.';
-        if (isValid) _nroMatriculaFocusNode.requestFocus();
-        isValid = false;
-      } else {
-        _nroMatriculaErrorNotifier.value = null;
-      }
-
-      if (_selectedDocumentType == null || _selectedDocumentType!.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Por favor selecciona un tipo de documento')),
-        );
+        _nroMatriculaError = 'Por favor, ingresa el número de matrícula.';
         isValid = false;
       }
     }
@@ -307,26 +303,28 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      String role = isProfessional ? 'professional' : 'patient';
+      String role = _isProfessional ? 'professional' : 'patient';
       User? user = await _authService.registerWithEmailAndPassword(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
         role,
       );
+
       if (user != null) {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-          'email': _emailController.text,
-          'role': role,
-          if (isProfessional) 'idNumber': _identificationNumberController.text,
-          if (isProfessional) 'documentType': _selectedDocumentType,
-          if (isProfessional) 'matricula': _nroMatriculaController.text,
-        });
-        _navigateToRolePage(context, role);
-      } else {
-        _showErrorSnackBar('Error al registrar');
+        if (_isProfessional) {
+          await _authService.updateProfessionalInfo(
+            uid: user.uid,
+            documentType: _selectedDocumentType!,
+            idNumber: _identificationNumberController.text.trim(),
+            matricula: _nroMatriculaController.text.trim(),
+          );
+        }
+
+        // Navegar a la ruta '/home' para que AuthWrapper maneje la redirección
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       }
     } catch (e) {
-      _showErrorSnackBar('An error occurred during registration');
+      _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
       setState(() {
         _isLoading = false;
@@ -335,61 +333,104 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _registerWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-    });
+  setState(() {
+    _isLoading = true;
+  });
 
-    try {
-      User? user = await _authService.signInWithGoogle();
-      if (user != null) {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        String role = userDoc.exists
-            ? userDoc['role']
-            : 'patient'; // Asignar rol por defecto si no existe
-        if (!userDoc.exists) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .set({
-            'email': user.email,
-            'role': role,
-          });
+  try {
+    // Sign in with Google
+    User? user = await _authService.signInWithGoogle();
+
+    if (user != null) {
+      // Show role selection dialog and wait for the user's choice
+      await _showRoleSelectionDialog();
+
+      // Determine the user's role based on the selection
+      String role = _isProfessional ? 'professional' : 'patient';
+
+      // Update the user's role in Firestore
+      await _authService.updateUserRole(user.uid, role);
+
+      // If the user is a professional, update additional professional information
+      if (_isProfessional) {
+        // Ensure that document type and identification number are valid
+        if (_selectedDocumentType == null || _identificationNumberController.text.trim().isEmpty) {
+          _showErrorSnackBar('Please provide all required professional information.');
+          return;
         }
-        _navigateToRolePage(context, role);
-      } else {
-        _showErrorSnackBar('Error al iniciar sesión con Google');
-      }
-    } catch (e) {
-      _showErrorSnackBar('An error occurred during Google registration');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
 
-  void _navigateToRolePage(BuildContext context, String role) {
-    Widget page;
-    switch (role) {
-      case 'admin':
-        page = AdminPage();
-        break;
-      case 'patient':
-        page = PatientPageWrapper();
-        break;
-      case 'professional':
-        page = ProfessionalHome();
-        break;
-      default:
-        page = LoginPage();
-        break;
+        await _authService.updateProfessionalInfo(
+          uid: user.uid,
+          documentType: _selectedDocumentType!,
+          idNumber: _identificationNumberController.text.trim(),
+          matricula: _nroMatriculaController.text.trim(),
+        );
+      }
+
+      // Navigate to the home route after registration and role selection
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     }
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => page),
+  } catch (e) {
+    // Show an error message in a snackbar if something goes wrong
+    _showErrorSnackBar('Error: ${e.toString()}');
+  } finally {
+    // Ensure the loading state is reset
+    setState(() {
+      _isLoading = false;
+    });
+  }
+}
+
+  Future<void> _showRoleSelectionDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        bool isProfessionalTemp = false;
+        return AlertDialog(
+          title: Text('Selecciona tu rol'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setStateDialog) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<bool>(
+                    title: Text('Paciente'),
+                    value: false,
+                    groupValue: isProfessionalTemp,
+                    onChanged: (bool? value) {
+                      setStateDialog(() {
+                        isProfessionalTemp = value!;
+                      });
+                    },
+                  ),
+                  RadioListTile<bool>(
+                    title: Text('Profesional'),
+                    value: true,
+                    groupValue: isProfessionalTemp,
+                    onChanged: (bool? value) {
+                      setStateDialog(() {
+                        isProfessionalTemp = value!;
+                      });
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              child: Text('Aceptar'),
+              onPressed: () {
+                setState(() {
+                  _isProfessional = isProfessionalTemp;
+                });
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

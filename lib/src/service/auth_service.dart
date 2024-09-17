@@ -7,6 +7,36 @@ class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Método para actualizar el rol del usuario
+  Future<void> updateUserRole(String uid, String role) async {
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'email': FirebaseAuth.instance.currentUser?.email,
+        'role': role,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw AuthException(message: 'Error al actualizar el rol del usuario.');
+    }
+  }
+
+  // Método para actualizar información adicional del profesional
+  Future<void> updateProfessionalInfo({
+    required String uid,
+    required String documentType,
+    required String idNumber,
+    required String matricula,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(uid).set({
+        'documentType': documentType,
+        'idNumber': idNumber,
+        'matricula': matricula,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw AuthException(message: 'Error al actualizar la información del profesional.');
+    }
+  }
+
   // Método para iniciar sesión con email y contraseña
   Future<User?> signInWithEmailAndPassword(String email, String password) async {
     try {
@@ -26,8 +56,7 @@ class AuthService {
   }
 
   // Método para registrar con email y contraseña
-  Future<User?> registerWithEmailAndPassword(
-      String email, String password, String role) async {
+  Future<User?> registerWithEmailAndPassword(String email, String password, String role) async {
     try {
       UserCredential userCredential =
           await _firebaseAuth.createUserWithEmailAndPassword(
