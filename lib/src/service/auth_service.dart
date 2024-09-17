@@ -57,29 +57,37 @@ class AuthService {
 
   // Método para registrar con email y contraseña
   Future<User?> registerWithEmailAndPassword(String email, String password, String role) async {
-    try {
-      UserCredential userCredential =
-          await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      User? user = userCredential.user;
+  try {
+    UserCredential userCredential =
+        await _firebaseAuth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+    User? user = userCredential.user;
 
-      // Añadir usuario a Firestore
-      await _firestore.collection('users').doc(user?.uid).set({
-        'email': user?.email,
-        'role': role,
-      });
+    // Verificar si el documento del usuario ya existe en Firestore
+    DocumentSnapshot<Map<String, dynamic>> userDoc =
+        await _firestore.collection('users').doc(user?.uid).get();
 
-      return user;
-    } on FirebaseAuthException catch (e) {
-      // Manejo específico de errores de FirebaseAuth
-      throw AuthException(code: e.code, message: e.message);
-    } catch (e) {
-      // Otros errores
-      throw AuthException(message: 'Error desconocido al registrar.');
+        if (!userDoc.exists) {
+          // Solo crear el documento si no existe
+          await _firestore.collection('users').doc(user?.uid).set({
+            'email': user?.email,
+            'role': role,
+          });
+        } else {
+          print('El usuario ya existe en Firestore. No se sobrescribirá.');
+        }
+
+        return user;
+      } on FirebaseAuthException catch (e) {
+        // Manejo específico de errores de FirebaseAuth
+        throw AuthException(code: e.code, message: e.message);
+      } catch (e) {
+        // Otros errores
+        throw AuthException(message: 'Error desconocido al registrar.');
+      }
     }
-  }
 
   // Método para iniciar sesión con Google
   Future<User?> signInWithGoogle() async {
@@ -112,12 +120,21 @@ class AuthService {
 
       User? user = userCredential.user;
 
-      // Añadir usuario a Firestore si es un nuevo usuario
+      // Verificar si es un nuevo usuario
       if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        await _firestore.collection('users').doc(user?.uid).set({
-          'email': user?.email,
-          'role': 'patient', // o el rol que desees asignar por defecto
-        });
+        // Verificar si el documento del usuario ya existe
+        DocumentSnapshot<Map<String, dynamic>> userDoc =
+            await _firestore.collection('users').doc(user?.uid).get();
+
+        if (!userDoc.exists) {
+          // Solo crear el documento si no existe
+          await _firestore.collection('users').doc(user?.uid).set({
+            'email': user?.email,
+            'role': 'patient', // o el rol que desees asignar por defecto
+          });
+        } else {
+          print('El usuario ya existe en Firestore. No se sobrescribirá.');
+        }
       }
 
       return user;
@@ -127,6 +144,7 @@ class AuthService {
       throw AuthException(message: 'Error desconocido al iniciar sesión con Google.');
     }
   }
+
 
   // Método para obtener el rol del usuario
   Future<String> getUserRole(String uid) async {
