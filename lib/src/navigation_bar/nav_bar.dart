@@ -6,7 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/navigation_bar/providers.dart';
 import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/professional_page.dart';
+import 'package:Psiconnect/src/screens/professional/professional_home.dart';
 
 class NavBar extends ResponsiveWidget {
   final Function(GlobalKey) scrollTo;
@@ -66,8 +66,7 @@ class DesktopNavBar extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isScrolled = ref.watch(scrolledProvider);
-    final navBarColor =
-        Color.fromRGBO(1, 40, 45, 1); // Color base de Psiconnect
+    final navBarColor = Color.fromRGBO(1, 40, 45, 1); // Color base de Psiconnect
     final textColor = Colors.white; // Letras en blanco
     final userSession = ref.watch(sessionProvider);
 
@@ -113,6 +112,8 @@ class DesktopNavBar extends HookConsumerWidget {
                   defaultColor: textColor,
                 ),
                 SizedBox(width: 10),
+
+                // Verificamos el rol del usuario para mostrar la opción "Perfil"
                 if (userSession != null)
                   NavBarButton(
                     text: 'Perfil',
@@ -136,6 +137,21 @@ class DesktopNavBar extends HookConsumerWidget {
                       },
                       defaultColor: textColor),
                 ],
+
+                // Opciones para administradores
+                if (userSession?.role == 'admin') ...[
+                  SizedBox(width: 10),
+                  NavBarButton(
+                    text: 'Panel de Administración',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => AdminPage()),
+                      );
+                    },
+                    defaultColor: textColor,
+                  ),
+                ],
               ],
             ),
           ],
@@ -154,7 +170,7 @@ class DesktopNavBar extends HookConsumerWidget {
         page = PatientPageWrapper();
         break;
       case 'professional':
-        page = ProfessionalPage();
+        page = ProfessionalHome();
         break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
@@ -214,6 +230,8 @@ class MobileNavBar extends HookConsumerWidget {
             onTap: () => scrollTo(contactKey),
             defaultColor: Colors.white,
           ),
+
+          // Verificamos el rol para mostrar opciones adicionales
           if (userSession != null)
             NavBarButton(
               text: 'Perfil',
@@ -235,6 +253,20 @@ class MobileNavBar extends HookConsumerWidget {
                   Navigator.pushNamed(context, '/register');
                 },
                 defaultColor: Colors.white),
+          ],    
+
+          // Opciones para administradores
+          if (userSession?.role == 'admin') ...[
+            NavBarButton(
+              text: 'Panel de Administración',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AdminPage()),
+                );
+              },
+              defaultColor: Colors.white,
+            ),
           ],
         ],
       ),
@@ -242,26 +274,25 @@ class MobileNavBar extends HookConsumerWidget {
   }
 
   void _navigateToRolePage(BuildContext context, String role) {
-    Widget page;
-    switch (role) {
-      case 'admin':
-        page = AdminPage();
-        break;
-      case 'patient':
-        page = PatientPageWrapper();
-        break;
-      case 'professional':
-        page = ProfessionalPage();
-        break;
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unknown role')),
-        );
-        return;
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
+  String route;
+  switch (role) {
+    case 'admin':
+      route = '/admin'; // Redirigir al panel de administración
+      break;
+    case 'patient':
+      route = '/patient'; // Redirigir a la página de paciente
+      break;
+    case 'professional':
+      route = '/professional'; // Redirigir a la página de inicio profesional
+      break;
+    default:
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Rol desconocido')),
+      );
+      return;
   }
+  
+  // Usa pushReplacementNamed para reemplazar la ruta actual sin dejar la anterior en el historial
+  Navigator.pushReplacementNamed(context, route);
+}
 }
