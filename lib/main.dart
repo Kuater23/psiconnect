@@ -66,7 +66,7 @@ class MyApp extends ConsumerWidget {
         '/patient': (context) => PatientPageWrapper(),
         '/professional': (context) => ProfessionalHome(),
         '/professional_appointments': (context) => ProfessionalAppointments(),
-        '/professional_files': (context) => ProfessionalFiles(),
+        '/professional_files': (context) => ProfessionalFiles(patientId: '',),
         '/admin': (context) => AdminPage(),
       },
       onGenerateRoute: (settings) {
