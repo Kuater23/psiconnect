@@ -4,8 +4,7 @@ import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/register_page.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';// Para botones de inicio de sesión estilizados
 
 class LoginPage extends ConsumerStatefulWidget {
   @override
@@ -16,19 +15,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final FocusNode _emailFocusNode = FocusNode();
-  final FocusNode _passwordFocusNode = FocusNode();
-  final ValueNotifier<String?> _emailErrorNotifier = ValueNotifier<String?>(null);
-  final ValueNotifier<String?> _passwordErrorNotifier = ValueNotifier<String?>(null);
-  
+
+  // Estados para controlar errores y carga
   bool _isLoading = false;
+  String? _emailError;
+  String? _passwordError;
+
   bool _obscurePassword = true; // Para controlar si la contraseña se muestra o no
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Login'),
+        title: Text('Iniciar Sesión'),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
@@ -36,34 +35,48 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           },
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Container(
-              width: 300,
-              child: Card(
-                elevation: 4.0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildLogo(),
-                      SizedBox(height: 20),
-                      _buildTextFields(),
-                      SizedBox(height: 20),
-                      _buildLoginButton(context, ref),
-                      SizedBox(height: 10),
-                      _buildGoogleLoginButton(context, ref),
-                      SizedBox(height: 10),
-                      _buildRegisterButton(context),
-                      if (_isLoading) CircularProgressIndicator(),
-                    ],
-                  ),
+      body: Stack(
+        children: [
+          _buildContent(context),
+          if (_isLoading)
+            Container(
+              color: Colors.black45,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Center(
+        child: SingleChildScrollView(
+          child: Container(
+            width: 300,
+            child: Card(
+              elevation: 4.0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15.0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLogo(),
+                    SizedBox(height: 20),
+                    _buildTextFields(),
+                    SizedBox(height: 20),
+                    _buildLoginButton(context),
+                    SizedBox(height: 10),
+                    _buildGoogleLoginButton(context),
+                    SizedBox(height: 10),
+                    _buildRegisterButton(context),
+                  ],
                 ),
               ),
             ),
@@ -95,62 +108,50 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildTextFields() {
     return Column(
       children: [
-        ValueListenableBuilder<String?>(
-          valueListenable: _emailErrorNotifier,
-          builder: (context, errorText, child) {
-            return TextField(
-              controller: _emailController,
-              focusNode: _emailFocusNode,
-              decoration: InputDecoration(
-                labelText: 'Email',
-                errorText: errorText,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-                prefixIcon: Icon(Icons.email),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            );
-          },
+        TextField(
+          controller: _emailController,
+          decoration: InputDecoration(
+            labelText: 'Email',
+            errorText: _emailError,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            prefixIcon: Icon(Icons.email),
+          ),
+          keyboardType: TextInputType.emailAddress,
         ),
         SizedBox(height: 10),
-        ValueListenableBuilder<String?>(
-          valueListenable: _passwordErrorNotifier,
-          builder: (context, errorText, child) {
-            return TextField(
-              controller: _passwordController,
-              focusNode: _passwordFocusNode,
-              obscureText: _obscurePassword, // Control para mostrar u ocultar la contraseña
-              decoration: InputDecoration(
-                labelText: 'Password',
-                errorText: errorText,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-                prefixIcon: Icon(Icons.lock),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword; // Cambiar el estado para mostrar u ocultar
-                    });
-                  },
-                ),
+        TextField(
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
+            labelText: 'Contraseña',
+            errorText: _passwordError,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+            ),
+            prefixIcon: Icon(Icons.lock),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility : Icons.visibility_off,
               ),
-            );
-          },
+              onPressed: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildLoginButton(BuildContext context, WidgetRef ref) {
+  Widget _buildLoginButton(BuildContext context) {
     return ElevatedButton(
       onPressed: () async {
         if (_validateInputs()) {
-          await _signInWithEmailAndPassword(context, ref);
+          await _signInWithEmailAndPassword(context);
         }
       },
       style: ElevatedButton.styleFrom(
@@ -159,23 +160,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           borderRadius: BorderRadius.circular(10.0),
         ),
       ),
-      child: Text('Login'),
+      child: Text('Iniciar Sesión'),
     );
   }
 
-  Widget _buildGoogleLoginButton(BuildContext context, WidgetRef ref) {
-    return ElevatedButton.icon(
+  Widget _buildGoogleLoginButton(BuildContext context) {
+    return SignInButton(
+      Buttons.Google,
+      text: 'Iniciar Sesión con Google',
       onPressed: () async {
-        await _signInWithGoogle(context, ref);
+        await _signInWithGoogle(context);
       },
-      icon: Icon(Icons.login),
-      label: Text('Login with Google'),
-      style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-      ),
     );
   }
 
@@ -187,64 +182,55 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           MaterialPageRoute(builder: (context) => RegisterPage()),
         );
       },
-      child: Text('¿Todavía no tienes una cuenta? Créala aquí mismo'),
+      child: Text('¿Todavía no tienes una cuenta? Regístrate aquí'),
     );
   }
 
   bool _validateInputs() {
     bool isValid = true;
+    setState(() {
+      _emailError = null;
+      _passwordError = null;
+    });
 
     if (_emailController.text.isEmpty) {
-      _emailErrorNotifier.value = 'Por favor, ingresa el correo.';
-      _emailFocusNode.requestFocus();
+      setState(() {
+        _emailError = 'Por favor, ingresa el correo.';
+      });
       isValid = false;
     } else if (!_emailController.text.contains('@')) {
-      _emailErrorNotifier.value = 'Correo inválido.';
-      _emailFocusNode.requestFocus();
+      setState(() {
+        _emailError = 'Correo inválido.';
+      });
       isValid = false;
-    } else {
-      _emailErrorNotifier.value = null;
     }
 
     if (_passwordController.text.isEmpty) {
-      _passwordErrorNotifier.value = 'Por favor, ingresa la contraseña.';
-      if (isValid) _passwordFocusNode.requestFocus();
+      setState(() {
+        _passwordError = 'Por favor, ingresa la contraseña.';
+      });
       isValid = false;
-    } else {
-      _passwordErrorNotifier.value = null;
     }
 
     return isValid;
   }
 
-  Future<void> _signInWithEmailAndPassword(
-      BuildContext context, WidgetRef ref) async {
+  Future<void> _signInWithEmailAndPassword(BuildContext context) async {
     setState(() {
       _isLoading = true;
     });
 
     try {
       User? user = await _authService.signInWithEmailAndPassword(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
       );
 
       if (user != null) {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (userDoc.exists) {
-          String role = userDoc.get('role');
-          ref.read(sessionProvider.notifier).logIn(user.email!, role);
-          _navigateToHomePage(context);
-        } else {
-          _showErrorSnackBar('Error: No se pudo recuperar el rol del usuario.');
-        }
-      } else {
-        _showErrorSnackBar('Error en el inicio de sesión');
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       }
+    } on AuthException catch (e) {
+      _showErrorSnackBar(e.message ?? 'Error al iniciar sesión.');
     } catch (e) {
       _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
@@ -254,7 +240,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  Future<void> _signInWithGoogle(BuildContext context, WidgetRef ref) async {
+  Future<void> _signInWithGoogle(BuildContext context) async {
     setState(() {
       _isLoading = true;
     });
@@ -263,27 +249,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       User? user = await _authService.signInWithGoogle();
 
       if (user != null) {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        String role;
-        if (userDoc.exists) {
-          role = userDoc.get('role');
-        } else {
-          role = 'patient'; // Asignar un rol por defecto
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'role': role,
-          });
-        }
-
-        ref.read(sessionProvider.notifier).logIn(user.email!, role);
-        _navigateToHomePage(context);
-      } else {
-        _showErrorSnackBar('Error en el inicio de sesión con Google');
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       }
+    } on AuthException catch (e) {
+      _showErrorSnackBar(e.message ?? 'Error al iniciar sesión con Google.');
     } catch (e) {
       _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
@@ -291,38 +260,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _isLoading = false;
       });
     }
-  }
-
-  void _navigateToHomePage(BuildContext context) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => HomePage()),
-    );
-  }
-
-  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _authService.signOut();
-      ref.read(sessionProvider.notifier).logOut();
-      _navigateToLoginPage(context);
-    } catch (e) {
-      _showErrorSnackBar('Error al cerrar sesión: ${e.toString()}');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _navigateToLoginPage(BuildContext context) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginPage()),
-    );
   }
 
   void _showErrorSnackBar(String message) {

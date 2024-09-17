@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -13,47 +15,13 @@ class AuthService {
         email: email,
         password: password,
       );
-      User? user = userCredential.user;
-
-      // Añadir usuario a Firestore si es un nuevo usuario
-      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        await _firestore.collection('users').doc(user?.uid).set({
-          'email': user?.email,
-          'role': 'patient', // o el rol que desees asignar por defecto
-        });
-      }
-      return user;
+      return userCredential.user;
+    } on FirebaseAuthException catch (e) {
+      // Manejo específico de errores de FirebaseAuth
+      throw AuthException(code: e.code, message: e.message);
     } catch (e) {
-      print('Error en signInWithEmailAndPassword: $e');
-      return null;
-    }
-  }
-
-  // Método para iniciar sesión con Google utilizando FirebaseAuth
-  Future<User?> signInWithGoogle() async {
-    try {
-      // Iniciar el flujo de autenticación de Google
-      final GoogleAuthProvider googleProvider = GoogleAuthProvider();
-
-      // Puedes usar signInWithPopup o signInWithRedirect
-      UserCredential result =
-          await _firebaseAuth.signInWithPopup(googleProvider);
-      // UserCredential result = await _firebaseAuth.signInWithRedirect(googleProvider);
-
-      User? user = result.user;
-
-      // Añadir usuario a Firestore si es un nuevo usuario
-      if (result.additionalUserInfo?.isNewUser ?? false) {
-        await _firestore.collection('users').doc(user?.uid).set({
-          'email': user?.email,
-          'role': 'patient', // o el rol que desees asignar por defecto
-        });
-      }
-
-      return user;
-    } catch (e) {
-      print('Error signing in with Google: $e');
-      return null;
+      // Otros errores
+      throw AuthException(message: 'Error desconocido al iniciar sesión.');
     }
   }
 
@@ -75,22 +43,74 @@ class AuthService {
       });
 
       return user;
+    } on FirebaseAuthException catch (e) {
+      // Manejo específico de errores de FirebaseAuth
+      throw AuthException(code: e.code, message: e.message);
     } catch (e) {
-      print('Error en registerWithEmailAndPassword: $e');
-      return null;
+      // Otros errores
+      throw AuthException(message: 'Error desconocido al registrar.');
+    }
+  }
+
+  // Método para iniciar sesión con Google
+  Future<User?> signInWithGoogle() async {
+    try {
+      UserCredential userCredential;
+      if (kIsWeb) {
+        // Proceso para aplicaciones web
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+
+        userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
+      } else {
+        // Proceso para dispositivos móviles
+        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) {
+          // El usuario canceló el inicio de sesión
+          throw AuthException(message: 'Inicio de sesión cancelado.');
+        }
+
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        userCredential =
+            await _firebaseAuth.signInWithCredential(credential);
+      }
+
+      User? user = userCredential.user;
+
+      // Añadir usuario a Firestore si es un nuevo usuario
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        await _firestore.collection('users').doc(user?.uid).set({
+          'email': user?.email,
+          'role': 'patient', // o el rol que desees asignar por defecto
+        });
+      }
+
+      return user;
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(code: e.code, message: e.message);
+    } catch (e) {
+      throw AuthException(message: 'Error desconocido al iniciar sesión con Google.');
     }
   }
 
   // Método para obtener el rol del usuario
   Future<String> getUserRole(String uid) async {
     try {
-      DocumentSnapshot userDoc =
+      DocumentSnapshot<Map<String, dynamic>> userDoc =
           await _firestore.collection('users').doc(uid).get();
       if (userDoc.exists) {
-        return userDoc['role'] ?? 'unknown';
-      } else {
-        return 'unknown';
+        final data = userDoc.data();
+        if (data != null && data.containsKey('role')) {
+          return data['role'] as String;
+        }
       }
+      return 'unknown';
     } catch (e) {
       print('Error en getUserRole: $e');
       return 'unknown';
@@ -101,8 +121,23 @@ class AuthService {
   Future<void> signOut() async {
     try {
       await _firebaseAuth.signOut();
+      // Realiza cualquier limpieza adicional si es necesario
     } catch (e) {
       print('Error en signOut: $e');
     }
   }
 }
+
+// Clase personalizada para excepciones de autenticación
+class AuthException implements Exception {
+  final String? code;
+  final String? message;
+
+  AuthException({this.code, this.message});
+
+  @override
+  String toString() {
+    return 'AuthException(code: $code, message: $message)';
+  }
+}
+

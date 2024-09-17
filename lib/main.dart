@@ -20,7 +20,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Asegúrate de configurar la persistencia de sesión a nivel local
+  // Configura la persistencia de sesión a nivel local
   await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
 
   setPathUrlStrategy(); // Configura la estrategia de URL para evitar el "#"
@@ -31,17 +31,34 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+// Provider para escuchar los cambios de autenticación
+final authProvider = StreamProvider<User?>((ref) {
+  return FirebaseAuth.instance.authStateChanges();
+});
+
+// Provider para obtener el rol del usuario autenticado
+final userRoleProvider = FutureProvider<String?>((ref) async {
+  final user = ref.watch(authProvider).asData?.value;
+  if (user != null) {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    return doc.data()?['role'] as String?;
+  }
+  return null;
+});
+
+class MyApp extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: "Psiconnect",
-      initialRoute: '/home',
       theme: ThemeData(
         primaryColor: Color.fromRGBO(1, 40, 45, 1),
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: AuthWrapper(), // Aquí se define la lógica de inicio según la autenticación
+      initialRoute: '/home',
       routes: {
         '/home': (context) => HomePage(), // Ruta a HomePage
         '/login': (context) => LoginPage(),
@@ -52,57 +69,49 @@ class MyApp extends StatelessWidget {
         '/professional_files': (context) => ProfessionalFiles(),
         '/admin': (context) => AdminPage(),
       },
+      onGenerateRoute: (settings) {
+        // Manejo de rutas dinámicas si es necesario
+        return MaterialPageRoute(
+          builder: (context) => AuthWrapper(),
+        );
+      },
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(), // Escucha cambios en el estado de autenticación
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          // Mostrar un indicador de carga si se está restaurando la sesión
-          return LoadingScreen();
-        } else if (snapshot.hasError) {
-          // Muestra un mensaje de error
-          return ErrorScreen(message: 'Error: ${snapshot.error}');
-        } else if (snapshot.hasData) {
-          // Si hay un usuario autenticado, verificar el rol
-          return _handleUserBasedOnRole(snapshot.data!);
-        } else {
-          // Si no hay usuario autenticado, redirigir al login
-          return LoginPage();
-        }
-      },
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
 
-  Widget _handleUserBasedOnRole(User user) {
-    // Consulta Firestore u otra fuente de datos para obtener el rol del usuario
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return LoadingScreen(); // Página de carga personalizada
-        } else if (snapshot.hasError) {
-          return ErrorScreen(message: 'Error al obtener el rol: ${snapshot.error}');
-        } else if (snapshot.hasData) {
-          final role = snapshot.data!['role']; // Suponiendo que el rol está almacenado como 'role'
-          if (role == 'professional') {
-            return ProfessionalHome();
-          } else if (role == 'patient') {
-            return PatientPage(email: user.email!);
-          } else if (role == 'admin') {
-            return AdminPage();
-          } else {
-            return ErrorScreen(message: 'Rol desconocido');
-          }
+    return authState.when(
+      data: (user) {
+        if (user == null) {
+          // No hay usuario autenticado, mostrar la página de inicio de sesión
+          return LoginPage();
         } else {
-          return LoginPage(); // Redirigir al login si no hay datos
+          // Usuario autenticado, obtener el rol
+          final roleAsyncValue = ref.watch(userRoleProvider);
+          return roleAsyncValue.when(
+            data: (role) {
+              if (role == 'professional') {
+                return ProfessionalHome();
+              } else if (role == 'patient') {
+                return PatientPage(email: user.email!);
+              } else if (role == 'admin') {
+                return AdminPage();
+              } else {
+                return ErrorScreen(message: 'Rol desconocido');
+              }
+            },
+            loading: () => LoadingScreen(),
+            error: (e, _) =>
+                ErrorScreen(message: 'Error al obtener el rol: $e'),
+          );
         }
       },
+      loading: () => LoadingScreen(),
+      error: (e, _) => ErrorScreen(message: 'Error: $e'),
     );
   }
 }
@@ -135,6 +144,7 @@ class ErrorScreen extends StatelessWidget {
   }
 }
 
+// Wrapper para la página del paciente, manteniendo la funcionalidad existente
 class PatientPageWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
