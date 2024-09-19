@@ -34,6 +34,9 @@ class _PatientPageState extends ConsumerState<PatientPage> {
   // Variable para almacenar el estado de edición
   bool _isEditing = false;
 
+  // Variable para almacenar los campos incompletos
+  List<String> _incompleteFields = [];
+
   @override
   void initState() {
     super.initState();
@@ -58,9 +61,25 @@ class _PatientPageState extends ConsumerState<PatientPage> {
           _ageController.text = data['age']?.toString() ?? '';
           _selectedGender = data['gender'] ?? 'Masculino';
           _genderController.text = _selectedGender;
+
+          // Verificar campos incompletos
+          _checkIncompleteFields();
         });
       }
     }
+  }
+
+  // Función para verificar campos incompletos
+  void _checkIncompleteFields() {
+    _incompleteFields.clear();
+    if (_firstNameController.text.isEmpty) _incompleteFields.add('Nombre');
+    if (_lastNameController.text.isEmpty) _incompleteFields.add('Apellido');
+    if (_emailController.text.isEmpty) _incompleteFields.add('Correo');
+    if (_documentController.text.isEmpty) _incompleteFields.add('Documento');
+    if (_birthDateController.text.isEmpty)
+      _incompleteFields.add('Fecha de Nacimiento');
+    if (_ageController.text.isEmpty) _incompleteFields.add('Edad');
+    if (_genderController.text.isEmpty) _incompleteFields.add('Género');
   }
 
   // Función modularizada para guardar datos en Firestore
@@ -93,6 +112,7 @@ class _PatientPageState extends ConsumerState<PatientPage> {
       });
       setState(() {
         _isEditing = false;
+        _checkIncompleteFields(); // Verificar campos incompletos después de guardar
       });
     }
   }
@@ -123,14 +143,6 @@ class _PatientPageState extends ConsumerState<PatientPage> {
     }
   }
 
-  String _getDrawerWelcomeMessage() {
-    if (_firstNameController.text.isNotEmpty) {
-      return 'Bienvenido ${_firstNameController.text}';
-    } else {
-      return 'Bienvenido ${widget.email}';
-    }
-  }
-
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -148,51 +160,60 @@ class _PatientPageState extends ConsumerState<PatientPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Definir el color con los valores proporcionados
+    final Color primaryColor = Color.fromARGB(255, 1, 40, 45);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Ventana de Paciente'),
+        title: Text(
+            'Menú Paciente'), // Cambiado de "Ventana de Paciente" a "Menú Paciente"
       ),
-      drawer: _buildDrawer(),
-      body: Column(
-        children: [
-          Padding(
+      drawer: _buildDrawer(primaryColor),
+      body: SafeArea(
+        child: Container(
+          color: Colors.grey[200], // Color de fondo para diferenciar la sección
+          child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: Text(
-                _getDrawerWelcomeMessage(),
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
+            child: Column(
               children: [
-                _buildPersonalInfoSection(),
+                if (_incompleteFields.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Text(
+                      'Complete la siguiente información: ${_incompleteFields.join(', ')}',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    children: [
+                      _buildPersonalInfoSection(),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Drawer _buildDrawer() {
+  Drawer _buildDrawer(Color primaryColor) {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
             decoration: BoxDecoration(
-              color: Colors.blue,
+              color: primaryColor,
             ),
             child: Text(
-              _getDrawerWelcomeMessage(),
+              'Menú Paciente', // Cambiado a "Menú Paciente"
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -201,10 +222,10 @@ class _PatientPageState extends ConsumerState<PatientPage> {
           ),
           _buildDrawerItem('INFORMACIÓN PERSONAL', 0),
           ListTile(
-            leading: Icon(Icons.arrow_back, color: Colors.blue),
+            leading: Icon(Icons.arrow_back, color: primaryColor),
             title: Text(
               'Volver a Inicio',
-              style: TextStyle(color: Colors.blue),
+              style: TextStyle(color: primaryColor),
             ),
             onTap: () {
               Navigator.pop(context);
@@ -217,20 +238,23 @@ class _PatientPageState extends ConsumerState<PatientPage> {
           SizedBox(height: 20),
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
+            child: ElevatedButton.icon(
               onPressed: () {
                 ref.read(sessionProvider.notifier).logOut();
                 Navigator.pushReplacementNamed(context, '/login');
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30.0),
                 ),
                 padding: EdgeInsets.symmetric(vertical: 15.0),
               ),
-              child: Text(
-                'SALIR',
+              icon: Icon(Icons.logout,
+                  color: Colors
+                      .white), // Icono de deslogueo con el color especificado
+              label: Text(
+                'Cerrar Sesión',
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.white,
