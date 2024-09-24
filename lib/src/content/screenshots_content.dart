@@ -1,5 +1,6 @@
 import 'package:Psiconnect/src/widgets/responsive_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ScreenshotsContent extends ResponsiveWidget {
   const ScreenshotsContent({Key? key}) : super(key: key);
@@ -17,64 +18,114 @@ class ScreenshotsContentResponsive extends StatelessWidget {
 
   const ScreenshotsContentResponsive(this.horizontalPadding);
 
+  final String googlePlayURL =
+      'https://play.google.com/store/apps/details?id=com.example.app';
+  final String appStoreURL =
+      'https://apps.apple.com/us/app/example-app/id123456789';
+
   @override
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
 
     return Container(
-      width: width, // Ocupar todo el ancho disponible
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-        child: Column(
-          children: [
-            Text(
-              "Screenshots Section",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 40),
+      width: width,
+      height: MediaQuery.of(context).size.height,
+      child: Stack(
+        children: [
+          // Imagen de fondo
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/screenshots/fondo.png',
+              fit: BoxFit.cover,
             ),
-            SizedBox(height: 24),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: Text(
-                'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-              ),
-            ),
-            SizedBox(height: 24),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.max,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+          // Contenido centrado
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _Image(image: "assets/images/screenshots/screen1.png"),
-                  _Image(image: "assets/images/screenshots/screen2.png"),
-                  _Image(image: "assets/images/screenshots/screen3.png"),
-                  _Image(image: "assets/images/screenshots/screen4.png"),
-                  _Image(image: "assets/images/screenshots/screen5.png"),
-                  _Image(image: "assets/images/screenshots/screen6.png"),
-                  _Image(image: "assets/images/screenshots/screen7.png"),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Color.fromARGB(
+                          200, 202, 235, 248), // Fondo semi-transparente
+                      borderRadius:
+                          BorderRadius.circular(16), // Bordes redondeados
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 20,
+                        horizontal: 20), // Espaciado interno ajustado
+                    child: Text(
+                      "Organizá tu Agenda desde tablets o smartphones",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 48, // Tamaño más grande para el título
+                        color: Color.fromRGBO(
+                            47, 67, 88, 1.0), // Color especificado
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Color.fromARGB(
+                          200, 202, 235, 248), // Fondo semi-transparente
+                      borderRadius:
+                          BorderRadius.circular(16), // Bordes redondeados
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 20,
+                        horizontal: 20), // Espaciado interno ajustado
+                    child: Text(
+                      "Vas de poder administrar todo desde cualquier dispositivo. ¡Lo que más comodo te resulte en el momento!",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 32, // Tamaño más grande para el subtítulo
+                        color: Color.fromRGBO(
+                            47, 67, 88, 1.0), // Color especificado
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () => _launchURL(googlePlayURL),
+                        child: Image.asset(
+                          'assets/images/google_play_badge.png',
+                          height: 60,
+                          width: 200,
+                        ),
+                      ),
+                      SizedBox(width: 24),
+                      GestureDetector(
+                        onTap: () => _launchURL(appStoreURL),
+                        child: Image.asset(
+                          'assets/images/app_store_badge.png',
+                          height: 60,
+                          width: 200,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            )
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _Image extends StatelessWidget {
-  final String image;
-
-  const _Image({Key? key, required this.image}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(width: 16),
-        Image.asset(image),
-        SizedBox(width: 16),
-      ],
-    );
+  void _launchURL(String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      throw 'Could not launch $url';
+    }
   }
 }
