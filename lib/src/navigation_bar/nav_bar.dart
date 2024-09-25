@@ -66,7 +66,8 @@ class DesktopNavBar extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isScrolled = ref.watch(scrolledProvider);
-    final navBarColor = Color.fromRGBO(1, 40, 45, 1); // Color base de Psiconnect
+    final navBarColor =
+        Color.fromRGBO(1, 40, 45, 1); // Color base de Psiconnect
     final textColor = Colors.white; // Letras en blanco
     final userSession = ref.watch(sessionProvider);
 
@@ -170,7 +171,9 @@ class DesktopNavBar extends HookConsumerWidget {
         page = PatientPageWrapper();
         break;
       case 'professional':
-        page = ProfessionalHome();
+        page = ProfessionalHome(
+          toggleTheme: () {},
+        );
         break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
@@ -253,7 +256,7 @@ class MobileNavBar extends HookConsumerWidget {
                   Navigator.pushNamed(context, '/register');
                 },
                 defaultColor: Colors.white),
-          ],    
+          ],
 
           // Opciones para administradores
           if (userSession?.role == 'admin') ...[
@@ -274,25 +277,25 @@ class MobileNavBar extends HookConsumerWidget {
   }
 
   void _navigateToRolePage(BuildContext context, String role) {
-  String route;
-  switch (role) {
-    case 'admin':
-      route = '/admin'; // Redirigir al panel de administración
-      break;
-    case 'patient':
-      route = '/patient'; // Redirigir a la página de paciente
-      break;
-    case 'professional':
-      route = '/professional'; // Redirigir a la página de inicio profesional
-      break;
-    default:
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rol desconocido')),
-      );
-      return;
+    String route;
+    switch (role) {
+      case 'admin':
+        route = '/admin'; // Redirigir al panel de administración
+        break;
+      case 'patient':
+        route = '/patient'; // Redirigir a la página de paciente
+        break;
+      case 'professional':
+        route = '/professional'; // Redirigir a la página de inicio profesional
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Rol desconocido')),
+        );
+        return;
+    }
+
+    // Usa pushReplacementNamed para reemplazar la ruta actual sin dejar la anterior en el historial
+    Navigator.pushReplacementNamed(context, route);
   }
-  
-  // Usa pushReplacementNamed para reemplazar la ruta actual sin dejar la anterior en el historial
-  Navigator.pushReplacementNamed(context, route);
-}
 }

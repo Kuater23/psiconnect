@@ -25,7 +25,7 @@ class SharedDrawer extends ConsumerWidget {
           ),
           DrawerHeader(
             decoration: BoxDecoration(
-                  color: const Color.fromRGBO(1, 40, 45, 1), // Fondo de Psiconnect
+              color: const Color.fromRGBO(1, 40, 45, 1), // Fondo de Psiconnect
             ),
             child: Text(
               'Menú Profesional',
@@ -38,19 +38,22 @@ class SharedDrawer extends ConsumerWidget {
           ListTile(
             title: Text('Inicio'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/home'); // Redirige a HomePage
+              Navigator.pushReplacementNamed(
+                  context, '/home'); // Redirige a HomePage
             },
           ),
           ListTile(
             title: Text('Home Profesional'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/professional'); // Redirige a ProfessionalHome
+              Navigator.pushReplacementNamed(
+                  context, '/professional'); // Redirige a ProfessionalHome
             },
           ),
           ListTile(
             title: Text('Citas'),
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/professional_appointments');
+              Navigator.pushReplacementNamed(
+                  context, '/professional_appointments');
             },
           ),
           ListTile(
@@ -64,7 +67,8 @@ class SharedDrawer extends ConsumerWidget {
             title: Text('Cerrar Sesión'),
             leading: Icon(Icons.logout),
             onTap: () async {
-              await _signOut(context, ref); // Cerrar sesión y redirigir al login
+              await _signOut(
+                  context, ref); // Cerrar sesión y redirigir al login
             },
           ),
         ],
@@ -75,8 +79,11 @@ class SharedDrawer extends ConsumerWidget {
   // Método para cerrar sesión y redirigir a la HomePage
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
     try {
-      await _authService.signOut(); // Llamamos al servicio de autenticación para cerrar sesión
-      ref.read(sessionProvider.notifier).logOut(); // Limpiamos la sesión del provider
+      await _authService
+          .signOut(); // Llamamos al servicio de autenticación para cerrar sesión
+      ref
+          .read(sessionProvider.notifier)
+          .logOut(); // Limpiamos la sesión del provider
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => HomePage()),

@@ -93,7 +93,10 @@ class HomePage extends HookConsumerWidget {
     } else if (role == 'professional') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ProfessionalHome()),
+        MaterialPageRoute(
+            builder: (context) => ProfessionalHome(
+                  toggleTheme: () {},
+                )),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

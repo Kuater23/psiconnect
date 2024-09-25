@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart'; // Para formatear la fecha
+import 'package:Psiconnect/src/widgets/shared_drawer.dart'; // Importar el SharedDrawer
 
 class ProfessionalAppointments extends StatelessWidget {
   @override
@@ -24,9 +25,13 @@ class ProfessionalAppointments extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Citas Profesionales'),
+        automaticallyImplyLeading:
+            true, // Permitir el ícono del menú hamburguesa
       ),
+      drawer: SharedDrawer(), // Añadir el SharedDrawer correctamente
       body: StreamBuilder(
-        stream: AppointmentService().getAppointmentsByProfessional(professionalId),
+        stream:
+            AppointmentService().getAppointmentsByProfessional(professionalId),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
@@ -58,8 +63,10 @@ class ProfessionalAppointments extends StatelessWidget {
                 title: Text('Paciente ID: $patientId'),
                 children: patientAppointments.map((appointment) {
                   // Convertir y formatear la fecha de la cita
-                  DateTime appointmentDate = DateTime.parse(appointment['date']);
-                  String formattedDate = DateFormat('dd/MM/yyyy HH:mm').format(appointmentDate);
+                  DateTime appointmentDate =
+                      DateTime.parse(appointment['date']);
+                  String formattedDate =
+                      DateFormat('dd/MM/yyyy HH:mm').format(appointmentDate);
 
                   return Card(
                     child: ListTile(
@@ -68,7 +75,8 @@ class ProfessionalAppointments extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Estado: ${appointment['status']}'),
-                          Text('Detalles: ${appointment['details'] ?? "Sin detalles"}'),
+                          Text(
+                              'Detalles: ${appointment['details'] ?? "Sin detalles"}'),
                         ],
                       ),
                       trailing: Icon(Icons.arrow_forward_ios),
@@ -107,7 +115,10 @@ class AppointmentDetails extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Detalles de la Cita'),
+        automaticallyImplyLeading:
+            false, // Desactivar la flecha de volver atrás
       ),
+      drawer: SharedDrawer(), // Añadir el SharedDrawer correctamente
       body: Center(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,7 +131,8 @@ class AppointmentDetails extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ProfessionalFiles(patientId: patientId),
+                    builder: (context) =>
+                        ProfessionalFiles(patientId: patientId),
                   ),
                 );
               },
