@@ -3,7 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
-import 'package:Psiconnect/src/screens/patient/patient_page.dart';
+import 'package:Psiconnect/src/screens/patient/patient_home.dart';
+import 'package:Psiconnect/src/screens/patient/patient_appointments.dart';
+import 'package:Psiconnect/src/screens/patient/patient_files.dart';
 import 'package:Psiconnect/src/screens/professional/professional_home.dart';
 import 'package:Psiconnect/src/screens/professional/professional_appointments.dart';
 import 'package:Psiconnect/src/screens/professional/professional_files.dart';
@@ -64,6 +66,10 @@ class MyApp extends ConsumerWidget {
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
+        '/patient_appointments': (context) => PatientAppointments(),
+        '/patient_files': (context) => PatientFiles(
+              professionalId: '',
+            ),
         '/professional': (context) => ProfessionalHome(),
         '/professional_appointments': (context) => ProfessionalAppointments(),
         '/professional_files': (context) => ProfessionalFiles(
