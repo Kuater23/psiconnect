@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
 import 'package:Psiconnect/src/screens/patient/patient_page.dart';
 import 'package:Psiconnect/src/screens/professional/professional_home.dart';
@@ -24,39 +23,57 @@ void main() async {
   await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
 
   setPathUrlStrategy(); // Configura la estrategia de URL para evitar el "#"
-  runApp(
-    ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(MyApp());
 }
 
-// Provider para escuchar los cambios de autenticación
-final authProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
-});
-
-// Provider para obtener el rol del usuario autenticado
-final userRoleProvider = FutureProvider<String?>((ref) async {
-  final user = ref.watch(authProvider).asData?.value;
-  if (user != null) {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-    return doc.data()?['role'] as String?;
-  }
-  return null;
-});
-
-class MyApp extends ConsumerWidget {
+class MyApp extends StatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  // Maneja el modo oscuro
+  bool _isDarkMode = false;
+
+  // Verifica el estado de autenticación al cargar la app
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthState();
+  }
+
+  // Función para verificar el estado de autenticación del usuario
+  Future<void> _checkAuthState() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        // El usuario está autenticado
+        // Aquí podríamos realizar cualquier lógica adicional si es necesario
+      });
+    }
+  }
+
+  // Función para alternar entre modo claro y oscuro
+  void _toggleTheme() {
+    setState(() {
+      _isDarkMode = !_isDarkMode;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: "Psiconnect",
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         primaryColor: Color.fromRGBO(1, 40, 45, 1),
+        brightness: Brightness.light, // Modo claro
         visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark, // Modo oscuro
+        primaryColor: Colors.grey[900],
+        hintColor: Colors.tealAccent,
       ),
       initialRoute: '/home',
       routes: {
@@ -64,7 +81,9 @@ class MyApp extends ConsumerWidget {
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
-        '/professional': (context) => ProfessionalHome(),
+        '/professional': (context) => ProfessionalHome(
+              toggleTheme: () {},
+            ),
         '/professional_appointments': (context) => ProfessionalAppointments(),
         '/professional_files': (context) => ProfessionalFiles(
               patientId: '',
@@ -72,49 +91,57 @@ class MyApp extends ConsumerWidget {
         '/admin': (context) => AdminPage(),
       },
       onGenerateRoute: (settings) {
-        // Manejo de rutas dinámicas si es necesario
         return MaterialPageRoute(
-          builder: (context) => AuthWrapper(),
+          builder: (context) => AuthWrapper(
+              toggleTheme: _toggleTheme), // Pasamos la función de alternar tema
         );
       },
     );
   }
 }
 
-class AuthWrapper extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
+// Wrapper de autenticación
+class AuthWrapper extends StatelessWidget {
+  final VoidCallback toggleTheme;
 
-    return authState.when(
-      data: (user) {
-        if (user == null) {
-          // No hay usuario autenticado, mostrar la página de inicio de sesión
-          return LoginPage();
-        } else {
-          // Usuario autenticado, obtener el rol
-          final roleAsyncValue = ref.watch(userRoleProvider);
-          return roleAsyncValue.when(
-            data: (role) {
-              if (role == 'professional') {
-                return ProfessionalHome();
-              } else if (role == 'patient') {
-                return PatientPage(email: user.email!);
-              } else if (role == 'admin') {
+  AuthWrapper({required this.toggleTheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return FirebaseAuth.instance.currentUser == null
+        ? LoginPage()
+        : FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance
+                .collection('users')
+                .doc(FirebaseAuth.instance.currentUser?.uid)
+                .get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return LoadingScreen();
+              }
+
+              if (snapshot.hasError || !snapshot.hasData) {
+                return ErrorScreen(
+                    message: 'Error al obtener los datos del usuario');
+              }
+
+              final userRole = snapshot.data?.get('role') as String?;
+
+              if (userRole == 'professional') {
+                return ProfessionalHome(
+                  toggleTheme:
+                      toggleTheme, // Pasamos la función de alternar tema
+                );
+              } else if (userRole == 'patient') {
+                return PatientPage(
+                    email: FirebaseAuth.instance.currentUser!.email!);
+              } else if (userRole == 'admin') {
                 return AdminPage();
               } else {
                 return ErrorScreen(message: 'Rol desconocido');
               }
             },
-            loading: () => LoadingScreen(),
-            error: (e, _) =>
-                ErrorScreen(message: 'Error al obtener el rol: $e'),
           );
-        }
-      },
-      loading: () => LoadingScreen(),
-      error: (e, _) => ErrorScreen(message: 'Error: $e'),
-    );
   }
 }
 
