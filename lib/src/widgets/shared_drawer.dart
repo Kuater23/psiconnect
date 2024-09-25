@@ -77,6 +77,7 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
             onTap: () {
               Navigator.pushReplacementNamed(
                   context, '/home'); // Redirige a HomePage
+
             },
           ),
           if (_userRole == 'professional') ...[
