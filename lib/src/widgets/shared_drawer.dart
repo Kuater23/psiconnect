@@ -50,52 +50,62 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          // Botón para cerrar el drawer
-          Align(
-            alignment: Alignment.topRight,
-            child: IconButton(
-              icon: Icon(Icons.close),
-              onPressed: () {
-                Navigator.of(context).pop(); // Cierra el drawer
-              },
-            ),
-          ),
-          DrawerHeader(
+          // Contenedor en lugar de DrawerHeader para controlar mejor la altura
+          Container(
+            height: 90, // Ajusta la altura
             decoration: BoxDecoration(
-              color: const Color.fromRGBO(1, 40, 45, 1), // Fondo de Psiconnect
+              color: const Color.fromRGBO(1, 40, 45, 1), // Fondo verde
             ),
-            child: Text(
-              'Menú ${_userRole == 'professional' ? 'Profesional' : 'Paciente'}',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-              ),
+            child: Stack(
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    icon: Icon(Icons.close, color: Colors.white),
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Cierra el drawer
+                    },
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Image.asset(
+                    'assets/images/logoCompleto_psiconnect.png', // Ruta del logo
+                    width: MediaQuery.of(context).size.width *
+                        0.4, // Ajusta el tamaño
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
             ),
           ),
           ListTile(
+            leading: Icon(Icons.home),
             title: Text('Inicio'),
             onTap: () {
               Navigator.pushReplacementNamed(
                   context, '/home'); // Redirige a HomePage
-
             },
           ),
           if (_userRole == 'professional') ...[
             ListTile(
-              title: Text('Home Profesional'),
+              leading: Icon(Icons.person),
+              title: Text('Perfil'),
               onTap: () {
                 Navigator.pushReplacementNamed(
                     context, '/professional'); // Redirige a ProfessionalHome
               },
             ),
             ListTile(
-              title: Text('Citas'),
+              leading: Icon(Icons.calendar_today),
+              title: Text('Agenda'),
               onTap: () {
                 Navigator.pushReplacementNamed(
                     context, '/professional_appointments');
               },
             ),
             ListTile(
+              leading: Icon(Icons.folder),
               title: Text('Archivos por Paciente'),
               onTap: () {
                 Navigator.pushReplacementNamed(context, '/professional_files');
@@ -103,20 +113,23 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
             ),
           ] else if (_userRole == 'patient') ...[
             ListTile(
-              title: Text('Información del Paciente'),
+              leading: Icon(Icons.person),
+              title: Text('Perfil del Paciente'),
               onTap: () {
                 Navigator.pushReplacementNamed(
                     context, '/patient'); // Redirige a PatientPage
               },
             ),
             ListTile(
-              title: Text('Citas'),
+              leading: Icon(Icons.calendar_today),
+              title: Text('Agenda'),
               onTap: () {
                 Navigator.pushReplacementNamed(
                     context, '/patient_appointments');
               },
             ),
             ListTile(
+              leading: Icon(Icons.folder),
               title: Text('Archivos'),
               onTap: () {
                 Navigator.pushReplacementNamed(context, '/patient_files');
@@ -125,8 +138,8 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
           ],
           SizedBox(height: 20),
           ListTile(
-            title: Text('Cerrar Sesión'),
             leading: Icon(Icons.logout),
+            title: Text('Cerrar Sesión'),
             onTap: () async {
               await _signOut(
                   context, ref); // Cerrar sesión y redirigir al login
