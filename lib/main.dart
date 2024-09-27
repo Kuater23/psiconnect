@@ -12,6 +12,7 @@ import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/login_page.dart';
 import 'package:Psiconnect/src/screens/register_page.dart';
 import 'package:Psiconnect/firebase_options.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -21,11 +22,12 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Configura la persistencia de sesión a nivel local
-  await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
-
-  setPathUrlStrategy(); // Configura la estrategia de URL para evitar el "#"
-  runApp(MyApp());
+  runApp(
+    ProviderScope(
+      // Asegúrate de que el ProviderScope envuelve tu aplicación
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -84,13 +86,14 @@ class _MyAppState extends State<MyApp> {
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
 
-
         '/patient_appointments': (context) => PatientAppointments(),
         '/patient_files': (context) => PatientFiles(
               professionalId: '',
             ),
-        '/professional': (context) => ProfessionalHome(),
-        
+        '/professional': (context) => ProfessionalHome(
+              toggleTheme: () {},
+            ),
+
         '/professional_appointments': (context) => ProfessionalAppointments(),
         '/professional_files': (context) => ProfessionalFiles(
               patientId: '',

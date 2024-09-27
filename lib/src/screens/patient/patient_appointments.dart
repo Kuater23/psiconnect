@@ -16,7 +16,7 @@ class PatientAppointments extends StatelessWidget {
     if (patientId == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('Citas del Paciente'),
+          title: Text('Agenda Digital'),
           actions: [
             Builder(
               builder: (BuildContext context) {
@@ -37,9 +37,10 @@ class PatientAppointments extends StatelessWidget {
       );
     }
 
+    // Si el ID del paciente no es nulo, mostrar la lista de profesionales
     return Scaffold(
       appBar: AppBar(
-        title: Text('Citas del Paciente'),
+        title: Text('Agenda Digital'),
         actions: [
           Builder(
             builder: (BuildContext context) {
@@ -55,74 +56,101 @@ class PatientAppointments extends StatelessWidget {
         ],
       ),
       drawer: SharedDrawer(), // Utilizar el Drawer compartido
-      body: StreamBuilder(
-        stream: AppointmentService().getAppointmentsByPatient(patientId),
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .where('role', isEqualTo: 'professional')
+            .snapshots(),
+        builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
-
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('No tienes citas programadas.'));
+            return Center(child: Text('No hay profesionales disponibles'));
           }
 
-          // Mapa para agrupar las citas por profesional
-          Map<String, List<QueryDocumentSnapshot>> groupedAppointments = {};
+          final professionals = snapshot.data!.docs;
 
-          // Agrupar citas por profesional
-          for (var appointment in snapshot.data!.docs) {
-            String professionalId = appointment['professional_id'];
-            if (!groupedAppointments.containsKey(professionalId)) {
-              groupedAppointments[professionalId] = [];
-            }
-            groupedAppointments[professionalId]!.add(appointment);
-          }
-
-          // Crear una lista expandible para cada profesional y sus citas
-          return ListView(
-            children: groupedAppointments.entries.map((entry) {
-              String professionalId = entry.key;
-              List<QueryDocumentSnapshot> professionalAppointments =
-                  entry.value;
-
-              return ExpansionTile(
-                title: Text('Profesional ID: $professionalId'),
-                children: professionalAppointments.map((appointment) {
-                  // Convertir y formatear la fecha de la cita
-                  DateTime appointmentDate =
-                      DateTime.parse(appointment['date']);
-                  String formattedDate =
-                      DateFormat('dd/MM/yyyy HH:mm').format(appointmentDate);
-
-                  return Card(
-                    child: ListTile(
-                      title: Text('Fecha: $formattedDate'),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          return GridView.builder(
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 300,
+              childAspectRatio: 2 / 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: professionals.length,
+            itemBuilder: (context, index) {
+              final professional = professionals[index];
+              return Card(
+                margin: EdgeInsets.all(10),
+                child: Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Dr. ${professional['lastName']}, ${professional['name']}',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        'Clinica medica',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      SizedBox(height: 10),
+                      Row(
                         children: [
-                          Text('Estado: ${appointment['status']}'),
-                          Text(
-                              'Detalles: ${appointment['details'] ?? "Sin detalles"}'),
+                          Icon(Icons.location_on),
+                          SizedBox(width: 5),
+                          Expanded(
+                            child: Text('${professional['address']}'),
+                          ),
                         ],
                       ),
-                      trailing: Icon(Icons.arrow_forward_ios),
-                      onTap: () {
-                        // Navegar a los detalles de la cita
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AppointmentDetails(
-                              appointmentId: appointment.id,
-                              professionalId: appointment['professional_id'],
-                            ),
+                      SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Icon(Icons.email),
+                          SizedBox(width: 5),
+                          Expanded(
+                            child: Text('${professional['email']}'),
                           ),
-                        );
-                      },
-                    ),
-                  );
-                }).toList(),
+                        ],
+                      ),
+                      SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Icon(Icons.phone),
+                          SizedBox(width: 5),
+                          Expanded(
+                            child: Text('${professional['phone']}'),
+                          ),
+                        ],
+                      ),
+                      Spacer(),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProfessionalAgenda(
+                                  professional: professional,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.arrow_forward),
+                          label: Text('Ver agenda'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               );
-            }).toList(),
+            },
           );
         },
       ),
@@ -130,52 +158,65 @@ class PatientAppointments extends StatelessWidget {
   }
 }
 
-class AppointmentDetails extends StatelessWidget {
-  final String appointmentId;
-  final String professionalId;
+class ProfessionalAgenda extends StatelessWidget {
+  final QueryDocumentSnapshot professional;
 
-  AppointmentDetails(
-      {required this.appointmentId, required this.professionalId});
+  ProfessionalAgenda({required this.professional});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Detalles de la Cita'),
-        actions: [
-          Builder(
-            builder: (BuildContext context) {
-              return IconButton(
-                icon: Icon(Icons.menu),
-                onPressed: () {
-                  Scaffold.of(context).openDrawer();
-                },
-                tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
-              );
-            },
-          ),
-        ],
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+        title: Text(
+          'Agenda del Dr. ${professional['lastName']}, ${professional['name']}',
+        ),
       ),
-      drawer: SharedDrawer(), // Utilizar el Drawer compartido
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Cita ID: $appointmentId'),
-            Text('Profesional ID: $professionalId'),
-            // Aquí puedes agregar más detalles de la cita si lo deseas
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        PatientFiles(professionalId: professionalId),
-                  ),
-                );
-              },
-              child: Text('Ver historial clínico completo'),
+            Text(
+              'Datos de contacto:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.location_on),
+                SizedBox(width: 5),
+                Expanded(
+                  child: Text('${professional['address']}'),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.email),
+                SizedBox(width: 5),
+                Expanded(
+                  child: Text('${professional['email']}'),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Icon(Icons.phone),
+                SizedBox(width: 5),
+                Expanded(
+                  child: Text('${professional['phone']}'),
+                ),
+              ],
+            ),
+            Spacer(),
           ],
         ),
       ),
