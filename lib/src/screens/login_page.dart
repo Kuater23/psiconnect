@@ -4,7 +4,7 @@ import 'package:Psiconnect/src/service/auth_service.dart';
 import 'package:Psiconnect/src/screens/register_page.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:flutter_signin_button/flutter_signin_button.dart';// Para botones de inicio de sesión estilizados
+import 'package:flutter_signin_button/flutter_signin_button.dart'; // Para botones de inicio de sesión estilizados
 
 class LoginPage extends ConsumerStatefulWidget {
   @override
@@ -21,13 +21,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   String? _emailError;
   String? _passwordError;
 
-  bool _obscurePassword = true; // Para controlar si la contraseña se muestra o no
+  bool _obscurePassword =
+      true; // Para controlar si la contraseña se muestra o no
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color.fromRGBO(
+          2, 60, 67, 1), // Color base de Psiconnect para el fondo
       appBar: AppBar(
         title: Text('Iniciar Sesión'),
+        backgroundColor: Color.fromRGBO(
+            2, 60, 67, 1), // Color base de Psiconnect para el fondo
+        titleTextStyle: TextStyle(
+          color: Colors.white, // Color de texto blanco
+          fontSize: 24, // Tamaño del texto
+          fontWeight: FontWeight.bold, // Negrita para el texto
+        ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
@@ -35,17 +45,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           },
         ),
       ),
-      body: Stack(
-        children: [
-          _buildContent(context),
-          if (_isLoading)
-            Container(
-              color: Colors.black45,
-              child: Center(
-                child: CircularProgressIndicator(),
+      body: SingleChildScrollView(
+        child: Stack(
+          children: [
+            _buildContent(context),
+            if (_isLoading)
+              Container(
+                color: Colors.black45,
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -55,31 +67,55 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       padding: const EdgeInsets.all(16.0),
       child: Center(
         child: SingleChildScrollView(
-          child: Container(
-            width: 300,
-            child: Card(
-              elevation: 4.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15.0),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildLogo(),
-                    SizedBox(height: 20),
-                    _buildTextFields(),
-                    SizedBox(height: 20),
-                    _buildLoginButton(context),
-                    SizedBox(height: 10),
-                    _buildGoogleLoginButton(context),
-                    SizedBox(height: 10),
-                    _buildRegisterButton(context),
-                  ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Bienvenido',
+                style: TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.bold,
+                  color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
                 ),
               ),
-            ),
+              SizedBox(height: 5),
+              Text(
+                'Inicie Sesión para continuar',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white, // Color del texto
+                ),
+              ),
+              SizedBox(height: 20),
+              Container(
+                width: 300,
+                child: Card(
+                  color: Color.fromRGBO(
+                      1, 40, 45, 1), // Color de fondo del contenedor del login
+                  elevation: 4.0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15.0),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildLogo(),
+                        SizedBox(height: 20),
+                        _buildTextFields(),
+                        SizedBox(height: 20),
+                        _buildLoginButton(context),
+                        SizedBox(height: 10),
+                        _buildGoogleLoginButton(context),
+                        SizedBox(height: 10),
+                        _buildRegisterButton(context),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -89,9 +125,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildLogo() {
     return Column(
       children: [
-        Image.asset(
-          'assets/images/logo.png',
-          height: 100,
+        ClipRRect(
+          borderRadius:
+              BorderRadius.circular(20.0), // Radio de los ángulos redondeados
+          child: Image.asset(
+            'assets/images/logo.png',
+            height: 100,
+            fit: BoxFit
+                .contain, // Asegurar que la imagen se ajuste dentro del contenedor
+          ),
         ),
         SizedBox(height: 10),
         Text(
@@ -99,6 +141,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
+            color: Colors.white, // Color del texto
           ),
         ),
       ],
@@ -112,13 +155,36 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           controller: _emailController,
           decoration: InputDecoration(
             labelText: 'Email',
+            labelStyle: TextStyle(
+                color: Color.fromRGBO(
+                    11, 191, 205, 1)), // Color del texto del label
             errorText: _emailError,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1)), // Borde en el color especificado
             ),
-            prefixIcon: Icon(Icons.email),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1)), // Borde en el color especificado
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1)), // Borde en el color especificado
+            ),
+            prefixIcon: Icon(Icons.email,
+                color: Color.fromRGBO(
+                    11, 191, 205, 1)), // Icono en el color especificado
           ),
           keyboardType: TextInputType.emailAddress,
+          style: TextStyle(
+              color: Color.fromRGBO(
+                  11, 191, 205, 1)), // Color del texto en el color especificado
         ),
         SizedBox(height: 10),
         TextField(
@@ -126,14 +192,36 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           obscureText: _obscurePassword,
           decoration: InputDecoration(
             labelText: 'Contraseña',
+            labelStyle: TextStyle(
+                color: Color.fromRGBO(
+                    11, 191, 205, 1)), // Color del texto del label
             errorText: _passwordError,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1)), // Borde en el color especificado
             ),
-            prefixIcon: Icon(Icons.lock),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1)), // Borde en el color especificado
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1)), // Borde en el color especificado
+            ),
+            prefixIcon: Icon(Icons.lock,
+                color: Color.fromRGBO(
+                    11, 191, 205, 1)), // Icono en el color especificado
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                color: Color.fromRGBO(
+                    11, 191, 205, 1), // Icono en el color especificado
               ),
               onPressed: () {
                 setState(() {
@@ -142,6 +230,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               },
             ),
           ),
+          style: TextStyle(
+              color: Color.fromRGBO(
+                  11, 191, 205, 1)), // Color del texto en el color especificado
         ),
       ],
     );
@@ -155,22 +246,48 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         }
       },
       style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white, // Color de fondo del botón
         padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10.0),
         ),
+        elevation: 10, // Aumentar la sombra para el botón
       ),
-      child: Text('Iniciar Sesión'),
+      child: Text(
+        'Iniciar Sesión',
+        style: TextStyle(
+          color: Color.fromRGBO(154, 141, 140, 1), // Color del texto en RGBO
+        ),
+      ),
     );
   }
 
   Widget _buildGoogleLoginButton(BuildContext context) {
-    return SignInButton(
-      Buttons.Google,
-      text: 'Iniciar Sesión con Google',
-      onPressed: () async {
-        await _signInWithGoogle(context);
-      },
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4), // Hacer la sombra más oscura
+            spreadRadius: 4, // Aumentar el spreadRadius
+            blurRadius: 10, // Aumentar el blurRadius
+            offset: Offset(0, 3), // Sombra para el botón
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10.0),
+        child: SignInButton(
+          Buttons.Google,
+          text: 'Iniciar Sesión con Google',
+          onPressed: () async {
+            await _signInWithGoogle(context);
+          },
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+        ),
+      ),
     );
   }
 
@@ -182,7 +299,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           MaterialPageRoute(builder: (context) => RegisterPage()),
         );
       },
-      child: Text('¿Todavía no tienes una cuenta? Regístrate aquí'),
+      child: Text(
+        '¿Todavía no tienes una cuenta? Regístrate aquí',
+        style: TextStyle(
+            color: Color.fromRGBO(11, 191, 205, 1)), // Color del texto
+      ),
     );
   }
 
