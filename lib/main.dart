@@ -91,7 +91,9 @@ class _MyAppState extends State<MyApp> {
               professionalId: '',
             ),
         '/professional': (context) => ProfessionalHome(
-              toggleTheme: _toggleTheme,
+
+              toggleTheme: () {}, 
+
             ),
 
         '/professional_appointments': (context) => ProfessionalAppointments(),
