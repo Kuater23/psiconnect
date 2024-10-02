@@ -16,7 +16,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   // Controladores de texto
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _identificationNumberController = TextEditingController();
+  final TextEditingController _identificationNumberController =
+      TextEditingController();
   final TextEditingController _nroMatriculaController = TextEditingController();
 
   // Variables de estado para errores y carga
@@ -31,8 +32,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color.fromRGBO(
+          2, 60, 67, 1), // Color base de Psiconnect para el fondo
       appBar: AppBar(
         title: Text('Registro'),
+        backgroundColor: Color.fromRGBO(
+            2, 60, 67, 1), // Color base de Psiconnect para el fondo
+        titleTextStyle: TextStyle(
+          color: Colors.white, // Color de texto blanco
+          fontSize: 24, // Tamaño del texto
+          fontWeight: FontWeight.bold, // Negrita para el texto
+        ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
@@ -61,6 +71,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         child: Container(
           width: 350,
           child: Card(
+            color: Color.fromRGBO(
+                1, 40, 45, 1), // Color de fondo del contenedor del login
             margin: EdgeInsets.all(16.0),
             elevation: 8.0,
             shape: RoundedRectangleBorder(
@@ -104,6 +116,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
+            color: Colors.white, // Color del texto
           ),
         ),
       ],
@@ -135,14 +148,36 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             value: _selectedDocumentType,
             decoration: InputDecoration(
               labelText: 'Tipo de Documento',
+              labelStyle: TextStyle(
+                color: Color.fromRGBO(
+                    11, 191, 205, 1), // Color del texto del label
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10.0),
+                borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1), // Borde en el color especificado
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.0),
+                borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1), // Borde en el color especificado
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10.0),
+                borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1), // Borde en el color especificado
+                ),
               ),
             ),
             items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
-                child: Text(value),
+                child: Text(value, style: TextStyle(color: Colors.black)),
               );
             }).toList(),
             onChanged: (newValue) {
@@ -150,6 +185,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 _selectedDocumentType = newValue;
               });
             },
+            selectedItemBuilder: (BuildContext context) {
+              return ['DNI', 'Pasaporte', 'Otro'].map((String value) {
+                return Text(
+                  value,
+                  style: TextStyle(
+                      color: Color.fromRGBO(
+                          11, 191, 205, 1)), // Color del texto seleccionado
+                );
+              }).toList();
+            },
+
+            iconEnabledColor: Color.fromRGBO(
+                11, 191, 205, 1), // Color del ícono del botón desplegable
           ),
           SizedBox(height: 16.0),
           _buildTextField(
@@ -186,10 +234,37 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         labelText: labelText,
         hintText: hintText,
         errorText: errorText,
+        labelStyle: TextStyle(
+          color: Color.fromRGBO(11, 191, 205, 1), // Color del texto del label
+        ),
+        hintStyle: TextStyle(
+          color: Color.fromRGBO(11, 191, 205, 1), // Color del texto del hint
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide(
+            color: Color.fromRGBO(
+                11, 191, 205, 1), // Borde en el color especificado
+          ),
         ),
-        prefixIcon: Icon(icon),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide(
+            color: Color.fromRGBO(
+                11, 191, 205, 1), // Borde en el color especificado
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide(
+            color: Color.fromRGBO(
+                11, 191, 205, 1), // Borde en el color especificado
+          ),
+        ),
+        prefixIcon: Icon(icon, color: Color.fromRGBO(11, 191, 205, 1)),
+      ),
+      style: TextStyle(
+        color: Color.fromRGBO(11, 191, 205, 1), // Color del texto del campo
       ),
       obscureText: obscureText,
     );
@@ -215,9 +290,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   Widget _buildRegisterButton() {
     return ElevatedButton(
-      onPressed: _isLoading ? null : () async {
-        await _registerUser();
-      },
+      onPressed: _isLoading
+          ? null
+          : () async {
+              await _registerUser();
+            },
       child: Text('Registrarse'),
       style: ElevatedButton.styleFrom(
         padding: EdgeInsets.symmetric(vertical: 15),
@@ -230,7 +307,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       Buttons.Google,
       text: 'Registrarse con Google',
       onPressed: () {
-        _registerWithGoogle();  // Function is called only when the button is pressed
+        _registerWithGoogle(); // Function is called only when the button is pressed
       },
     );
   }
@@ -282,7 +359,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       }
 
       if (_identificationNumberController.text.isEmpty) {
-        _identificationError = 'Por favor, ingresa el número de identificación.';
+        _identificationError =
+            'Por favor, ingresa el número de identificación.';
         isValid = false;
       }
 
@@ -333,53 +411,55 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Future<void> _registerWithGoogle() async {
-  setState(() {
-    _isLoading = true;
-  });
+    setState(() {
+      _isLoading = true;
+    });
 
-  try {
-    // Sign in with Google
-    User? user = await _authService.signInWithGoogle();
+    try {
+      // Sign in with Google
+      User? user = await _authService.signInWithGoogle();
 
-    if (user != null) {
-      // Show role selection dialog and wait for the user's choice
-      await _showRoleSelectionDialog();
+      if (user != null) {
+        // Show role selection dialog and wait for the user's choice
+        await _showRoleSelectionDialog();
 
-      // Determine the user's role based on the selection
-      String role = _isProfessional ? 'professional' : 'patient';
+        // Determine the user's role based on the selection
+        String role = _isProfessional ? 'professional' : 'patient';
 
-      // Update the user's role in Firestore
-      await _authService.updateUserRole(user.uid, role);
+        // Update the user's role in Firestore
+        await _authService.updateUserRole(user.uid, role);
 
-      // If the user is a professional, update additional professional information
-      if (_isProfessional) {
-        // Ensure that document type and identification number are valid
-        if (_selectedDocumentType == null || _identificationNumberController.text.trim().isEmpty) {
-          _showErrorSnackBar('Please provide all required professional information.');
-          return;
+        // If the user is a professional, update additional professional information
+        if (_isProfessional) {
+          // Ensure that document type and identification number are valid
+          if (_selectedDocumentType == null ||
+              _identificationNumberController.text.trim().isEmpty) {
+            _showErrorSnackBar(
+                'Please provide all required professional information.');
+            return;
+          }
+
+          await _authService.updateProfessionalInfo(
+            uid: user.uid,
+            documentType: _selectedDocumentType!,
+            idNumber: _identificationNumberController.text.trim(),
+            matricula: _nroMatriculaController.text.trim(),
+          );
         }
 
-        await _authService.updateProfessionalInfo(
-          uid: user.uid,
-          documentType: _selectedDocumentType!,
-          idNumber: _identificationNumberController.text.trim(),
-          matricula: _nroMatriculaController.text.trim(),
-        );
+        // Navigate to the home route after registration and role selection
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       }
-
-      // Navigate to the home route after registration and role selection
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    } catch (e) {
+      // Show an error message in a snackbar if something goes wrong
+      _showErrorSnackBar('Error: ${e.toString()}');
+    } finally {
+      // Ensure the loading state is reset
+      setState(() {
+        _isLoading = false;
+      });
     }
-  } catch (e) {
-    // Show an error message in a snackbar if something goes wrong
-    _showErrorSnackBar('Error: ${e.toString()}');
-  } finally {
-    // Ensure the loading state is reset
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
 
   Future<void> _showRoleSelectionDialog() async {
     return showDialog<void>(

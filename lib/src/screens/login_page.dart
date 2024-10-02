@@ -71,7 +71,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Bienvenido',
+                'Inicie Sesión para continuar',
                 style: TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
@@ -80,7 +80,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
               SizedBox(height: 5),
               Text(
-                'Inicie Sesión para continuar',
+                'Complete los siguientes campos:',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.white, // Color del texto
