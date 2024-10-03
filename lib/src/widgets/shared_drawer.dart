@@ -5,6 +5,7 @@ import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
 import 'package:Psiconnect/src/screens/home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:Psiconnect/src/screens/patient/appointments.dart'; // Importamos la nueva pantalla de citas
 
 class SharedDrawer extends ConsumerStatefulWidget {
   @override
@@ -85,6 +86,16 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
             onTap: () {
               Navigator.pushReplacementNamed(
                   context, '/home'); // Redirige a HomePage
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.calendar_today),
+            title: Text('Citas'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AppointmentsScreen()),
+              );
             },
           ),
           if (_userRole == 'professional') ...[
