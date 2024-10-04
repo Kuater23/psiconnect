@@ -1,222 +1,113 @@
 import 'package:Psiconnect/src/screens/patient/patient_files.dart';
-import 'package:Psiconnect/src/service/patient_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:Psiconnect/src/widgets/shared_drawer.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart'; // Para formatear la fecha
-import 'package:Psiconnect/src/widgets/shared_drawer.dart'; // Drawer compartido
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:Psiconnect/src/providers/patient_appointments_provider.dart';
 
-class PatientAppointments extends StatelessWidget {
+class PatientAppointments extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    // Obtener el ID del paciente autenticado
-    final String? patientId = FirebaseAuth.instance.currentUser?.uid;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appointmentsState = ref.watch(patientAppointmentsProvider);
 
-    // Verificar que el ID del paciente no sea nulo
-    if (patientId == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Agenda Digital'),
-          actions: [
-            Builder(
-              builder: (BuildContext context) {
-                return IconButton(
-                  icon: Icon(Icons.menu),
-                  onPressed: () {
-                    Scaffold.of(context).openDrawer();
-                  },
-                  tooltip:
-                      MaterialLocalizations.of(context).openAppDrawerTooltip,
-                );
-              },
-            ),
-          ],
-        ),
-        drawer: SharedDrawer(), // Utilizar el Drawer compartido
-        body: Center(child: Text('No se encontró el paciente autenticado')),
-      );
-    }
-
-    // Si el ID del paciente no es nulo, mostrar la lista de profesionales
     return Scaffold(
       appBar: AppBar(
         title: Text('Agenda Digital'),
-        actions: [
-          Builder(
-            builder: (BuildContext context) {
-              return IconButton(
-                icon: Icon(Icons.menu),
-                onPressed: () {
-                  Scaffold.of(context).openDrawer();
-                },
-                tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
-              );
-            },
-          ),
-        ],
       ),
-      drawer: SharedDrawer(), // Utilizar el Drawer compartido
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .where('role', isEqualTo: 'professional')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('No hay profesionales disponibles'));
+      drawer: SharedDrawer(),
+      body: appointmentsState.when(
+        loading: () => Center(child: CircularProgressIndicator()),
+        data: (appointments) {
+          if (appointments.isEmpty) {
+            return Center(child: Text('No tienes citas programadas.'));
           }
 
-          final professionals = snapshot.data!.docs;
-
-          return GridView.builder(
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 300,
-              childAspectRatio: 2 / 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: professionals.length,
+          return ListView.builder(
+            itemCount: appointments.length,
             itemBuilder: (context, index) {
-              final professional = professionals[index];
+              final appointment = appointments[index];
+              DateTime appointmentDate = DateTime.parse(appointment.date);
+              String formattedDate =
+                  DateFormat('dd/MM/yyyy HH:mm').format(appointmentDate);
+
+              // En el ListView.builder
               return Card(
-                margin: EdgeInsets.all(10),
-                child: Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Column(
+                margin: EdgeInsets.all(8),
+                child: ListTile(
+                  title: Text('Fecha: $formattedDate'),
+                  subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Dr. ${professional['lastName']}, ${professional['name']}',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        'Clinica medica',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on),
-                          SizedBox(width: 5),
-                          Expanded(
-                            child: Text('${professional['address']}'),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 5),
-                      Row(
-                        children: [
-                          Icon(Icons.email),
-                          SizedBox(width: 5),
-                          Expanded(
-                            child: Text('${professional['email']}'),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 5),
-                      Row(
-                        children: [
-                          Icon(Icons.phone),
-                          SizedBox(width: 5),
-                          Expanded(
-                            child: Text('${professional['phone']}'),
-                          ),
-                        ],
-                      ),
-                      Spacer(),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ProfessionalAgenda(
-                                  professional: professional,
-                                ),
-                              ),
-                            );
-                          },
-                          icon: Icon(Icons.arrow_forward),
-                          label: Text('Ver agenda'),
-                        ),
-                      ),
+                      Text('Estado: ${appointment.status}'),
+                      Text('Detalles: ${appointment.details}'),
                     ],
                   ),
+                  trailing: Icon(Icons.arrow_forward_ios),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AppointmentDetails(
+                          appointmentId: appointment.id,
+                          patientId: appointment.patientId,
+                          professionalId: appointment.professionalId,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               );
             },
           );
         },
+        error: (e, _) => Center(child: Text('Error al cargar citas: $e')),
       ),
     );
   }
 }
 
-class ProfessionalAgenda extends StatelessWidget {
-  final QueryDocumentSnapshot professional;
+class AppointmentDetails extends StatelessWidget {
+  final String appointmentId;
+  final String patientId;
+  final String professionalId; // Añade este campo
 
-  ProfessionalAgenda({required this.professional});
+  AppointmentDetails({
+    required this.appointmentId,
+    required this.patientId,
+    required this.professionalId, // Añade este parámetro requerido
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-        title: Text(
-          'Agenda del Dr. ${professional['lastName']}, ${professional['name']}',
-        ),
+        title: Text('Detalles de la Cita'),
       ),
+      drawer: SharedDrawer(),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Cita ID: $appointmentId'),
+            Text('Paciente ID: $patientId'),
             Text(
-              'Datos de contacto:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                'Profesional ID: $professionalId'), // Muestra el ID del profesional
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PatientFiles(
+                      patientId: patientId,
+                      professionalId: '',
+                    ),
+                  ),
+                );
+              },
+              child: Text('Ver historial clínico completo'),
             ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.location_on),
-                SizedBox(width: 5),
-                Expanded(
-                  child: Text('${professional['address']}'),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.email),
-                SizedBox(width: 5),
-                Expanded(
-                  child: Text('${professional['email']}'),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.phone),
-                SizedBox(width: 5),
-                Expanded(
-                  child: Text('${professional['phone']}'),
-                ),
-              ],
-            ),
-            Spacer(),
           ],
         ),
       ),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:Psiconnect/src/service/auth_service.dart';
+import 'package:Psiconnect/src/services/auth_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
-import 'package:Psiconnect/src/screens/home_page.dart';
+import 'package:Psiconnect/src/providers/session_provider.dart';
+import 'package:Psiconnect/src/screens/home/content/home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 

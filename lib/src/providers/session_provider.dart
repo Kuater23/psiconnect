@@ -2,7 +2,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-final sessionProvider = StateNotifierProvider<SessionNotifier, UserSession?>((ref) {
+final sessionProvider =
+    StateNotifierProvider<SessionNotifier, UserSession?>((ref) {
   return SessionNotifier();
 });
 
@@ -23,6 +24,7 @@ class SessionNotifier extends StateNotifier<UserSession?> {
     FirebaseAuth.instance.authStateChanges().listen((user) async {
       if (user != null) {
         try {
+          state = null; // Opción de indicar un estado de "cargando"
           final role = await _getUserRole(user.uid);
           state = UserSession(user: user, role: role);
           print('Sesión iniciada: ${user.email}, Rol: $role');
@@ -40,17 +42,19 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   // Función para obtener el rol del usuario desde Firestore
   Future<String> _getUserRole(String uid) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       if (doc.exists && doc.data() != null) {
         final role = doc.data()!['role'];
-        if (role != null) {
-          print('Rol obtenido: $role'); // Confirmar que el rol fue recuperado
-          return role as String;
+        if (role != null && role is String) {
+          print('Rol obtenido: $role');
+          return role;
         } else {
-          throw 'El campo role no está definido en Firestore';
+          throw Exception(
+              'El campo role no está definido o es inválido en Firestore');
         }
       } else {
-        throw 'Documento de usuario no encontrado en Firestore';
+        throw Exception('Documento de usuario no encontrado en Firestore');
       }
     } catch (e) {
       print('Error obteniendo el rol del usuario: $e');
@@ -61,28 +65,38 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   // Función para iniciar sesión con email y password
   Future<void> logIn(String email, String password) async {
     try {
-      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      state = null; // Estado de "cargando"
+      final userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
       final role = await _getUserRole(userCredential.user!.uid);
       state = UserSession(user: userCredential.user!, role: role);
       print('Usuario logueado: ${userCredential.user!.email}, Rol: $role');
+    } on FirebaseAuthException catch (e) {
+      print('Error de autenticación: ${e.message}');
+      state = null;
     } catch (e) {
       print('Error al iniciar sesión: $e');
       state = null;
+    } finally {
+      // Puedes agregar algún ajuste adicional si es necesario aquí
     }
   }
 
   // Función para iniciar sesión con Google
   Future<void> logInWithGoogle(User user) async {
     try {
+      state = null; // Estado de "cargando"
       final role = await _getUserRole(user.uid);
       state = UserSession(user: user, role: role);
       print('Usuario logueado con Google: ${user.email}, Rol: $role');
     } catch (e) {
       print('Error al iniciar sesión con Google: $e');
       state = null;
+    } finally {
+      // Manejar el final del proceso
     }
   }
 
