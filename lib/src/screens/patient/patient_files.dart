@@ -11,8 +11,17 @@ class PatientFiles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color.fromRGBO(
+          2, 60, 67, 1), // Color base de Psiconnect para el fondo
       appBar: AppBar(
         title: Text('Historial Clínico del Profesional $professionalId'),
+        backgroundColor: Color.fromRGBO(
+            2, 60, 67, 1), // Color base de Psiconnect para el fondo
+        titleTextStyle: TextStyle(
+          color: Colors.white, // Color de texto blanco
+          fontSize: 24, // Tamaño del texto
+          fontWeight: FontWeight.bold, // Negrita para el texto
+        ),
         actions: [
           Builder(
             builder: (BuildContext context) {
@@ -30,7 +39,9 @@ class PatientFiles extends StatelessWidget {
       drawer: SharedDrawer(), // Utilizar el Drawer compartido
       body: Center(
         child: Text(
-            'Aquí se mostrarán los archivos médicos completos del profesional con ID $professionalId.'),
+          'Aquí se mostrarán los archivos médicos completos del profesional con ID $professionalId.',
+          style: TextStyle(color: Colors.white), // Color del texto
+        ),
       ),
     );
   }

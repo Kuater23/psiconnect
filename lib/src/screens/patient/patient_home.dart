@@ -88,8 +88,17 @@ class _PatientPageState extends State<PatientPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color.fromRGBO(
+          2, 60, 67, 1), // Color base de Psiconnect para el fondo
       appBar: AppBar(
         title: Text('Información del Paciente'),
+        backgroundColor: Color.fromRGBO(
+            2, 60, 67, 1), // Color base de Psiconnect para el fondo
+        titleTextStyle: TextStyle(
+          color: Colors.white, // Color de texto blanco
+          fontSize: 24, // Tamaño del texto
+          fontWeight: FontWeight.bold, // Negrita para el texto
+        ),
         actions: [
           Builder(
             builder: (BuildContext context) {
@@ -108,7 +117,8 @@ class _PatientPageState extends State<PatientPage> {
       body: _isLoading
           ? Center(
               child:
-                  CircularProgressIndicator()) // Mostrar un spinner mientras se cargan los datos
+                  CircularProgressIndicator(), // Mostrar un spinner mientras se cargan los datos
+            )
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -130,60 +140,44 @@ class _PatientPageState extends State<PatientPage> {
         children: [
           Text(
             'Complete la siguiente información',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           SizedBox(height: 20),
-          TextFormField(
-            controller: _nameController,
-            decoration: InputDecoration(labelText: 'Nombre'),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingrese su nombre';
-              }
-              return null;
-            },
-          ),
+          _buildTextField(
+              _nameController, 'Nombre', 'Por favor ingrese su nombre'),
           SizedBox(height: 10),
-          TextFormField(
-            controller: _lastNameController,
-            decoration: InputDecoration(labelText: 'Apellido'),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingrese su apellido';
-              }
-              return null;
-            },
-          ),
+          _buildTextField(
+              _lastNameController, 'Apellido', 'Por favor ingrese su apellido'),
           SizedBox(height: 10),
-          TextFormField(
-            controller: _addressController,
-            decoration: InputDecoration(labelText: 'Dirección'),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingrese su dirección';
-              }
-              return null;
-            },
-          ),
+          _buildTextField(_addressController, 'Dirección',
+              'Por favor ingrese su dirección'),
           SizedBox(height: 10),
-          TextFormField(
-            controller: _phoneController,
-            decoration: InputDecoration(labelText: 'Teléfono'),
-            keyboardType: TextInputType.phone,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingrese su número de teléfono';
-              }
-              return null;
-            },
-          ),
+          _buildTextField(_phoneController, 'Teléfono',
+              'Por favor ingrese su número de teléfono',
+              keyboardType: TextInputType.phone),
           SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
                   value: _documentType,
-                  decoration: InputDecoration(labelText: 'Tipo de documento'),
+                  decoration: InputDecoration(
+                    labelText: 'Tipo de documento',
+                    labelStyle: TextStyle(color: Colors.white),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                  ),
                   items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
@@ -207,7 +201,7 @@ class _PatientPageState extends State<PatientPage> {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.edit),
+                icon: Icon(Icons.edit, color: Color.fromRGBO(11, 191, 205, 1)),
                 onPressed: () {
                   setState(() {
                     _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
@@ -222,18 +216,34 @@ class _PatientPageState extends State<PatientPage> {
               Expanded(
                 child: TextFormField(
                   controller: _documentNumberController,
-                  decoration: InputDecoration(labelText: 'Número de documento'),
-                  enabled: _isDocumentFieldsEditable,
+                  decoration: InputDecoration(
+                    labelText: 'Número de documento',
+                    labelStyle: TextStyle(color: Colors.white),
+                    enabled: _isDocumentFieldsEditable,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                  ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Por favor ingrese su número de documento';
                     }
                     return null;
                   },
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.edit),
+                icon: Icon(Icons.edit, color: Color.fromRGBO(11, 191, 205, 1)),
                 onPressed: () {
                   setState(() {
                     _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
@@ -250,10 +260,56 @@ class _PatientPageState extends State<PatientPage> {
                 _saveUserData();
               }
             },
-            child: Text(_isEditing ? 'Actualizar' : 'Guardar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  Color.fromRGBO(11, 191, 205, 1), // Color de fondo del botón
+              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              elevation: 10, // Aumentar la sombra para el botón
+            ),
+            child: Text(
+              _isEditing ? 'Actualizar' : 'Guardar',
+              style: TextStyle(
+                color: Colors.white, // Color del texto
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTextField(
+      TextEditingController controller, String labelText, String errorMessage,
+      {TextInputType keyboardType = TextInputType.text}) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: TextStyle(color: Colors.white),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide(color: Colors.white),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide(color: Colors.white),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10.0),
+          borderSide: BorderSide(color: Colors.white),
+        ),
+      ),
+      keyboardType: keyboardType,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return errorMessage;
+        }
+        return null;
+      },
+      style: TextStyle(color: Colors.white),
     );
   }
 
@@ -291,40 +347,71 @@ class _PatientPageState extends State<PatientPage> {
 
   // Muestra la información después de que se ingresen o carguen los datos
   Widget _buildPatientInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${_nameController.text} ${_lastNameController.text}',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    return Card(
+      color: Color.fromRGBO(
+          1, 40, 45, 1), // Color de fondo del contenedor del login
+      elevation: 4.0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15.0),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${_nameController.text} ${_lastNameController.text}',
+              style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Dirección: ${_addressController.text}',
+              style: TextStyle(fontSize: 16, color: Colors.white),
+            ),
+            Text(
+              'Teléfono: ${_phoneController.text}',
+              style: TextStyle(fontSize: 16, color: Colors.white),
+            ),
+            Text(
+              'Tipo de Documento: $_documentType',
+              style: TextStyle(fontSize: 16, color: Colors.white),
+            ),
+            Text(
+              'Número de Documento: ${_documentNumberController.text}',
+              style: TextStyle(fontSize: 16, color: Colors.white),
+            ),
+            SizedBox(height: 20),
+            Align(
+              alignment: Alignment.centerRight, // Mover el botón a la derecha
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isEditing = true;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromRGBO(
+                      11, 191, 205, 1), // Color de fondo del botón
+                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  elevation: 10, // Aumentar la sombra para el botón
+                ),
+                child: Text(
+                  'Editar',
+                  style: TextStyle(
+                    color: Colors.white, // Color del texto
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: 10),
-        Text(
-          'Dirección: ${_addressController.text}',
-          style: TextStyle(fontSize: 16),
-        ),
-        Text(
-          'Teléfono: ${_phoneController.text}',
-          style: TextStyle(fontSize: 16),
-        ),
-        Text(
-          'Tipo de Documento: $_documentType',
-          style: TextStyle(fontSize: 16),
-        ),
-        Text(
-          'Número de Documento: ${_documentNumberController.text}',
-          style: TextStyle(fontSize: 16),
-        ),
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () {
-            setState(() {
-              _isEditing = true;
-            });
-          },
-          child: Text('Editar'),
-        ),
-      ],
+      ),
     );
   }
 }

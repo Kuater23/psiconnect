@@ -5,6 +5,7 @@ import 'package:Psiconnect/src/providers/session_provider.dart';
 import 'package:Psiconnect/src/screens/home/content/home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:Psiconnect/src/screens/patient/appointments.dart'; // Importamos la nueva pantalla de citas
 
 final userRoleProvider = StateProvider<String?>((ref) => null);
 
@@ -91,7 +92,9 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
                   context, '/home'); // Redirige a HomePage
             },
           ),
+
           if (userRole == 'professional') ...[
+
             ListTile(
               leading: Icon(Icons.person),
               title: Text('Perfil'),
