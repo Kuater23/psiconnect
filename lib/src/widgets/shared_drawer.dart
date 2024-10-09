@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:Psiconnect/src/service/auth_service.dart';
+import 'package:Psiconnect/src/services/auth_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
-import 'package:Psiconnect/src/screens/home_page.dart';
+import 'package:Psiconnect/src/providers/session_provider.dart';
+import 'package:Psiconnect/src/screens/home/content/home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:Psiconnect/src/screens/patient/appointments.dart'; // Importamos la nueva pantalla de citas
+
+final userRoleProvider = StateProvider<String?>((ref) => null);
 
 class SharedDrawer extends ConsumerStatefulWidget {
   @override
@@ -13,8 +15,7 @@ class SharedDrawer extends ConsumerStatefulWidget {
 }
 
 class _SharedDrawerState extends ConsumerState<SharedDrawer> {
-  final AuthService _authService = AuthService(); // Servicio de autenticación
-  String? _userRole;
+  final AuthService _authService = AuthService();
   bool _isLoading = true;
 
   @override
@@ -30,8 +31,9 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
           .collection('users')
           .doc(user.uid)
           .get();
+      final role = userDoc['role'] as String?;
+      ref.read(userRoleProvider.notifier).state = role;
       setState(() {
-        _userRole = userDoc['role'];
         _isLoading = false;
       });
     } else {
@@ -43,6 +45,8 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    final userRole = ref.watch(userRoleProvider); // Acceso directo al rol
+
     if (_isLoading) {
       return Center(child: CircularProgressIndicator());
     }
@@ -88,17 +92,9 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
                   context, '/home'); // Redirige a HomePage
             },
           ),
-          ListTile(
-            leading: Icon(Icons.calendar_today),
-            title: Text('Citas'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => AppointmentsScreen()),
-              );
-            },
-          ),
-          if (_userRole == 'professional') ...[
+
+          if (userRole == 'professional') ...[
+
             ListTile(
               leading: Icon(Icons.person),
               title: Text('Perfil'),
@@ -122,7 +118,7 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
                 Navigator.pushReplacementNamed(context, '/professional_files');
               },
             ),
-          ] else if (_userRole == 'patient') ...[
+          ] else if (userRole == 'patient') ...[
             ListTile(
               leading: Icon(Icons.person),
               title: Text('Perfil del Paciente'),

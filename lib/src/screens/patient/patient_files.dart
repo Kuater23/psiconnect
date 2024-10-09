@@ -4,7 +4,8 @@ import 'package:Psiconnect/src/widgets/shared_drawer.dart'; // Drawer compartido
 class PatientFiles extends StatelessWidget {
   final String professionalId; // Profesional ID que se pasará desde la cita
 
-  const PatientFiles({Key? key, required this.professionalId})
+  const PatientFiles(
+      {Key? key, required this.professionalId, required String patientId})
       : super(key: key);
 
   @override

@@ -1,154 +1,70 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:Psiconnect/src/providers/professional_provider.dart';
 import 'package:Psiconnect/src/widgets/shared_drawer.dart';
-import 'package:Psiconnect/src/helpers/time_format_helper.dart'; // Integración con el helper de formato de tiempo
-import 'package:Psiconnect/src/helpers/validation_helper.dart'; // Integración con el helper de validaciones
-import 'package:Psiconnect/src/service/firestore_service.dart'; // Integración con el servicio Firestore
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:Psiconnect/src/helpers/time_format_helper.dart';
 
-class ProfessionalHome extends StatefulWidget {
-  final VoidCallback toggleTheme; // Añadir el parámetro toggleTheme
+class ProfessionalHome extends ConsumerWidget {
+  final VoidCallback toggleTheme;
 
-  // Constructor para aceptar el toggleTheme
   ProfessionalHome({required this.toggleTheme});
 
   @override
-  _ProfessionalHomeState createState() => _ProfessionalHomeState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final professionalState = ref.watch(professionalProvider);
 
-class _ProfessionalHomeState extends State<ProfessionalHome> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _lastNameController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _documentNumberController =
-      TextEditingController(); // Número de documento
-  final _licenseNumberController = TextEditingController(); // Matrícula
-  final List<String> _selectedDays = []; // Días seleccionados
-  TimeOfDay? _startTime; // Hora de inicio
-  TimeOfDay? _endTime; // Hora de fin
-
-  String? _documentType; // Tipo de documento
-  String? uid; // UID del usuario autenticado
-  String? email; // Email del usuario autenticado
-  bool _submitted = false;
-  bool _isEditing = false;
-  bool _isLoading = true;
-  bool _hasData = false;
-  bool _isDocumentFieldsEditable =
-      false; // Controlar la edición de los campos bloqueados
-
-  final FirestoreService _firestoreService =
-      FirestoreService(); // Integración del servicio Firestore
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData(); // Cargar los datos del usuario al iniciar la página
-  }
-
-  // Cargar los datos del usuario desde Firestore utilizando el UID
-  Future<void> _loadUserData() async {
-    User? user = FirebaseAuth.instance.currentUser;
-
-    if (user != null) {
-      uid = user.uid;
-      email = user.email;
-
-      try {
-        // Usar FirestoreService para obtener los datos del usuario
-        final data = await _firestoreService.getUserData(uid!);
-
-        if (data != null) {
-          setState(() {
-            _nameController.text = data['name'] ?? '';
-            _lastNameController.text = data['lastName'] ?? '';
-            _addressController.text = data['address'] ?? '';
-            _phoneController.text = data['phone'] ?? '';
-            _documentNumberController.text = data['documentNumber'] ?? '';
-            _licenseNumberController.text =
-                data['n_matricula']?.toString() ?? '';
-            _documentType = data['documentType'] ?? 'DNI';
-
-            // Cargar disponibilidad si existe
-            if (data.containsKey('availability')) {
-              Map<String, dynamic> availability = data['availability'];
-              _selectedDays
-                  .addAll(List<String>.from(availability['days'] ?? []));
-              _startTime = TimeFormatHelper.parseTime(
-                  availability['start_time'] ??
-                      '09:00'); // Usar helper para el formato de hora
-              _endTime = TimeFormatHelper.parseTime(
-                  availability['end_time'] ?? '17:00');
-            }
-
-            _hasData = ValidationHelper.checkMandatoryData(
-                data); // Usar helper para verificar datos obligatorios
-            _submitted = true;
-            _isEditing = false;
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _isLoading = false; // Los datos no existen
-          });
-        }
-      } catch (e) {
-        setState(() {
-          _isLoading = false; // Error al cargar los datos
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cargar los datos del usuario')),
-        );
-      }
-    } else {
-      setState(() {
-        _isLoading = false; // No hay usuario autenticado
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No hay un usuario autenticado')),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Home Profesional'),
         actions: [
           IconButton(
-            icon: Icon(Icons.brightness_6), // Icono de alternar tema
-            onPressed:
-                widget.toggleTheme, // Llama a la función toggleTheme pasada
+            icon: Icon(Icons.brightness_6),
+            onPressed: toggleTheme,
           ),
         ],
       ),
-      drawer: SharedDrawer(), // Utilizar el Drawer compartido
-      body: _isLoading
-          ? Center(
-              child:
-                  CircularProgressIndicator(), // Mostrar un spinner mientras se cargan los datos
-            )
+      drawer: SharedDrawer(),
+      body: professionalState.isLoading
+          ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              // Envolver el contenido en un SingleChildScrollView
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _hasData && !_isEditing
-                        ? _buildProfessionalInfo()
-                        : _buildForm(),
-                  ],
-                ),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  professionalState.hasData && !professionalState.isEditing
+                      ? _buildProfessionalInfo(ref)
+                      : _buildForm(ref, context),
+                ],
               ),
             ),
     );
   }
 
-  // Formulario de ingreso o edición de datos
-  Widget _buildForm() {
+  Widget _buildForm(WidgetRef ref, BuildContext context) {
+    final professionalState = ref.watch(professionalProvider);
+    final professionalNotifier = ref.read(professionalProvider.notifier);
+
+    // Form keys y controladores para manejar los campos de formulario
+    final _formKey = GlobalKey<FormState>();
+    final _nameController = TextEditingController(text: professionalState.name);
+    final _lastNameController =
+        TextEditingController(text: professionalState.lastName);
+    final _addressController =
+        TextEditingController(text: professionalState.address);
+    final _phoneController =
+        TextEditingController(text: professionalState.phone);
+    final _documentNumberController =
+        TextEditingController(text: professionalState.documentNumber);
+    final _licenseNumberController =
+        TextEditingController(text: professionalState.licenseNumber);
+    final List<String> _selectedDays = professionalState.selectedDays.toList();
+    TimeOfDay? _startTime = professionalState.startTime != null
+        ? TimeFormatHelper.parseTime(professionalState.startTime!)
+        : null;
+    TimeOfDay? _endTime = professionalState.endTime != null
+        ? TimeFormatHelper.parseTime(professionalState.endTime!)
+        : null;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -159,312 +75,162 @@ class _ProfessionalHomeState extends State<ProfessionalHome> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 20),
-          TextFormField(
+          _buildTextField(
+            labelText: 'Nombre',
             controller: _nameController,
-            decoration: InputDecoration(labelText: 'Nombre'),
-            validator: (value) => ValidationHelper.validateNotEmpty(
-                value, 'nombre'), // Usar helper para validación
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
-          TextFormField(
+          _buildTextField(
+            labelText: 'Apellido',
             controller: _lastNameController,
-            decoration: InputDecoration(labelText: 'Apellido'),
-            validator: (value) => ValidationHelper.validateNotEmpty(
-                value, 'apellido'), // Usar helper para validación
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
-          TextFormField(
+          _buildTextField(
+            labelText: 'Dirección del consultorio',
             controller: _addressController,
-            decoration: InputDecoration(labelText: 'Dirección del consultorio'),
-            validator: (value) => ValidationHelper.validateNotEmpty(
-                value, 'dirección'), // Usar helper para validación
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
-          TextFormField(
+          _buildTextField(
+            labelText: 'Teléfono',
             controller: _phoneController,
-            decoration: InputDecoration(labelText: 'Teléfono'),
             keyboardType: TextInputType.phone,
-            validator: (value) => ValidationHelper.validateNotEmpty(
-                value, 'teléfono'), // Usar helper para validación
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
-
-          // Campos reintroducidos para editar el tipo de documento y el DNI
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _documentType,
-                  decoration: InputDecoration(labelText: 'Tipo de documento'),
-                  items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: _isDocumentFieldsEditable
-                      ? (newValue) {
-                          setState(() {
-                            _documentType = newValue;
-                          });
-                        }
-                      : null,
-                  validator: (value) => ValidationHelper.validateNotEmpty(value,
-                      'tipo de documento'), // Usar helper para validación
-                  disabledHint: Text(_documentType ?? 'DNI'),
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.edit),
-                onPressed: () {
-                  setState(() {
-                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
-                  });
-                },
-              )
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _documentNumberController,
-                  decoration: InputDecoration(labelText: 'Número de documento'),
-                  enabled: _isDocumentFieldsEditable,
-                  validator: (value) => ValidationHelper.validateNotEmpty(value,
-                      'número de documento'), // Usar helper para validación
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.edit),
-                onPressed: () {
-                  setState(() {
-                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
-                  });
-                },
-              )
-            ],
-          ),
-          SizedBox(height: 10),
-
-          // Selector de días disponibles
-          Text('Días Disponibles',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          Wrap(
-            children: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
-                .map((day) => CheckboxListTile(
-                      title: Text(day),
-                      value: _selectedDays.contains(day),
-                      onChanged: (isSelected) {
-                        setState(() {
-                          if (isSelected ?? false) {
-                            _selectedDays.add(day);
-                          } else {
-                            _selectedDays.remove(day);
-                          }
-                        });
-                      },
-                    ))
-                .toList(),
-          ),
-          SizedBox(height: 10),
-
-          // Campos reintroducidos para editar el tipo de documento y el DNI
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _documentType,
-                  decoration: InputDecoration(labelText: 'Tipo de documento'),
-                  items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: _isDocumentFieldsEditable
-                      ? (newValue) {
-                          setState(() {
-                            _documentType = newValue;
-                          });
-                        }
-                      : null,
-                  validator: (value) => ValidationHelper.validateNotEmpty(value,
-                      'tipo de documento'), // Usar helper para validación
-                  disabledHint: Text(_documentType ?? 'DNI'),
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.edit),
-                onPressed: () {
-                  setState(() {
-                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
-                  });
-                },
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _documentNumberController,
-                  decoration: InputDecoration(labelText: 'Número de documento'),
-                  enabled: _isDocumentFieldsEditable,
-                  validator: (value) => ValidationHelper.validateNotEmpty(value,
-                      'número de documento'), // Usar helper para validación
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.edit),
-                onPressed: () {
-                  setState(() {
-                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
-                  });
-                },
-              ),
-            ],
-          ),
-
-          SizedBox(height: 10),
-
-          // Selector de días disponibles
-          Text('Días Disponibles',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          Wrap(
-            children: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
-                .map((day) => CheckboxListTile(
-                      title: Text(day),
-                      value: _selectedDays.contains(day),
-                      onChanged: (isSelected) {
-                        setState(() {
-                          if (isSelected ?? false) {
-                            _selectedDays.add(day);
-                          } else {
-                            _selectedDays.remove(day);
-                          }
-                        });
-                      },
-                    ))
-                .toList(),
-          ),
-          SizedBox(height: 10),
-
-          // Selector de hora de inicio
-          Text('Hora de Inicio', style: TextStyle(fontWeight: FontWeight.bold)),
-          ListTile(
-            title: Text(_startTime != null
-                ? TimeFormatHelper.formatTimeIn24Hours(
-                    _startTime!) // Usar helper para formato de hora
-                : 'Seleccione la hora de inicio'),
-            trailing: Icon(Icons.access_time),
-            onTap: () async {
-              TimeOfDay? picked = await showTimePicker(
-                context: context,
-                initialTime: _startTime ?? TimeOfDay(hour: 9, minute: 0),
-                builder: (BuildContext context, Widget? child) {
-                  return MediaQuery(
-                    data: MediaQuery.of(context)
-                        .copyWith(alwaysUse24HourFormat: true),
-                    child: child!,
-                  );
-                },
-              );
-              if (picked != null) {
-                setState(() {
-                  _startTime = picked;
-                });
-              }
+          _buildDaysSelector(ref, _selectedDays),
+          _buildTimeSelector(
+            context: context, // Pasa el contexto aquí
+            label: 'Hora de Inicio',
+            initialTime: _startTime ?? TimeOfDay(hour: 9, minute: 0),
+            onTimePicked: (pickedTime) {
+              _startTime = pickedTime;
             },
           ),
-          SizedBox(height: 10),
-
-          // Selector de hora de fin
-          Text('Hora de Fin', style: TextStyle(fontWeight: FontWeight.bold)),
-          ListTile(
-            title: Text(_endTime != null
-                ? TimeFormatHelper.formatTimeIn24Hours(
-                    _endTime!) // Usar helper para formato de hora
-                : 'Seleccione la hora de fin'),
-            trailing: Icon(Icons.access_time),
-            onTap: () async {
-              TimeOfDay? picked = await showTimePicker(
-                context: context,
-                initialTime: _endTime ?? TimeOfDay(hour: 17, minute: 0),
-                builder: (BuildContext context, Widget? child) {
-                  return MediaQuery(
-                    data: MediaQuery.of(context)
-                        .copyWith(alwaysUse24HourFormat: true),
-                    child: child!,
-                  );
-                },
-              );
-              if (picked != null) {
-                setState(() {
-                  _endTime = picked;
-                });
-              }
+          _buildTimeSelector(
+            context: context, // Pasa el contexto aquí
+            label: 'Hora de Fin',
+            initialTime: _endTime ?? TimeOfDay(hour: 17, minute: 0),
+            onTimePicked: (pickedTime) {
+              _endTime = pickedTime;
             },
           ),
-
           SizedBox(height: 20),
-
           ElevatedButton(
             onPressed: () {
               if (_formKey.currentState!.validate()) {
-                // Si el formulario es válido, guardar los datos en Firestore
-                _saveUserData();
+                // Guardar los datos actualizados
+                professionalNotifier.saveUserData(
+                  name: _nameController.text,
+                  lastName: _lastNameController.text,
+                  address: _addressController.text,
+                  phone: _phoneController.text,
+                  documentNumber: _documentNumberController.text,
+                  licenseNumber: _licenseNumberController.text,
+                  selectedDays: _selectedDays,
+                  startTime: _startTime != null
+                      ? TimeFormatHelper.formatTimeIn24Hours(_startTime!)
+                      : '09:00',
+                  endTime: _endTime != null
+                      ? TimeFormatHelper.formatTimeIn24Hours(_endTime!)
+                      : '17:00',
+                );
+                professionalNotifier
+                    .setEditing(false); // Salir del modo edición
               }
             },
-            child: Text(_isEditing ? 'Actualizar' : 'Guardar'),
+            child: Text('Guardar'),
           ),
         ],
       ),
     );
   }
 
-  // Guardar o actualizar los datos del usuario en Firestore
-  Future<void> _saveUserData() async {
-    if (uid == null || uid!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: El UID del usuario no es válido.')),
-      );
-      return;
-    }
-
-    // Usar FirestoreService para actualizar los datos del usuario
-    await _firestoreService.updateUserData(
-      uid!,
-      _nameController.text,
-      _lastNameController.text,
-      _addressController.text,
-      _phoneController.text,
-      email,
-      _documentType,
-      _documentNumberController.text,
-      int.tryParse(_licenseNumberController.text) ?? 0,
-      _selectedDays,
-      _startTime != null
-          ? TimeFormatHelper.formatTimeIn24Hours(_startTime!)
-          : '09:00',
-      _endTime != null
-          ? TimeFormatHelper.formatTimeIn24Hours(_endTime!)
-          : '17:00',
+  Widget _buildTextField({
+    required String labelText,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    FormFieldValidator<String>? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: labelText),
+      keyboardType: keyboardType,
+      validator: validator,
     );
-
-    setState(() {
-      _submitted = true;
-      _hasData = true;
-      _isEditing = false;
-      _isDocumentFieldsEditable =
-          false; // Deshabilitar edición de documentos después de guardar
-    });
   }
 
-  // Muestra la información después de que se ingresen o carguen los datos
-  Widget _buildProfessionalInfo() {
+  Widget _buildDaysSelector(WidgetRef ref, List<String> selectedDays) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Días Disponibles', style: TextStyle(fontWeight: FontWeight.bold)),
+        Wrap(
+          children: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
+              .map((day) => CheckboxListTile(
+                    title: Text(day),
+                    value: selectedDays.contains(day),
+                    onChanged: (isSelected) {
+                      if (isSelected ?? false) {
+                        selectedDays.add(day);
+                      } else {
+                        selectedDays.remove(day);
+                      }
+                    },
+                  ))
+              .toList(),
+        ),
+        SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Widget _buildTimeSelector({
+    required BuildContext context,
+    required String label,
+    required TimeOfDay initialTime,
+    required Function(TimeOfDay) onTimePicked,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+        ListTile(
+          title: Text(
+            TimeFormatHelper.formatTimeIn24Hours(initialTime),
+          ),
+          trailing: Icon(Icons.access_time),
+          onTap: () async {
+            TimeOfDay? picked = await showTimePicker(
+              context: context,
+              initialTime: initialTime,
+              builder: (BuildContext context, Widget? child) {
+                return MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(alwaysUse24HourFormat: true),
+                  child: child!,
+                );
+              },
+            );
+            if (picked != null) {
+              onTimePicked(picked);
+            }
+          },
+        )
+      ],
+    );
+  }
+
+  Widget _buildProfessionalInfo(WidgetRef ref) {
+    final professionalState = ref.watch(professionalProvider);
+    final professionalNotifier = ref.read(professionalProvider.notifier);
+
     return Card(
       elevation: 5,
       margin: EdgeInsets.all(16),
@@ -475,7 +241,7 @@ class _ProfessionalHomeState extends State<ProfessionalHome> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Dr. ${_nameController.text} ${_lastNameController.text}',
+              'Dr. ${professionalState.name} ${professionalState.lastName}',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -489,28 +255,21 @@ class _ProfessionalHomeState extends State<ProfessionalHome> {
             ),
             Divider(),
             _buildInfoRow(
-                Icons.location_on, 'Consultorio: ${_addressController.text}'),
-            _buildInfoRow(Icons.phone, 'Teléfono: ${_phoneController.text}'),
-            _buildInfoRow(Icons.badge, 'Tipo de Documento: $_documentType'),
-            _buildInfoRow(Icons.perm_identity,
-                'Número de Documento: ${_documentNumberController.text}'),
+                Icons.location_on, 'Consultorio: ${professionalState.address}'),
+            _buildInfoRow(Icons.phone, 'Teléfono: ${professionalState.phone}'),
+            _buildInfoRow(Icons.badge,
+                'Número de Documento: ${professionalState.documentNumber}'),
             _buildInfoRow(Icons.account_balance,
-                'Número de Matrícula: ${_licenseNumberController.text}'),
-            _buildInfoRow(Icons.email, 'Email: $email'),
-
-            // Formatear y mostrar la disponibilidad en formato 24 horas
+                'Número de Matrícula: ${professionalState.licenseNumber}'),
             _buildInfoRow(
               Icons.calendar_today,
-              'Disponibilidad: ${_selectedDays.join(', ')} de ${_startTime != null ? TimeFormatHelper.formatTimeIn24Hours(_startTime!) : '09:00'} a ${_endTime != null ? TimeFormatHelper.formatTimeIn24Hours(_endTime!) : '17:00'}',
+              'Disponibilidad: ${professionalState.selectedDays.join(', ')} de ${professionalState.startTime ?? '09:00'} a ${professionalState.endTime ?? '17:00'}',
             ),
-
             SizedBox(height: 20),
             Center(
               child: ElevatedButton(
                 onPressed: () {
-                  setState(() {
-                    _isEditing = true;
-                  });
+                  professionalNotifier.setEditing(true);
                 },
                 child: Text('Editar'),
                 style: ElevatedButton.styleFrom(

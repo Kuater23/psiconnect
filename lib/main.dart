@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:Psiconnect/src/screens/home_page.dart';
+import 'package:Psiconnect/src/screens/home/content/home_page.dart';
 import 'package:Psiconnect/src/screens/patient/patient_home.dart';
 import 'package:Psiconnect/src/screens/patient/patient_appointments.dart';
 import 'package:Psiconnect/src/screens/patient/patient_files.dart';
@@ -21,10 +21,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  setPathUrlStrategy();
 
   runApp(
     ProviderScope(
-      // Asegúrate de que el ProviderScope envuelve tu aplicación
       child: MyApp(),
     ),
   );
@@ -36,28 +36,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  // Maneja el modo oscuro
   bool _isDarkMode = false;
 
-  // Verifica el estado de autenticación al cargar la app
-  @override
-  void initState() {
-    super.initState();
-    _checkAuthState();
-  }
-
-  // Función para verificar el estado de autenticación del usuario
-  Future<void> _checkAuthState() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      setState(() {
-        // El usuario está autenticado
-        // Aquí podríamos realizar cualquier lógica adicional si es necesario
-      });
-    }
-  }
-
-  // Función para alternar entre modo claro y oscuro
   void _toggleTheme() {
     setState(() {
       _isDarkMode = !_isDarkMode;
@@ -71,93 +51,91 @@ class _MyAppState extends State<MyApp> {
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         primaryColor: Color.fromRGBO(1, 40, 45, 1),
-        brightness: Brightness.light, // Modo claro
+        brightness: Brightness.light,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       darkTheme: ThemeData(
-        brightness: Brightness.dark, // Modo oscuro
+        brightness: Brightness.dark,
         primaryColor: Colors.grey[900],
         hintColor: Colors.tealAccent,
       ),
       initialRoute: '/home',
       routes: {
-        '/home': (context) => HomePage(), // Ruta a HomePage
+        '/home': (context) => HomePage(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
-
         '/patient_appointments': (context) => PatientAppointments(),
-        '/patient_files': (context) => PatientFiles(
-              professionalId: '',
-            ),
-        '/professional': (context) => ProfessionalHome(
-
-              toggleTheme: () {}, 
-
-            ),
-
+        '/patient_files': (context) =>
+            PatientFiles(professionalId: '', patientId: ''),
+        '/professional': (context) =>
+            ProfessionalHome(toggleTheme: _toggleTheme),
         '/professional_appointments': (context) => ProfessionalAppointments(),
-        '/professional_files': (context) => ProfessionalFiles(
-              patientId: '',
-            ),
+        '/professional_files': (context) => ProfessionalFiles(patientId: ''),
         '/admin': (context) => AdminPage(),
       },
       onGenerateRoute: (settings) {
         return MaterialPageRoute(
-          builder: (context) => AuthWrapper(
-              toggleTheme: _toggleTheme), // Pasamos la función de alternar tema
+          builder: (context) => AuthWrapper(toggleTheme: _toggleTheme),
         );
       },
     );
   }
 }
 
-// Wrapper de autenticación
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends ConsumerWidget {
   final VoidCallback toggleTheme;
 
   AuthWrapper({required this.toggleTheme});
 
   @override
-  Widget build(BuildContext context) {
-    return FirebaseAuth.instance.currentUser == null
-        ? LoginPage()
-        : FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('users')
-                .doc(FirebaseAuth.instance.currentUser?.uid)
-                .get(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return LoadingScreen();
-              }
+  Widget build(BuildContext context, WidgetRef ref) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return LoadingScreen();
+        }
 
-              if (snapshot.hasError || !snapshot.hasData) {
-                return ErrorScreen(
-                    message: 'Error al obtener los datos del usuario');
-              }
+        if (!snapshot.hasData) {
+          return LoginPage();
+        }
 
-              final userRole = snapshot.data?.get('role') as String?;
+        final user = snapshot.data!;
+        return FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get(),
+          builder: (context, roleSnapshot) {
+            if (roleSnapshot.connectionState == ConnectionState.waiting) {
+              return LoadingScreen();
+            }
 
-              if (userRole == 'professional') {
-                return ProfessionalHome(
-                  toggleTheme:
-                      toggleTheme, // Pasamos la función de alternar tema
-                );
-              } else if (userRole == 'patient') {
-                return PatientPage(
-                    email: FirebaseAuth.instance.currentUser!.email!);
-              } else if (userRole == 'admin') {
-                return AdminPage();
-              } else {
-                return ErrorScreen(message: 'Rol desconocido');
-              }
-            },
-          );
+            if (roleSnapshot.hasError || !roleSnapshot.hasData) {
+              return ErrorScreen(
+                  message: 'Error al obtener los datos del usuario');
+            }
+
+            final userRole = roleSnapshot.data?.get('role') as String?;
+
+            if (userRole == 'professional') {
+              return ProfessionalHome(toggleTheme: toggleTheme);
+            } else if (userRole == 'patient') {
+              return PatientPageWrapper();
+            } else if (userRole == 'admin') {
+              return AdminPage();
+            } else {
+              return ErrorScreen(message: 'Rol desconocido');
+            }
+          },
+        );
+      },
+    );
   }
 }
 
-// Pantalla de carga personalizada
+// Pantallas adicionales
 class LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -169,7 +147,6 @@ class LoadingScreen extends StatelessWidget {
   }
 }
 
-// Pantalla de error personalizada
 class ErrorScreen extends StatelessWidget {
   final String message;
 
@@ -185,15 +162,10 @@ class ErrorScreen extends StatelessWidget {
   }
 }
 
-// Wrapper para la página del paciente, manteniendo la funcionalidad existente
 class PatientPageWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      return PatientPage(email: user.email!);
-    } else {
-      return LoginPage(); // Redirige al login si no hay usuario autenticado
-    }
+    return user != null ? PatientPage(email: user.email!) : LoginPage();
   }
 }

@@ -1,10 +1,9 @@
 import 'package:Psiconnect/main.dart';
-import 'package:Psiconnect/src/navigation_bar/nav_bar_button.dart';
+import 'package:Psiconnect/src/navigation/nav_bar_button.dart';
 import 'package:Psiconnect/src/widgets/responsive_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:Psiconnect/src/navigation_bar/providers.dart';
-import 'package:Psiconnect/src/navigation_bar/session_provider.dart';
+import 'package:Psiconnect/src/providers/session_provider.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/professional/professional_home.dart';
 
@@ -65,7 +64,6 @@ class DesktopNavBar extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isScrolled = ref.watch(scrolledProvider);
     final navBarColor =
         Color.fromRGBO(1, 40, 45, 1); // Color base de Psiconnect
     final textColor = Colors.white; // Letras en blanco
@@ -172,12 +170,12 @@ class DesktopNavBar extends HookConsumerWidget {
         break;
       case 'professional':
         page = ProfessionalHome(
-          toggleTheme: () {},
+          toggleTheme: () {}, // Funcionalidad de cambio de tema si la necesitas
         );
         break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unknown role')),
+          SnackBar(content: Text('Rol desconocido')),
         );
         return;
     }
