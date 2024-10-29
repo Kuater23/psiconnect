@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:Psiconnect/src/service/auth_service.dart';
+import 'package:Psiconnect/src/providers/auth_providers.dart'; // Proveedor de estado de autenticación.
 import 'package:Psiconnect/src/screens/register_page.dart';
-import 'package:Psiconnect/src/screens/home_page.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:flutter_signin_button/flutter_signin_button.dart';// Para botones de inicio de sesión estilizados
 
 class LoginPage extends ConsumerStatefulWidget {
   @override
@@ -12,22 +10,28 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
-  // Estados para controlar errores y carga
-  bool _isLoading = false;
-  String? _emailError;
-  String? _passwordError;
-
-  bool _obscurePassword = true; // Para controlar si la contraseña se muestra o no
+  bool _obscurePassword =
+      true; // Para controlar si la contraseña se muestra o no
 
   @override
   Widget build(BuildContext context) {
+    final authState =
+        ref.watch(authNotifierProvider); // Escucha el estado de autenticación.
+
     return Scaffold(
+      backgroundColor: Color.fromRGBO(
+          2, 60, 67, 1), // Color base de Psiconnect para el fondo
       appBar: AppBar(
         title: Text('Iniciar Sesión'),
+        backgroundColor: Color.fromRGBO(
+            2, 60, 67, 1), // Color base de Psiconnect para el fondo
+        titleTextStyle: TextStyle(
+          color: Colors.white, // Color de texto blanco
+          fontSize: 24, // Tamaño del texto
+          fontWeight: FontWeight.bold, // Negrita para el texto
+        ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
@@ -37,8 +41,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       ),
       body: Stack(
         children: [
-          _buildContent(context),
-          if (_isLoading)
+          _buildContent(context, ref),
+          if (authState ==
+              AuthStatus
+                  .loading) // Muestra loader cuando el estado es 'loading'.
             Container(
               color: Colors.black45,
               child: Center(
@@ -50,36 +56,60 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  Widget _buildContent(BuildContext context) {
+  Widget _buildContent(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Center(
         child: SingleChildScrollView(
-          child: Container(
-            width: 300,
-            child: Card(
-              elevation: 4.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15.0),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildLogo(),
-                    SizedBox(height: 20),
-                    _buildTextFields(),
-                    SizedBox(height: 20),
-                    _buildLoginButton(context),
-                    SizedBox(height: 10),
-                    _buildGoogleLoginButton(context),
-                    SizedBox(height: 10),
-                    _buildRegisterButton(context),
-                  ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Bienvenido',
+                style: TextStyle(
+                  fontSize: 40, // Tamaño grande del título
+                  fontWeight: FontWeight.bold,
+                  color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
                 ),
               ),
-            ),
+              SizedBox(height: 5),
+              Text(
+                'Inicie Sesión para continuar',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white, // Color del texto
+                ),
+              ),
+              SizedBox(height: 20),
+              Container(
+                width: 300, // Controlar el ancho de los campos
+                child: Card(
+                  color: Color.fromRGBO(
+                      1, 40, 45, 1), // Color de fondo del contenedor del login
+                  elevation: 4.0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15.0),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildLogo(),
+                        SizedBox(height: 20),
+                        _buildTextFields(),
+                        SizedBox(height: 20),
+                        _buildLoginButton(context, ref),
+                        SizedBox(height: 10),
+                        _buildGoogleLoginButton(context, ref),
+                        SizedBox(height: 10),
+                        _buildRegisterButton(context),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -89,9 +119,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildLogo() {
     return Column(
       children: [
-        Image.asset(
-          'assets/images/logo.png',
-          height: 100,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20.0), // Ángulos redondeados
+          child: Image.asset(
+            'assets/images/logo.png',
+            height: 100,
+            fit: BoxFit.contain, // Mantener el tamaño adecuado de la imagen
+          ),
         ),
         SizedBox(height: 10),
         Text(
@@ -99,6 +133,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
+            color: Colors.white, // Color del texto
           ),
         ),
       ],
@@ -108,69 +143,122 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget _buildTextFields() {
     return Column(
       children: [
+        // Campo de Email
         TextField(
           controller: _emailController,
           decoration: InputDecoration(
             labelText: 'Email',
-            errorText: _emailError,
+            labelStyle: TextStyle(
+                color: Color.fromRGBO(11, 191, 205, 1)), // Color del label
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1)), // Borde en el color especificado
             ),
-            prefixIcon: Icon(Icons.email),
+            prefixIcon: Icon(Icons.email,
+                color: Color.fromRGBO(
+                    11, 191, 205, 1)), // Icono en el color especificado
           ),
           keyboardType: TextInputType.emailAddress,
+          style: TextStyle(
+              color: Color.fromRGBO(11, 191, 205, 1)), // Color del texto
         ),
         SizedBox(height: 10),
+        // Campo de Contraseña
         TextField(
           controller: _passwordController,
-          obscureText: _obscurePassword,
+          obscureText: _obscurePassword, // Contraseña oculta
           decoration: InputDecoration(
             labelText: 'Contraseña',
-            errorText: _passwordError,
+            labelStyle: TextStyle(
+                color: Color.fromRGBO(11, 191, 205, 1)), // Color del label
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
+              borderSide: BorderSide(
+                  color: Color.fromRGBO(
+                      11, 191, 205, 1)), // Borde en el color especificado
             ),
-            prefixIcon: Icon(Icons.lock),
+            prefixIcon: Icon(Icons.lock,
+                color: Color.fromRGBO(11, 191, 205, 1)), // Icono
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                color: Color.fromRGBO(11, 191, 205, 1), // Color del icono
               ),
               onPressed: () {
                 setState(() {
-                  _obscurePassword = !_obscurePassword;
+                  _obscurePassword =
+                      !_obscurePassword; // Alternar visibilidad de la contraseña
                 });
               },
             ),
           ),
+          style: TextStyle(
+              color: Color.fromRGBO(11, 191, 205, 1)), // Color del texto
         ),
       ],
     );
   }
 
-  Widget _buildLoginButton(BuildContext context) {
+  Widget _buildLoginButton(BuildContext context, WidgetRef ref) {
     return ElevatedButton(
       onPressed: () async {
-        if (_validateInputs()) {
-          await _signInWithEmailAndPassword(context);
+        if (_validateInputs(context)) {
+          await ref.read(authNotifierProvider.notifier).signInWithEmail(
+                _emailController.text.trim(),
+                _passwordController.text,
+              );
+          if (ref.read(authNotifierProvider) == AuthStatus.authenticated) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/home', (route) => false);
+          }
         }
       },
       style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white, // Color de fondo del botón
         padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10.0),
         ),
+        elevation: 10, // Aumentar la sombra para el botón
       ),
-      child: Text('Iniciar Sesión'),
+      child: Text(
+        'Iniciar Sesión',
+        style: TextStyle(
+          color: Color.fromRGBO(154, 141, 140, 1), // Color del texto del botón
+        ),
+      ),
     );
   }
 
-  Widget _buildGoogleLoginButton(BuildContext context) {
-    return SignInButton(
-      Buttons.Google,
-      text: 'Iniciar Sesión con Google',
-      onPressed: () async {
-        await _signInWithGoogle(context);
-      },
+  Widget _buildGoogleLoginButton(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4), // Sombra más oscura
+            spreadRadius: 4,
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10.0),
+        child: SignInButton(
+          Buttons.Google,
+          text: 'Iniciar Sesión con Google',
+          onPressed: () async {
+            await ref.read(authNotifierProvider.notifier).signInWithGoogle();
+            if (ref.read(authNotifierProvider) == AuthStatus.authenticated) {
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/home', (route) => false);
+            }
+          },
+        ),
+      ),
     );
   }
 
@@ -182,89 +270,31 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           MaterialPageRoute(builder: (context) => RegisterPage()),
         );
       },
-      child: Text('¿Todavía no tienes una cuenta? Regístrate aquí'),
+      child: Text(
+        '¿Todavía no tienes una cuenta? Regístrate aquí',
+        style: TextStyle(
+            color: Color.fromRGBO(11, 191, 205, 1)), // Color del texto
+      ),
     );
   }
 
-  bool _validateInputs() {
+  bool _validateInputs(BuildContext context) {
     bool isValid = true;
-    setState(() {
-      _emailError = null;
-      _passwordError = null;
-    });
 
-    if (_emailController.text.isEmpty) {
-      setState(() {
-        _emailError = 'Por favor, ingresa el correo.';
-      });
-      isValid = false;
-    } else if (!_emailController.text.contains('@')) {
-      setState(() {
-        _emailError = 'Correo inválido.';
-      });
+    if (_emailController.text.isEmpty || !_emailController.text.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Por favor, ingresa un correo válido.')),
+      );
       isValid = false;
     }
 
     if (_passwordController.text.isEmpty) {
-      setState(() {
-        _passwordError = 'Por favor, ingresa la contraseña.';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Por favor, ingresa la contraseña.')),
+      );
       isValid = false;
     }
 
     return isValid;
-  }
-
-  Future<void> _signInWithEmailAndPassword(BuildContext context) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      User? user = await _authService.signInWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
-
-      if (user != null) {
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-      }
-    } on AuthException catch (e) {
-      _showErrorSnackBar(e.message ?? 'Error al iniciar sesión.');
-    } catch (e) {
-      _showErrorSnackBar('Error: ${e.toString()}');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _signInWithGoogle(BuildContext context) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      User? user = await _authService.signInWithGoogle();
-
-      if (user != null) {
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-      }
-    } on AuthException catch (e) {
-      _showErrorSnackBar(e.message ?? 'Error al iniciar sesión con Google.');
-    } catch (e) {
-      _showErrorSnackBar('Error: ${e.toString()}');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 }

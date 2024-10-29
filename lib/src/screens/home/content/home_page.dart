@@ -1,9 +1,9 @@
 import 'package:Psiconnect/main.dart';
-import 'package:Psiconnect/src/content/contact_content.dart';
-import 'package:Psiconnect/src/content/feature_content.dart';
-import 'package:Psiconnect/src/content/home_content.dart';
-import 'package:Psiconnect/src/content/screenshots_content.dart';
-import 'package:Psiconnect/src/navigation_bar/nav_bar.dart';
+import 'package:Psiconnect/src/screens/home/content/contact_content.dart';
+import 'package:Psiconnect/src/screens/home/content/feature_content.dart';
+import 'package:Psiconnect/src/screens/home/content/home_content.dart';
+import 'package:Psiconnect/src/screens/home/content/screenshots_content.dart';
+import 'package:Psiconnect/src/navigation/nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -93,7 +93,10 @@ class HomePage extends HookConsumerWidget {
     } else if (role == 'professional') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ProfessionalHome()),
+        MaterialPageRoute(
+            builder: (context) => ProfessionalHome(
+                  toggleTheme: () {},
+                )),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
