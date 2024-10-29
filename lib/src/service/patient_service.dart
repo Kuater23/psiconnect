@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AppointmentService {
@@ -37,7 +38,27 @@ class AppointmentService {
         'status': status,
       });
     } catch (e) {
-      print("Error al actualizar el estado de la cita: $e");
+      print("Error al actualizar estado de la cita: $e");
     }
+  }
+}
+
+class PatientServiceScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color.fromRGBO(2, 60, 67, 1), // Color de fondo
+      appBar: AppBar(
+        title: Text('Patient Service'),
+        backgroundColor:
+            Color.fromRGBO(2, 60, 67, 1), // Color de fondo del AppBar
+      ),
+      body: Center(
+        child: Text(
+          'Contenido del Patient Service',
+          style: TextStyle(color: Colors.white), // Color del texto
+        ),
+      ),
+    );
   }
 }

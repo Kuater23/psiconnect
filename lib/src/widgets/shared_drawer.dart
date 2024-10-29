@@ -47,105 +47,109 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
     }
 
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          // Contenedor en lugar de DrawerHeader para controlar mejor la altura
-          Container(
-            height: 90, // Ajusta la altura
-            decoration: BoxDecoration(
-              color: const Color.fromRGBO(1, 40, 45, 1), // Fondo verde
-            ),
-            child: Stack(
-              children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    icon: Icon(Icons.close, color: Colors.white),
-                    onPressed: () {
-                      Navigator.of(context).pop(); // Cierra el drawer
-                    },
+      child: Container(
+        color: Color.fromRGBO(2, 60, 67, 1), // Color de fondo del Drawer
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            // Contenedor en lugar de DrawerHeader para controlar mejor la altura
+            Container(
+              height: 90, // Ajusta la altura
+              decoration: BoxDecoration(
+                color: const Color.fromRGBO(1, 40, 45, 1), // Fondo verde
+              ),
+              child: Stack(
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Cierra el drawer
+                      },
+                    ),
                   ),
-                ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Image.asset(
-                    'assets/images/logoCompleto_psiconnect.png', // Ruta del logo
-                    width: MediaQuery.of(context).size.width *
-                        0.4, // Ajusta el tamaño
-                    fit: BoxFit.cover,
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Image.asset(
+                      'assets/images/logoCompleto_psiconnect.png', // Ruta del logo
+                      width: MediaQuery.of(context).size.width *
+                          0.4, // Ajusta el tamaño
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          ListTile(
-            leading: Icon(Icons.home),
-            title: Text('Inicio'),
-            onTap: () {
-              Navigator.pushReplacementNamed(
-                  context, '/home'); // Redirige a HomePage
-            },
-          ),
-          if (_userRole == 'professional') ...[
             ListTile(
-              leading: Icon(Icons.person),
-              title: Text('Perfil'),
+              leading: Icon(Icons.home),
+              title: Text('Inicio'),
               onTap: () {
                 Navigator.pushReplacementNamed(
-                    context, '/professional'); // Redirige a ProfessionalHome
+                    context, '/home'); // Redirige a HomePage
               },
             ),
+            if (_userRole == 'professional') ...[
+              ListTile(
+                leading: Icon(Icons.person),
+                title: Text('Perfil'),
+                onTap: () {
+                  Navigator.pushReplacementNamed(
+                      context, '/professional'); // Redirige a ProfessionalHome
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.calendar_today),
+                title: Text('Agenda'),
+                onTap: () {
+                  Navigator.pushReplacementNamed(
+                      context, '/professional_appointments');
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.folder),
+                title: Text('Archivos por Paciente'),
+                onTap: () {
+                  Navigator.pushReplacementNamed(
+                      context, '/professional_files');
+                },
+              ),
+            ] else if (_userRole == 'patient') ...[
+              ListTile(
+                leading: Icon(Icons.person),
+                title: Text('Perfil del Paciente'),
+                onTap: () {
+                  Navigator.pushReplacementNamed(
+                      context, '/patient'); // Redirige a PatientPage
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.calendar_today),
+                title: Text('Agenda'),
+                onTap: () {
+                  Navigator.pushReplacementNamed(
+                      context, '/patient_appointments');
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.folder),
+                title: Text('Archivos'),
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/patient_files');
+                },
+              ),
+            ],
+            SizedBox(height: 20),
             ListTile(
-              leading: Icon(Icons.calendar_today),
-              title: Text('Agenda'),
-              onTap: () {
-                Navigator.pushReplacementNamed(
-                    context, '/professional_appointments');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.folder),
-              title: Text('Archivos por Paciente'),
-              onTap: () {
-                Navigator.pushReplacementNamed(context, '/professional_files');
-              },
-            ),
-          ] else if (_userRole == 'patient') ...[
-            ListTile(
-              leading: Icon(Icons.person),
-              title: Text('Perfil del Paciente'),
-              onTap: () {
-                Navigator.pushReplacementNamed(
-                    context, '/patient'); // Redirige a PatientPage
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.calendar_today),
-              title: Text('Agenda'),
-              onTap: () {
-                Navigator.pushReplacementNamed(
-                    context, '/patient_appointments');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.folder),
-              title: Text('Archivos'),
-              onTap: () {
-                Navigator.pushReplacementNamed(context, '/patient_files');
+              leading: Icon(Icons.logout),
+              title: Text('Cerrar Sesión'),
+              onTap: () async {
+                await _signOut(
+                    context, ref); // Cerrar sesión y redirigir al login
               },
             ),
           ],
-          SizedBox(height: 20),
-          ListTile(
-            leading: Icon(Icons.logout),
-            title: Text('Cerrar Sesión'),
-            onTap: () async {
-              await _signOut(
-                  context, ref); // Cerrar sesión y redirigir al login
-            },
-          ),
-        ],
+        ),
       ),
     );
   }

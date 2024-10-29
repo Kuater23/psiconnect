@@ -88,8 +88,18 @@ class _PatientPageState extends State<PatientPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color.fromRGBO(2, 60, 67, 1), // Color de fondo
       appBar: AppBar(
-        title: Text('Información del Paciente'),
+        title: Text(
+          'Información del Paciente',
+          style: TextStyle(
+              color: Color.fromRGBO(11, 191, 205, 1)), // Color del texto
+        ),
+        backgroundColor: Color.fromRGBO(1, 41, 46, 1), // Color de fondo
+        iconTheme: IconThemeData(
+          color: Color.fromRGBO(
+              11, 191, 205, 1), // Color del ícono del menú hamburguesa
+        ),
         actions: [
           Builder(
             builder: (BuildContext context) {
@@ -107,8 +117,8 @@ class _PatientPageState extends State<PatientPage> {
       drawer: SharedDrawer(), // Utilizar el Drawer compartido
       body: _isLoading
           ? Center(
-              child:
-                  CircularProgressIndicator()) // Mostrar un spinner mientras se cargan los datos
+              child: CircularProgressIndicator(),
+            ) // Mostrar un spinner mientras se cargan los datos
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -296,24 +306,40 @@ class _PatientPageState extends State<PatientPage> {
       children: [
         Text(
           '${_nameController.text} ${_lastNameController.text}',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
+          ),
         ),
         SizedBox(height: 10),
         Text(
           'Dirección: ${_addressController.text}',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 16,
+            color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
+          ),
         ),
         Text(
           'Teléfono: ${_phoneController.text}',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 16,
+            color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
+          ),
         ),
         Text(
           'Tipo de Documento: $_documentType',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 16,
+            color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
+          ),
         ),
         Text(
           'Número de Documento: ${_documentNumberController.text}',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 16,
+            color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
+          ),
         ),
         SizedBox(height: 20),
         ElevatedButton(
