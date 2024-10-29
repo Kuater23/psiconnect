@@ -274,7 +274,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('Paciente'),
+        Text(
+          'Paciente',
+          style: TextStyle(
+            color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
+          ),
+        ),
         Switch(
           value: _isProfessional,
           onChanged: (value) {
@@ -282,8 +287,20 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               _isProfessional = value;
             });
           },
+          activeColor: Color.fromRGBO(
+              11, 191, 205, 1), // Color del switch cuando está activo
+          inactiveThumbColor: Color.fromRGBO(
+              11, 191, 205, 1), // Color del thumb cuando está inactivo
+          inactiveTrackColor:
+              Colors.black, // Color del track cuando está inactivo
+          activeTrackColor: Colors.black, // Color del track cuando está activo
         ),
-        Text('Profesional'),
+        Text(
+          'Profesional',
+          style: TextStyle(
+            color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
+          ),
+        ),
       ],
     );
   }
@@ -295,8 +312,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           : () async {
               await _registerUser();
             },
-      child: Text('Registrarse'),
+      child: Text(
+        'Registrarse',
+        style: TextStyle(
+          color: Color.fromRGBO(154, 141, 140, 1), // Color del texto en gris
+        ),
+      ),
       style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white, // Color de fondo del botón
         padding: EdgeInsets.symmetric(vertical: 15),
       ),
     );
@@ -322,7 +345,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 MaterialPageRoute(builder: (context) => LoginPage()),
               );
             },
-      child: Text('¿Ya tienes una cuenta? Inicia sesión aquí'),
+      child: Text(
+        '¿Ya tienes una cuenta? Inicia sesión aquí',
+        style: TextStyle(
+          color: Color.fromRGBO(11, 191, 205, 1), // Color del texto
+        ),
+      ),
     );
   }
 
