@@ -240,9 +240,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         if (_validateInputs(context)) {
           String role = _isProfessional ? 'professional' : 'patient';
           await ref.read(authNotifierProvider.notifier).registerWithEmail(
-                _emailController.text.trim(),
-                _passwordController.text,
-                role,
+                email: _emailController.text.trim(),
+                password: _passwordController.text,
+                role: role,
+                documentType: _isProfessional ? _selectedDocumentType : null,
+                documentNumber: _isProfessional
+                    ? _identificationNumberController.text.trim()
+                    : null,
+                nroMatricula: _isProfessional
+                    ? _nroMatriculaController.text.trim()
+                    : null,
               );
           if (ref.read(authNotifierProvider) == AuthStatus.authenticated) {
             Navigator.pushNamedAndRemoveUntil(
@@ -332,7 +339,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     if (_isProfessional &&
         (_selectedDocumentType == null ||
-            _identificationNumberController.text.isEmpty)) {
+            _identificationNumberController.text.isEmpty ||
+            _nroMatriculaController.text.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content:

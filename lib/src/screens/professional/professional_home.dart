@@ -4,13 +4,50 @@ import 'package:Psiconnect/src/widgets/shared_drawer.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/helpers/time_format_helper.dart';
 
-class ProfessionalHome extends ConsumerWidget {
+class ProfessionalHome extends ConsumerStatefulWidget {
   final VoidCallback toggleTheme;
 
   ProfessionalHome({required this.toggleTheme});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  _ProfessionalHomeState createState() => _ProfessionalHomeState();
+}
+
+class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
+  late List<String> _selectedDays;
+  late TextEditingController _nameController;
+  late TextEditingController _lastNameController;
+  late TextEditingController _addressController;
+  late TextEditingController _phoneController;
+  late TextEditingController _documentNumberController;
+  late TextEditingController _licenseNumberController;
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
+
+  @override
+  void initState() {
+    super.initState();
+    final professionalState = ref.read(professionalProvider);
+    _selectedDays = professionalState.selectedDays.toList();
+    _nameController = TextEditingController(text: professionalState.name);
+    _lastNameController =
+        TextEditingController(text: professionalState.lastName);
+    _addressController = TextEditingController(text: professionalState.address);
+    _phoneController = TextEditingController(text: professionalState.phone);
+    _documentNumberController =
+        TextEditingController(text: professionalState.documentNumber);
+    _licenseNumberController =
+        TextEditingController(text: professionalState.licenseNumber);
+    _startTime = professionalState.startTime != null
+        ? TimeFormatHelper.parseTime(professionalState.startTime!)
+        : null;
+    _endTime = professionalState.endTime != null
+        ? TimeFormatHelper.parseTime(professionalState.endTime!)
+        : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final professionalState = ref.watch(professionalProvider);
 
     return Scaffold(
@@ -19,7 +56,7 @@ class ProfessionalHome extends ConsumerWidget {
         actions: [
           IconButton(
             icon: Icon(Icons.brightness_6),
-            onPressed: toggleTheme,
+            onPressed: widget.toggleTheme,
           ),
         ],
       ),
@@ -41,29 +78,10 @@ class ProfessionalHome extends ConsumerWidget {
   }
 
   Widget _buildForm(WidgetRef ref, BuildContext context) {
-    final professionalState = ref.watch(professionalProvider);
     final professionalNotifier = ref.read(professionalProvider.notifier);
 
     // Form keys y controladores para manejar los campos de formulario
     final _formKey = GlobalKey<FormState>();
-    final _nameController = TextEditingController(text: professionalState.name);
-    final _lastNameController =
-        TextEditingController(text: professionalState.lastName);
-    final _addressController =
-        TextEditingController(text: professionalState.address);
-    final _phoneController =
-        TextEditingController(text: professionalState.phone);
-    final _documentNumberController =
-        TextEditingController(text: professionalState.documentNumber);
-    final _licenseNumberController =
-        TextEditingController(text: professionalState.licenseNumber);
-    final List<String> _selectedDays = professionalState.selectedDays.toList();
-    TimeOfDay? _startTime = professionalState.startTime != null
-        ? TimeFormatHelper.parseTime(professionalState.startTime!)
-        : null;
-    TimeOfDay? _endTime = professionalState.endTime != null
-        ? TimeFormatHelper.parseTime(professionalState.endTime!)
-        : null;
 
     return Form(
       key: _formKey,
@@ -104,13 +122,15 @@ class ProfessionalHome extends ConsumerWidget {
                 value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
-          _buildDaysSelector(ref, _selectedDays),
+          _buildDaysSelector(ref),
           _buildTimeSelector(
             context: context, // Pasa el contexto aquí
             label: 'Hora de Inicio',
             initialTime: _startTime ?? TimeOfDay(hour: 9, minute: 0),
             onTimePicked: (pickedTime) {
-              _startTime = pickedTime;
+              setState(() {
+                _startTime = pickedTime;
+              });
             },
           ),
           _buildTimeSelector(
@@ -118,7 +138,9 @@ class ProfessionalHome extends ConsumerWidget {
             label: 'Hora de Fin',
             initialTime: _endTime ?? TimeOfDay(hour: 17, minute: 0),
             onTimePicked: (pickedTime) {
-              _endTime = pickedTime;
+              setState(() {
+                _endTime = pickedTime;
+              });
             },
           ),
           SizedBox(height: 20),
@@ -166,7 +188,7 @@ class ProfessionalHome extends ConsumerWidget {
     );
   }
 
-  Widget _buildDaysSelector(WidgetRef ref, List<String> selectedDays) {
+  Widget _buildDaysSelector(WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -175,13 +197,15 @@ class ProfessionalHome extends ConsumerWidget {
           children: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
               .map((day) => CheckboxListTile(
                     title: Text(day),
-                    value: selectedDays.contains(day),
+                    value: _selectedDays.contains(day),
                     onChanged: (isSelected) {
-                      if (isSelected ?? false) {
-                        selectedDays.add(day);
-                      } else {
-                        selectedDays.remove(day);
-                      }
+                      setState(() {
+                        if (isSelected ?? false) {
+                          _selectedDays.add(day);
+                        } else {
+                          _selectedDays.remove(day);
+                        }
+                      });
                     },
                   ))
               .toList(),

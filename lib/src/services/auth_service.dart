@@ -66,8 +66,14 @@ class AuthService {
   }
 
   // Método para registrar con email y contraseña
-  Future<User?> registerWithEmailAndPassword(
-      String email, String password, String role) async {
+  Future<User?> registerWithEmailAndPassword({
+    required String email,
+    required String password,
+    required String role,
+    String? documentType,
+    String? documentNumber,
+    String? nroMatricula,
+  }) async {
     try {
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
@@ -80,6 +86,9 @@ class AuthService {
         await _firestore.collection('users').doc(user.uid).set({
           'email': user.email,
           'role': role,
+          'documentType': documentType,
+          'documentNumber': documentNumber,
+          'n_matricula': nroMatricula,
         });
       }
 
