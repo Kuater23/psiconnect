@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
+import 'professional_provider.dart'; // Import the professional provider
 
 // Definimos los posibles estados de autenticación
 enum AuthStatus { authenticated, unauthenticated, loading, error }
@@ -8,9 +9,10 @@ enum AuthStatus { authenticated, unauthenticated, loading, error }
 // Clase que manejará el estado de autenticación
 class AuthNotifier extends StateNotifier<AuthStatus> {
   final AuthService _authService;
+  final Ref ref; // Add a reference to the provider container
   String? _errorMessage;
 
-  AuthNotifier(this._authService) : super(AuthStatus.unauthenticated);
+  AuthNotifier(this._authService, this.ref) : super(AuthStatus.unauthenticated);
 
   // Método para obtener el mensaje de error (opcional para mostrar en UI)
   String? get errorMessage => _errorMessage;
@@ -57,6 +59,9 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
       final user =
           await _authService.signInWithEmailAndPassword(email, password);
       if (user != null) {
+        await ref
+            .read(professionalProvider.notifier)
+            .reinitialize(); // Reinitialize professional state
         state = AuthStatus.authenticated;
       } else {
         state = AuthStatus.unauthenticated;
@@ -72,14 +77,29 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
   }
 
   // Método para registrar un nuevo usuario
-  Future<void> registerWithEmail(
-      String email, String password, String role) async {
+  Future<void> registerWithEmail({
+    required String email,
+    required String password,
+    required String role,
+    String? documentType,
+    String? documentNumber,
+    String? nroMatricula,
+  }) async {
     state = AuthStatus.loading;
     _errorMessage = null;
     try {
       final user = await _authService.registerWithEmailAndPassword(
-          email, password, role);
+        email: email,
+        password: password,
+        role: role,
+        documentType: documentType,
+        documentNumber: documentNumber,
+        nroMatricula: nroMatricula,
+      );
       if (user != null) {
+        await ref
+            .read(professionalProvider.notifier)
+            .reinitialize(); // Reinitialize professional state
         state = AuthStatus.authenticated;
       } else {
         state = AuthStatus.unauthenticated;
@@ -100,6 +120,9 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
     _errorMessage = null;
     try {
       await _authService.signOut();
+      ref
+          .read(professionalProvider.notifier)
+          .resetState(); // Reset professional state
       state = AuthStatus.unauthenticated;
     } catch (e) {
       state = AuthStatus.error;
@@ -114,6 +137,9 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
     try {
       final user = await _authService.signInWithGoogle();
       if (user != null) {
+        await ref
+            .read(professionalProvider.notifier)
+            .reinitialize(); // Reinitialize professional state
         state = AuthStatus.authenticated;
       } else {
         state = AuthStatus.unauthenticated;
@@ -133,5 +159,5 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AuthStatus>((ref) {
   final authService = AuthService();
-  return AuthNotifier(authService);
+  return AuthNotifier(authService, ref);
 });

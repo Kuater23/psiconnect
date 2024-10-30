@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 // Estado para gestionar los datos del profesional
 class ProfessionalState {
-  final String? uid;
+  final String? uid; // Unique identifier for the user
   final String? name;
   final String? lastName;
   final String? address;
@@ -78,40 +78,59 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
 
   ProfessionalNotifier(this._firestoreService)
       : super(ProfessionalState(isLoading: true)) {
-    _loadUserData(); // Cargar los datos del usuario profesional al inicializar
+    _initialize();
   }
 
-  // Método para cargar los datos del profesional desde Firestore
-  Future<void> _loadUserData() async {
+  Future<void> _initialize() async {
     final User? user = FirebaseAuth.instance.currentUser;
 
     if (user != null) {
-      final uid = user.uid;
-      try {
-        final data = await _firestoreService.getUserData(uid);
-        if (data != null) {
-          state = state.copyWith(
-            uid: uid,
-            name: data['name'] ?? '',
-            lastName: data['lastName'] ?? '',
-            address: data['address'] ?? '',
-            phone: data['phone'] ?? '',
-            documentNumber: data['documentNumber'] ?? '',
-            licenseNumber: data['n_matricula']?.toString() ?? '',
-            documentType: data['documentType'] ?? 'DNI',
-            selectedDays: List<String>.from(data['availability']['days'] ?? []),
-            startTime: data['availability']['start_time'] ?? '09:00',
-            endTime: data['availability']['end_time'] ?? '17:00',
-            isLoading: false,
-            hasData: true,
-          );
-        } else {
-          state = state.copyWith(isLoading: false, hasData: false);
-        }
-      } catch (e) {
-        state = state.copyWith(isLoading: false);
-      }
+      print('User is authenticated with UID: ${user.uid}');
+      await _loadUserData(user.uid); // Fetch user data using UID
     } else {
+      print('User is not authenticated, listening for auth state changes...');
+      FirebaseAuth.instance.authStateChanges().listen((User? user) {
+        if (user != null) {
+          print('User authenticated with UID: ${user.uid}');
+          _loadUserData(user.uid); // Fetch user data using UID
+        } else {
+          print('User is not authenticated');
+          state = state.copyWith(isLoading: false);
+        }
+      });
+    }
+  }
+
+  // Método para cargar los datos del profesional desde Firestore
+  Future<void> _loadUserData(String uid) async {
+    try {
+      print('Loading user data for UID: $uid');
+      final data =
+          await _firestoreService.getUserData(uid); // Fetch data using UID
+      if (data != null) {
+        print('User data loaded successfully for UID: $uid');
+        final availability = data['availability'] ?? {};
+        state = state.copyWith(
+          uid: uid, // Store UID in state
+          name: data['name'] ?? '',
+          lastName: data['lastName'] ?? '',
+          address: data['address'] ?? '',
+          phone: data['phone'] ?? '',
+          documentNumber: data['documentNumber'] ?? '',
+          licenseNumber: data['n_matricula']?.toString() ?? '',
+          documentType: data['documentType'] ?? 'DNI',
+          selectedDays: List<String>.from(availability['days'] ?? []),
+          startTime: availability['start_time'] ?? '09:00',
+          endTime: availability['end_time'] ?? '17:00',
+          isLoading: false,
+          hasData: true,
+        );
+      } else {
+        print('No user data found for UID: $uid');
+        state = state.copyWith(isLoading: false, hasData: false);
+      }
+    } catch (e) {
+      print('Error loading user data for UID: $uid, Error: $e');
       state = state.copyWith(isLoading: false);
     }
   }
@@ -128,33 +147,61 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
     required String startTime,
     required String endTime,
   }) async {
-    if (state.uid == null || state.uid!.isEmpty) return;
-    await _firestoreService.updateUserData(
-      state.uid!,
-      name,
-      lastName,
-      address,
-      phone,
-      FirebaseAuth.instance.currentUser?.email,
-      state.documentType,
-      documentNumber,
-      int.tryParse(licenseNumber) ?? 0,
-      selectedDays,
-      startTime,
-      endTime,
-    );
-    state = state.copyWith(
-      name: name,
-      lastName: lastName,
-      address: address,
-      phone: phone,
-      documentNumber: documentNumber,
-      licenseNumber: licenseNumber,
-      selectedDays: selectedDays,
-      startTime: startTime,
-      endTime: endTime,
-      isEditing: false,
-    );
+    if (state.uid == null || state.uid!.isEmpty) {
+      print('UID is null or empty');
+      return;
+    }
+
+    // Validate and retain existing values if new values are empty
+    final currentDocumentNumber = state.documentNumber?.isNotEmpty == true
+        ? state.documentNumber
+        : documentNumber;
+    final currentLicenseNumber = state.licenseNumber?.isNotEmpty == true
+        ? state.licenseNumber
+        : licenseNumber;
+
+    try {
+      print('Saving user data for UID: ${state.uid}');
+      await _firestoreService.updateUserData(
+        state.uid!, // Use UID to update data
+        name,
+        lastName,
+        address,
+        phone,
+        FirebaseAuth.instance.currentUser?.email,
+        state.documentType,
+        currentDocumentNumber!,
+        int.tryParse(currentLicenseNumber!) ?? 0,
+        selectedDays,
+        startTime,
+        endTime,
+      );
+      print('User data saved successfully');
+      state = state.copyWith(
+        name: name,
+        lastName: lastName,
+        address: address,
+        phone: phone,
+        documentNumber: currentDocumentNumber,
+        licenseNumber: currentLicenseNumber,
+        selectedDays: selectedDays,
+        startTime: startTime,
+        endTime: endTime,
+        isEditing: false,
+      );
+    } catch (e) {
+      print('Error saving user data: $e');
+    }
+  }
+
+  // Método para resetear el estado del profesional
+  void resetState() {
+    state = ProfessionalState(isLoading: false);
+  }
+
+  // Método para re-inicializar el estado del profesional
+  Future<void> reinitialize() async {
+    await _initialize();
   }
 
   // Alternar entre edición y visualización
