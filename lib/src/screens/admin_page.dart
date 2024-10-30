@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AdminPage extends StatefulWidget {
   @override
@@ -20,17 +20,11 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   Future<void> _fetchUsers() async {
-    final url = Uri.parse('http://localhost:3000/users');
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      setState(() {
-        _users = List<Map<String, dynamic>>.from(json.decode(response.body));
-        _filteredUsers = _users;
-      });
-    } else {
-      print('Error fetching users: ${response.body}');
-    }
+    final QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('users').get();
+    setState(() {
+      _users = snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+      _filteredUsers = _users;
+    });
   }
 
   void _filterUsers() {
@@ -46,48 +40,43 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   Future<void> deleteUser(String uid) async {
-    final url = Uri.parse('http://localhost:3000/deleteUser');
-
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'uid': uid}),
-    );
-
-    if (response.statusCode == 200) {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+      await FirebaseAuth.instance.currentUser?.delete(); // Elimina de Authentication
       _fetchUsers();
-    } else {
-      print('Error deleting user: ${response.body}');
+    } catch (e) {
+      print('Error deleting user: $e');
     }
   }
 
   Future<void> addUser(String email, String password, String displayName) async {
-    final url = Uri.parse('http://localhost:3000/addUser');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'email': email, 'password': password, 'displayName': displayName}),
-    );
-
-    if (response.statusCode == 200) {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user?.uid).set({
+        'uid': userCredential.user?.uid,
+        'email': email,
+        'displayName': displayName,
+        'role': 'patient', // Por defecto
+      });
       _fetchUsers();
-    } else {
-      print('Error adding user: ${response.body}');
+    } catch (e) {
+      print('Error adding user: $e');
     }
   }
 
   Future<void> updateUser(String uid, String email, String displayName, String role) async {
-    final url = Uri.parse('http://localhost:3000/updateUser');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'uid': uid, 'email': email, 'displayName': displayName, 'role': role}),
-    );
-
-    if (response.statusCode == 200) {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'email': email,
+        'displayName': displayName,
+        'role': role,
+      });
       _fetchUsers();
-    } else {
-      print('Error updating user: ${response.body}');
+    } catch (e) {
+      print('Error updating user: $e');
     }
   }
 
@@ -193,8 +182,7 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   void _logout() {
-    // Implementa la lógica de logout aquí
-    // Por ejemplo, puedes navegar a la pantalla de login
+    FirebaseAuth.instance.signOut();
     Navigator.of(context).pushReplacementNamed('/login');
   }
 
