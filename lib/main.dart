@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:Psiconnect/src/screens/home_page.dart';
-import 'package:Psiconnect/src/screens/patient_page.dart';
+import 'package:Psiconnect/src/screens/home/content/home_page.dart';
+import 'package:Psiconnect/src/screens/patient/patient_home.dart';
+import 'package:Psiconnect/src/screens/patient/patient_appointments.dart';
+import 'package:Psiconnect/src/screens/patient/patient_files.dart';
 import 'package:Psiconnect/src/screens/professional/professional_home.dart';
 import 'package:Psiconnect/src/screens/professional/professional_appointments.dart';
 import 'package:Psiconnect/src/screens/professional/professional_files.dart';
@@ -11,6 +12,7 @@ import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/login_page.dart';
 import 'package:Psiconnect/src/screens/register_page.dart';
 import 'package:Psiconnect/firebase_options.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -19,11 +21,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  setPathUrlStrategy();
 
-  // Configura la persistencia de sesión a nivel local
-  await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
-
-  setPathUrlStrategy(); // Configura la estrategia de URL para evitar el "#"
   runApp(
     ProviderScope(
       child: MyApp(),
@@ -31,48 +30,53 @@ void main() async {
   );
 }
 
-// Provider para escuchar los cambios de autenticación
-final authProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
-});
-
-// Provider para obtener el rol del usuario autenticado
-final userRoleProvider = FutureProvider<String?>((ref) async {
-  final user = ref.watch(authProvider).asData?.value;
-  if (user != null) {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-    return doc.data()?['role'] as String?;
-  }
-  return null;
-});
-
-class MyApp extends ConsumerWidget {
+class MyApp extends StatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isDarkMode = false;
+
+  void _toggleTheme() {
+    setState(() {
+      _isDarkMode = !_isDarkMode;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: "Psiconnect",
+      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         primaryColor: Color.fromRGBO(1, 40, 45, 1),
+        brightness: Brightness.light,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: Colors.grey[900],
+        hintColor: Colors.tealAccent,
       ),
       initialRoute: '/home',
       routes: {
-        '/home': (context) => HomePage(), // Ruta a HomePage
+        '/home': (context) => HomePage(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
-        '/professional': (context) => ProfessionalHome(),
+        '/patient_appointments': (context) => PatientAppointments(),
+        '/patient_files': (context) =>
+            PatientFiles(professionalId: '', patientId: ''),
+        '/professional': (context) =>
+            ProfessionalHome(toggleTheme: _toggleTheme),
         '/professional_appointments': (context) => ProfessionalAppointments(),
-        '/professional_files': (context) => ProfessionalFiles(),
+        '/professional_files': (context) => ProfessionalFiles(patientId: ''),
         '/admin': (context) => AdminPage(),
       },
       onGenerateRoute: (settings) {
-        // Manejo de rutas dinámicas si es necesario
         return MaterialPageRoute(
-          builder: (context) => AuthWrapper(),
+          builder: (context) => AuthWrapper(toggleTheme: _toggleTheme),
         );
       },
     );
@@ -80,43 +84,58 @@ class MyApp extends ConsumerWidget {
 }
 
 class AuthWrapper extends ConsumerWidget {
+  final VoidCallback toggleTheme;
+
+  AuthWrapper({required this.toggleTheme});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-
-    return authState.when(
-      data: (user) {
-        if (user == null) {
-          // No hay usuario autenticado, mostrar la página de inicio de sesión
-          return LoginPage();
-        } else {
-          // Usuario autenticado, obtener el rol
-          final roleAsyncValue = ref.watch(userRoleProvider);
-          return roleAsyncValue.when(
-            data: (role) {
-              if (role == 'professional') {
-                return ProfessionalHome();
-              } else if (role == 'patient') {
-                return PatientPage(email: user.email!);
-              } else if (role == 'admin') {
-                return AdminPage();
-              } else {
-                return ErrorScreen(message: 'Rol desconocido');
-              }
-            },
-            loading: () => LoadingScreen(),
-            error: (e, _) =>
-                ErrorScreen(message: 'Error al obtener el rol: $e'),
-          );
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return LoadingScreen();
         }
+
+        if (!snapshot.hasData) {
+          return LoginPage();
+        }
+
+        final user = snapshot.data!;
+        return FutureBuilder<DocumentSnapshot>(
+          future: FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get(),
+          builder: (context, roleSnapshot) {
+            if (roleSnapshot.connectionState == ConnectionState.waiting) {
+              return LoadingScreen();
+            }
+
+            if (roleSnapshot.hasError || !roleSnapshot.hasData) {
+              return ErrorScreen(
+                  message: 'Error al obtener los datos del usuario');
+            }
+
+            final userRole = roleSnapshot.data?.get('role') as String?;
+
+            if (userRole == 'professional') {
+              return ProfessionalHome(toggleTheme: toggleTheme);
+            } else if (userRole == 'patient') {
+              return PatientPageWrapper();
+            } else if (userRole == 'admin') {
+              return AdminPage();
+            } else {
+              return ErrorScreen(message: 'Rol desconocido');
+            }
+          },
+        );
       },
-      loading: () => LoadingScreen(),
-      error: (e, _) => ErrorScreen(message: 'Error: $e'),
     );
   }
 }
 
-// Pantalla de carga personalizada
+// Pantallas adicionales
 class LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -128,7 +147,6 @@ class LoadingScreen extends StatelessWidget {
   }
 }
 
-// Pantalla de error personalizada
 class ErrorScreen extends StatelessWidget {
   final String message;
 
@@ -144,15 +162,10 @@ class ErrorScreen extends StatelessWidget {
   }
 }
 
-// Wrapper para la página del paciente, manteniendo la funcionalidad existente
 class PatientPageWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      return PatientPage(email: user.email!);
-    } else {
-      return LoginPage(); // Redirige al login si no hay usuario autenticado
-    }
+    return user != null ? PatientPage(email: user.email!) : LoginPage();
   }
 }

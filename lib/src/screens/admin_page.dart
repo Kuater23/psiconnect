@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+<
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math';
+
 
 class AdminPage extends StatefulWidget {
   @override
@@ -23,6 +25,7 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   Future<void> _fetchUsers() async {
+
     final QuerySnapshot result = await FirebaseFirestore.instance.collection('users').get();
     final List<DocumentSnapshot> documents = result.docs;
     setState(() {
@@ -32,6 +35,8 @@ class _AdminPageState extends State<AdminPage> {
         data['isActive'] = data['isActive'] ?? true; // Asegúrate de que isActive no sea null
         return data;
       }).toList();
+
+    
       _filteredUsers = _users;
     });
   }
@@ -45,6 +50,7 @@ class _AdminPageState extends State<AdminPage> {
       }).toList();
     });
   }
+
 
   Future<void> _addUser(String email, String password, String role, String? documentType, String? idNumber, String? matricula) async {
     try {
@@ -130,6 +136,8 @@ class _AdminPageState extends State<AdminPage> {
       }
     } catch (e) {
       _showErrorSnackBar('Error: ${e.toString()}');
+
+  
     }
   }
 
@@ -430,6 +438,7 @@ class _AdminPageState extends State<AdminPage> {
       },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
