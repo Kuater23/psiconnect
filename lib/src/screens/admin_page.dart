@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math';
 
 class AdminPage extends StatefulWidget {
   @override
@@ -10,181 +13,365 @@ class AdminPage extends StatefulWidget {
 class _AdminPageState extends State<AdminPage> {
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _filteredUsers = [];
-  String _searchTerm = '';
-  String _selectedRole = 'All';
+  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchUsers();
+    _searchController.addListener(_filterUsers);
   }
 
   Future<void> _fetchUsers() async {
-    final url = Uri.parse('http://localhost:3000/users');
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      setState(() {
-        _users = List<Map<String, dynamic>>.from(json.decode(response.body));
-        _filteredUsers = _users;
-      });
-    } else {
-      print('Error fetching users: ${response.body}');
-    }
+    final QuerySnapshot result = await FirebaseFirestore.instance.collection('users').get();
+    final List<DocumentSnapshot> documents = result.docs;
+    setState(() {
+      _users = documents.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id;
+        data['isActive'] = data['isActive'] ?? true; // Asegúrate de que isActive no sea null
+        return data;
+      }).toList();
+      _filteredUsers = _users;
+    });
   }
 
   void _filterUsers() {
+    final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredUsers = _users.where((user) {
-        final displayName = user['displayName']?.toLowerCase() ?? '';
-        final role = user['role']?.toLowerCase() ?? 'patient';
-        final matchesSearchTerm = displayName.contains(_searchTerm.toLowerCase());
-        final matchesRole = _selectedRole == 'All' || role == _selectedRole.toLowerCase();
-        return matchesSearchTerm && matchesRole;
+        final email = user['email'].toLowerCase();
+        return email.contains(query);
       }).toList();
     });
   }
 
-  Future<void> deleteUser(String uid) async {
-    final url = Uri.parse('http://localhost:3000/deleteUser');
+  Future<void> _addUser(String email, String password, String role, String? documentType, String? idNumber, String? matricula) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/addUser'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'password': password,
+          'role': role,
+          'documentType': documentType,
+          'idNumber': idNumber,
+          'matricula': matricula,
+        }),
+      );
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'uid': uid}),
-    );
-
-    if (response.statusCode == 200) {
-      _fetchUsers();
-    } else {
-      print('Error deleting user: ${response.body}');
+      if (response.statusCode == 200) {
+        _fetchUsers();
+      } else {
+        _showErrorSnackBar('Error: ${response.body}');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error: ${e.toString()}');
     }
   }
 
-  Future<void> addUser(String email, String password, String displayName) async {
-    final url = Uri.parse('http://localhost:3000/addUser');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'email': email, 'password': password, 'displayName': displayName}),
-    );
+  Future<void> _updateUser(String id, String email, String role, String? documentType, String? idNumber, String? matricula) async {
+    try {
+      final response = await http.put(
+        Uri.parse('http://localhost:3000/updateUser'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'uid': id,
+          'email': email,
+          'role': role,
+          'documentType': documentType,
+          'idNumber': idNumber,
+          'matricula': matricula,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      _fetchUsers();
-    } else {
-      print('Error adding user: ${response.body}');
+      if (response.statusCode == 200) {
+        _fetchUsers();
+      } else {
+        _showErrorSnackBar('Error: ${response.body}');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error: ${e.toString()}');
     }
   }
 
-  Future<void> updateUser(String uid, String email, String displayName, String role) async {
-    final url = Uri.parse('http://localhost:3000/updateUser');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'uid': uid, 'email': email, 'displayName': displayName, 'role': role}),
-    );
+  Future<void> _deleteUser(String id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('http://localhost:3000/deleteUser'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'uid': id}),
+      );
 
-    if (response.statusCode == 200) {
-      _fetchUsers();
-    } else {
-      print('Error updating user: ${response.body}');
+      if (response.statusCode == 200) {
+        _fetchUsers();
+      } else {
+        _showErrorSnackBar('Error: ${response.body}');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error: ${e.toString()}');
     }
+  }
+
+  Future<void> _resetPassword(String uid) async {
+    try {
+      String newPassword = _generateRandomPassword();
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/resetPassword'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'uid': uid, 'newPassword': newPassword}),
+      );
+
+      if (response.statusCode == 200) {
+        _showErrorSnackBar('Nueva contraseña: $newPassword');
+      } else {
+        _showErrorSnackBar('Error: ${response.body}');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error: ${e.toString()}');
+    }
+  }
+
+  String _generateRandomPassword() {
+    const length = 6;
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rand = Random();
+    return List.generate(length, (index) => chars[rand.nextInt(chars.length)]).join();
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _showAddUserDialog() {
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    final displayNameController = TextEditingController();
+    final TextEditingController emailController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
+    final TextEditingController identificationNumberController = TextEditingController();
+    final TextEditingController nroMatriculaController = TextEditingController();
+    bool isProfessional = false;
+    String? selectedDocumentType;
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Add User'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(labelText: 'Email'),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Agregar Usuario'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: emailController,
+                      decoration: InputDecoration(labelText: 'Email'),
+                    ),
+                    TextField(
+                      controller: passwordController,
+                      decoration: InputDecoration(labelText: 'Contraseña'),
+                      obscureText: true,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Paciente'),
+                        Switch(
+                          value: isProfessional,
+                          onChanged: (value) {
+                            setState(() {
+                              isProfessional = value;
+                            });
+                          },
+                        ),
+                        Text('Profesional'),
+                      ],
+                    ),
+                    if (isProfessional) ...[
+                      DropdownButtonFormField<String>(
+                        value: selectedDocumentType,
+                        decoration: InputDecoration(
+                          labelText: 'Tipo de Documento',
+                        ),
+                        items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          setState(() {
+                            selectedDocumentType = newValue;
+                          });
+                        },
+                      ),
+                      TextField(
+                        controller: identificationNumberController,
+                        decoration: InputDecoration(labelText: 'Número de Identificación'),
+                      ),
+                      TextField(
+                        controller: nroMatriculaController,
+                        decoration: InputDecoration(labelText: 'Matrícula Nacional'),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              TextField(
-                controller: passwordController,
-                decoration: InputDecoration(labelText: 'Password'),
-                obscureText: true,
-              ),
-              TextField(
-                controller: displayNameController,
-                decoration: InputDecoration(labelText: 'Display Name'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                final email = emailController.text;
-                final password = passwordController.text;
-                final displayName = displayNameController.text;
-                addUser(email, password, displayName);
-                Navigator.of(context).pop();
-              },
-              child: Text('Add'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final role = isProfessional ? 'professional' : 'patient';
+                    _addUser(
+                      emailController.text,
+                      passwordController.text,
+                      role,
+                      selectedDocumentType,
+                      identificationNumberController.text,
+                      nroMatriculaController.text,
+                    );
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Guardar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
   void _showEditUserDialog(Map<String, dynamic> user) {
-    final emailController = TextEditingController(text: user['email'] ?? '');
-    final displayNameController = TextEditingController(text: user['displayName'] ?? '');
-    final roleController = TextEditingController(text: user['role'] ?? '');
+    final TextEditingController emailController = TextEditingController(text: user['email']);
+    final TextEditingController identificationNumberController = TextEditingController(text: user['idNumber'] ?? '');
+    final TextEditingController nroMatriculaController = TextEditingController(text: user['matricula'] ?? '');
+    bool isProfessional = user['role'] == 'professional';
+    String? selectedDocumentType = user['documentType'];
 
     showDialog(
       context: context,
       builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Editar Usuario'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: emailController,
+                      decoration: InputDecoration(labelText: 'Email'),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Paciente'),
+                        Switch(
+                          value: isProfessional,
+                          onChanged: (value) {
+                            setState(() {
+                              isProfessional = value;
+                            });
+                          },
+                        ),
+                        Text('Profesional'),
+                      ],
+                    ),
+                    if (isProfessional) ...[
+                      DropdownButtonFormField<String>(
+                        value: selectedDocumentType,
+                        decoration: InputDecoration(
+                          labelText: 'Tipo de Documento',
+                        ),
+                        items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          setState(() {
+                            selectedDocumentType = newValue;
+                          });
+                        },
+                      ),
+                      TextField(
+                        controller: identificationNumberController,
+                        decoration: InputDecoration(labelText: 'Número de Identificación'),
+                      ),
+                      TextField(
+                        controller: nroMatriculaController,
+                        decoration: InputDecoration(labelText: 'Matrícula Nacional'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancelar'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final role = isProfessional ? 'professional' : 'patient';
+                    _updateUser(
+                      user['id'],
+                      emailController.text,
+                      role,
+                      selectedDocumentType,
+                      identificationNumberController.text,
+                      nroMatriculaController.text,
+                    );
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showUserDetailsDialog(Map<String, dynamic> user) {
+    showDialog(
+      context: context,
+      builder: (context) {
         return AlertDialog(
-          title: Text('Edit User'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(labelText: 'Email'),
-              ),
-              TextField(
-                controller: displayNameController,
-                decoration: InputDecoration(labelText: 'Display Name'),
-              ),
-              TextField(
-                controller: roleController,
-                decoration: InputDecoration(labelText: 'Role'),
-              ),
-            ],
+          title: Text('Detalles del Usuario'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Email: ${user['email']}'),
+                Text('Rol: ${user['role']}'),
+                if (user['role'] == 'professional') ...[
+                  Text('Tipo de Documento: ${user['documentType']}'),
+                  Text('Número de Identificación: ${user['idNumber']}'),
+                  Text('Matrícula Nacional: ${user['matricula']}'),
+                ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                final email = emailController.text;
-                final displayName = displayNameController.text;
-                final role = roleController.text;
-                updateUser(user['uid'], email, displayName, role);
-                Navigator.of(context).pop();
-              },
-              child: Text('Update'),
+              child: Text('Cerrar'),
             ),
           ],
         );
@@ -192,10 +379,56 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
-  void _logout() {
-    // Implementa la lógica de logout aquí
-    // Por ejemplo, puedes navegar a la pantalla de login
-    Navigator.of(context).pushReplacementNamed('/login');
+  void _toggleUserActivation(String id, bool isActive) async {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(id).update({
+        'isActive': isActive,
+      });
+      _fetchUsers();
+    } catch (e) {
+      _showErrorSnackBar('Error: ${e.toString()}');
+    }
+  }
+
+  void _sendNotification(String id, String message) async {
+    try {
+      // Aquí puedes agregar la lógica para enviar una notificación al usuario
+      _showErrorSnackBar('Notificación enviada: $message');
+    } catch (e) {
+      _showErrorSnackBar('Error: ${e.toString()}');
+    }
+  }
+
+  void _showSendNotificationDialog(String id) {
+    final TextEditingController messageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Enviar Notificación'),
+          content: TextField(
+            controller: messageController,
+            decoration: InputDecoration(labelText: 'Mensaje'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                _sendNotification(id, messageController.text);
+                Navigator.of(context).pop();
+              },
+              child: Text('Enviar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -205,8 +438,15 @@ class _AdminPageState extends State<AdminPage> {
         title: Text('Admin Page'),
         actions: [
           IconButton(
+            icon: Icon(Icons.add),
+            onPressed: _showAddUserDialog,
+          ),
+          IconButton(
             icon: Icon(Icons.logout),
-            onPressed: _logout,
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.of(context).pushReplacementNamed('/login');
+            },
           ),
         ],
       ),
@@ -215,73 +455,67 @@ class _AdminPageState extends State<AdminPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
+              controller: _searchController,
               decoration: InputDecoration(
-                labelText: 'Search',
+                labelText: 'Buscar usuario por email',
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.search),
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchTerm = value;
-                  _filterUsers();
-                });
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: DropdownButton<String>(
-              value: _selectedRole,
-              items: <String>['All', 'Admin', 'Patient']
-                  .map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedRole = value!;
-                  _filterUsers();
-                });
-              },
             ),
           ),
           Expanded(
-            child: _filteredUsers.isEmpty
-                ? Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: _filteredUsers.length,
-                    itemBuilder: (context, index) {
-                      final user = _filteredUsers[index];
-                      return ListTile(
-                        title: Text(user['displayName'] ?? 'No Name'),
-                        subtitle: Text(user['email'] ?? 'No Email'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit),
-                              onPressed: () {
-                                _showEditUserDialog(user);
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete),
-                              onPressed: () {
-                                deleteUser(user['uid']);
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+            child: ListView.builder(
+              itemCount: _filteredUsers.length,
+              itemBuilder: (context, index) {
+                final user = _filteredUsers[index];
+                return ListTile(
+                  title: Text(user['email']),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.info),
+                        onPressed: () {
+                          _showUserDetailsDialog(user);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.edit),
+                        onPressed: () {
+                          _showEditUserDialog(user);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete),
+                        onPressed: () {
+                          _deleteUser(user['id']);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.refresh),
+                        onPressed: () {
+                          _resetPassword(user['id']);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(user['isActive'] ? Icons.block : Icons.check_circle),
+                        onPressed: () {
+                          _toggleUserActivation(user['id'], !user['isActive']);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.notifications),
+                        onPressed: () {
+                          _showSendNotificationDialog(user['id']);
+                        },
+                      ),
+                    ],
                   ),
+                );
+              },
+            ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddUserDialog,
-        child: Icon(Icons.add),
       ),
     );
   }
