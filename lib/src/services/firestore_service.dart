@@ -31,6 +31,7 @@ class FirestoreService {
     List<String> selectedDays,
     String startTime,
     String endTime,
+    int breakDuration, // Nuevo parámetro para la duración del descanso
   ) async {
     try {
       await _db.collection('users').doc(uid).update({
@@ -46,6 +47,7 @@ class FirestoreService {
           'days': selectedDays,
           'start_time': startTime,
           'end_time': endTime,
+          'break_duration': breakDuration, // Guardar la duración del descanso
         },
       });
     } catch (e) {

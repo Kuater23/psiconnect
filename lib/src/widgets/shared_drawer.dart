@@ -94,7 +94,6 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
           ),
 
           if (userRole == 'professional') ...[
-
             ListTile(
               leading: Icon(Icons.person),
               title: Text('Perfil'),
@@ -116,6 +115,14 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
               title: Text('Archivos por Paciente'),
               onTap: () {
                 Navigator.pushReplacementNamed(context, '/professional_files');
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.event),
+              title: Text('Mis Sesiones'),
+              onTap: () {
+                Navigator.pushReplacementNamed(
+                    context, '/my_sessions_professional');
               },
             ),
           ] else if (userRole == 'patient') ...[
@@ -140,6 +147,13 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
               title: Text('Archivos'),
               onTap: () {
                 Navigator.pushReplacementNamed(context, '/patient_files');
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.event),
+              title: Text('Mis Sesiones'),
+              onTap: () {
+                Navigator.pushReplacementNamed(context, '/my_sessions_patient');
               },
             ),
           ],
