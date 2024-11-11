@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:Psiconnect/src/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// Estado para gestionar los datos del profesional
 class ProfessionalState {
   final String? uid; // Unique identifier for the user
   final String? name;
@@ -15,6 +14,7 @@ class ProfessionalState {
   final List<String> selectedDays;
   final String? startTime;
   final String? endTime;
+  final int? breakDuration; // Nuevo campo para la duración del descanso
   final bool isLoading;
   final bool hasData;
   final bool isEditing;
@@ -31,6 +31,7 @@ class ProfessionalState {
     this.selectedDays = const [],
     this.startTime,
     this.endTime,
+    this.breakDuration, // Inicializar el nuevo campo
     this.isLoading = true,
     this.hasData = false,
     this.isEditing = false,
@@ -49,6 +50,7 @@ class ProfessionalState {
     List<String>? selectedDays,
     String? startTime,
     String? endTime,
+    int? breakDuration, // Nuevo campo para la duración del descanso
     bool? isLoading,
     bool? hasData,
     bool? isEditing,
@@ -65,6 +67,8 @@ class ProfessionalState {
       selectedDays: selectedDays ?? this.selectedDays,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
+      breakDuration:
+          breakDuration ?? this.breakDuration, // Copiar el nuevo campo
       isLoading: isLoading ?? this.isLoading,
       hasData: hasData ?? this.hasData,
       isEditing: isEditing ?? this.isEditing,
@@ -72,7 +76,6 @@ class ProfessionalState {
   }
 }
 
-// Notificador que maneja el estado del profesional
 class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
   final FirestoreService _firestoreService;
 
@@ -122,6 +125,8 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
           selectedDays: List<String>.from(availability['days'] ?? []),
           startTime: availability['start_time'] ?? '09:00',
           endTime: availability['end_time'] ?? '17:00',
+          breakDuration: availability['break_duration'] ??
+              15, // Cargar la duración del descanso
           isLoading: false,
           hasData: true,
         );
@@ -146,6 +151,7 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
     required List<String> selectedDays,
     required String startTime,
     required String endTime,
+    required int breakDuration, // Nuevo parámetro para la duración del descanso
   }) async {
     if (state.uid == null || state.uid!.isEmpty) {
       print('UID is null or empty');
@@ -175,6 +181,7 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
         selectedDays,
         startTime,
         endTime,
+        breakDuration, // Guardar la duración del descanso
       );
       print('User data saved successfully');
       state = state.copyWith(
@@ -187,6 +194,8 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
         selectedDays: selectedDays,
         startTime: startTime,
         endTime: endTime,
+        breakDuration:
+            breakDuration, // Actualizar el estado con la duración del descanso
         isEditing: false,
       );
     } catch (e) {

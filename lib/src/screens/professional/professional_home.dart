@@ -21,6 +21,7 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
   late TextEditingController _phoneController;
   late TextEditingController _documentNumberController;
   late TextEditingController _licenseNumberController;
+  late TextEditingController _breakDurationController;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
 
@@ -38,6 +39,8 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
         TextEditingController(text: professionalState.documentNumber);
     _licenseNumberController =
         TextEditingController(text: professionalState.licenseNumber);
+    _breakDurationController = TextEditingController(
+        text: professionalState.breakDuration?.toString() ?? '15');
     _startTime = professionalState.startTime != null
         ? TimeFormatHelper.parseTime(professionalState.startTime!)
         : null;
@@ -143,6 +146,22 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
               });
             },
           ),
+          SizedBox(height: 10),
+          _buildTextField(
+            labelText: 'Duración del descanso (minutos)',
+            controller: _breakDurationController,
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Este campo es obligatorio';
+              }
+              final intValue = int.tryParse(value);
+              if (intValue == null || intValue <= 0 || intValue > 60) {
+                return 'Ingrese un valor válido entre 1 y 60';
+              }
+              return null;
+            },
+          ),
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
@@ -162,6 +181,7 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
                   endTime: _endTime != null
                       ? TimeFormatHelper.formatTimeIn24Hours(_endTime!)
                       : '17:00',
+                  breakDuration: int.parse(_breakDurationController.text),
                 );
                 professionalNotifier
                     .setEditing(false); // Salir del modo edición
@@ -288,6 +308,10 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
             _buildInfoRow(
               Icons.calendar_today,
               'Disponibilidad: ${professionalState.selectedDays.join(', ')} de ${professionalState.startTime ?? '09:00'} a ${professionalState.endTime ?? '17:00'}',
+            ),
+            _buildInfoRow(
+              Icons.timer,
+              'Duración del descanso: ${professionalState.breakDuration ?? 15} minutos',
             ),
             SizedBox(height: 20),
             Center(
