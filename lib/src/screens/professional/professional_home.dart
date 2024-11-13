@@ -19,8 +19,8 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
   late TextEditingController _lastNameController;
   late TextEditingController _addressController;
   late TextEditingController _phoneController;
-  late TextEditingController _documentNumberController;
-  late TextEditingController _licenseNumberController;
+  late TextEditingController _dniController;
+  late TextEditingController _nMatriculaController;
   late TextEditingController _breakDurationController;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
@@ -35,10 +35,9 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
         TextEditingController(text: professionalState.lastName);
     _addressController = TextEditingController(text: professionalState.address);
     _phoneController = TextEditingController(text: professionalState.phone);
-    _documentNumberController =
-        TextEditingController(text: professionalState.documentNumber);
-    _licenseNumberController =
-        TextEditingController(text: professionalState.licenseNumber);
+    _dniController = TextEditingController(text: professionalState.dni);
+    _nMatriculaController =
+        TextEditingController(text: professionalState.n_matricula);
     _breakDurationController = TextEditingController(
         text: professionalState.breakDuration?.toString() ?? '15');
     _startTime = professionalState.startTime != null
@@ -125,6 +124,20 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
                 value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
+          _buildTextField(
+            labelText: 'DNI',
+            controller: _dniController,
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
+          ),
+          SizedBox(height: 10),
+          _buildTextField(
+            labelText: 'Número de Matrícula',
+            controller: _nMatriculaController,
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
+          ),
+          SizedBox(height: 10),
           _buildDaysSelector(ref),
           _buildTimeSelector(
             context: context, // Pasa el contexto aquí
@@ -172,8 +185,8 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
                   lastName: _lastNameController.text,
                   address: _addressController.text,
                   phone: _phoneController.text,
-                  documentNumber: _documentNumberController.text,
-                  licenseNumber: _licenseNumberController.text,
+                  dni: _dniController.text,
+                  n_matricula: _nMatriculaController.text,
                   selectedDays: _selectedDays,
                   startTime: _startTime != null
                       ? TimeFormatHelper.formatTimeIn24Hours(_startTime!)
@@ -301,10 +314,9 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
             _buildInfoRow(
                 Icons.location_on, 'Consultorio: ${professionalState.address}'),
             _buildInfoRow(Icons.phone, 'Teléfono: ${professionalState.phone}'),
-            _buildInfoRow(Icons.badge,
-                'Número de Documento: ${professionalState.documentNumber}'),
+            _buildInfoRow(Icons.badge, 'DNI: ${professionalState.dni}'),
             _buildInfoRow(Icons.account_balance,
-                'Número de Matrícula: ${professionalState.licenseNumber}'),
+                'Número de Matrícula: ${professionalState.n_matricula}'),
             _buildInfoRow(
               Icons.calendar_today,
               'Disponibilidad: ${professionalState.selectedDays.join(', ')} de ${professionalState.startTime ?? '09:00'} a ${professionalState.endTime ?? '17:00'}',

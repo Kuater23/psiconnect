@@ -181,7 +181,10 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
           .logOut(); // Limpiamos la sesión del provider
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+        MaterialPageRoute(
+            builder: (context) => HomePage(onReload: () {
+                  setState(() {});
+                })),
         (route) => false, // Eliminar todas las rutas previas
       );
     } catch (e) {

@@ -23,15 +23,7 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   void _authStateChanges() {
     FirebaseAuth.instance.authStateChanges().listen((user) async {
       if (user != null) {
-        try {
-          state = null; // Opción de indicar un estado de "cargando"
-          final role = await _getUserRole(user.uid);
-          state = UserSession(user: user, role: role);
-          print('Sesión iniciada: ${user.email}, Rol: $role');
-        } catch (e) {
-          print('Error obteniendo el rol en authStateChanges: $e');
-          state = null; // Reiniciar el estado si hay un error
-        }
+        await _loadUserSession(user);
       } else {
         print('No hay sesión activa');
         state = null;
@@ -39,27 +31,50 @@ class SessionNotifier extends StateNotifier<UserSession?> {
     });
   }
 
-  // Función para obtener el rol del usuario desde Firestore
-  Future<String> _getUserRole(String uid) async {
+  // Función para cargar la sesión del usuario
+  Future<void> _loadUserSession(User user) async {
     try {
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (doc.exists && doc.data() != null) {
-        final role = doc.data()!['role'];
-        if (role != null && role is String) {
-          print('Rol obtenido: $role');
-          return role;
+      state = null; // Opción de indicar un estado de "cargando"
+      final role = await _getUserRole(user.uid);
+      state = UserSession(user: user, role: role);
+      print('Sesión iniciada: ${user.email}, Rol: $role');
+    } catch (e) {
+      print('Error obteniendo el rol en _loadUserSession: $e');
+      state = null; // Reiniciar el estado si hay un error
+    }
+  }
+
+  // Función para obtener el rol del usuario desde Firestore
+  Future<String> _getUserRole(String uid, {int retries = 3}) async {
+    for (int attempt = 0; attempt < retries; attempt++) {
+      try {
+        final doc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
+          final role = data['role'];
+          if (role != null && role is String) {
+            print('Rol obtenido: $role');
+            return role;
+          } else {
+            throw Exception(
+                'El campo role no está definido o es inválido en Firestore. Datos del documento: $data');
+          }
         } else {
           throw Exception(
-              'El campo role no está definido o es inválido en Firestore');
+              'Documento de usuario no encontrado en Firestore. UID: $uid');
         }
-      } else {
-        throw Exception('Documento de usuario no encontrado en Firestore');
+      } catch (e) {
+        print('Error obteniendo el rol del usuario en intento $attempt: $e');
+        if (attempt < retries - 1) {
+          // Esperar antes de volver a intentar
+          await Future.delayed(Duration(milliseconds: 500));
+        } else {
+          return 'unknown'; // Si se agotan los intentos, devuelve el valor predeterminado
+        }
       }
-    } catch (e) {
-      print('Error obteniendo el rol del usuario: $e');
-      return 'unknown'; // Devolver un valor por defecto en caso de error
     }
+    return 'unknown';
   }
 
   // Función para iniciar sesión con email y password
@@ -71,17 +86,13 @@ class SessionNotifier extends StateNotifier<UserSession?> {
         email: email,
         password: password,
       );
-      final role = await _getUserRole(userCredential.user!.uid);
-      state = UserSession(user: userCredential.user!, role: role);
-      print('Usuario logueado: ${userCredential.user!.email}, Rol: $role');
+      await _loadUserSession(userCredential.user!);
     } on FirebaseAuthException catch (e) {
       print('Error de autenticación: ${e.message}');
       state = null;
     } catch (e) {
       print('Error al iniciar sesión: $e');
       state = null;
-    } finally {
-      // Puedes agregar algún ajuste adicional si es necesario aquí
     }
   }
 
@@ -89,14 +100,10 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   Future<void> logInWithGoogle(User user) async {
     try {
       state = null; // Estado de "cargando"
-      final role = await _getUserRole(user.uid);
-      state = UserSession(user: user, role: role);
-      print('Usuario logueado con Google: ${user.email}, Rol: $role');
+      await _loadUserSession(user);
     } catch (e) {
       print('Error al iniciar sesión con Google: $e');
       state = null;
-    } finally {
-      // Manejar el final del proceso
     }
   }
 
@@ -108,6 +115,14 @@ class SessionNotifier extends StateNotifier<UserSession?> {
       print('Usuario deslogueado');
     } catch (e) {
       print('Error al cerrar sesión: $e');
+    }
+  }
+
+  // Función para recargar la sesión del usuario
+  Future<void> reloadUserSession() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await _loadUserSession(user);
     }
   }
 }

@@ -10,15 +10,16 @@ class RegisterPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _dniController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _identificationNumberController =
-      TextEditingController();
+  final TextEditingController _rePasswordController = TextEditingController();
   final TextEditingController _nroMatriculaController = TextEditingController();
 
   bool _isProfessional = false; // Para controlar si el usuario es profesional
   bool _obscurePassword = true; // Para mostrar/ocultar contraseña
-  String? _selectedDocumentType;
 
   @override
   Widget build(BuildContext context) {
@@ -118,10 +119,31 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return Column(
       children: [
         _buildTextField(
+          controller: _nameController,
+          labelText: 'Nombre',
+          hintText: 'Ingresa tu nombre',
+          icon: Icons.person,
+        ),
+        SizedBox(height: 16.0),
+        _buildTextField(
+          controller: _lastNameController,
+          labelText: 'Apellido',
+          hintText: 'Ingresa tu apellido',
+          icon: Icons.person_outline,
+        ),
+        SizedBox(height: 16.0),
+        _buildTextField(
           controller: _emailController,
           labelText: 'Email',
           hintText: 'Ingresa tu email',
           icon: Icons.email,
+        ),
+        SizedBox(height: 16.0),
+        _buildTextField(
+          controller: _dniController,
+          labelText: 'Número de DNI',
+          hintText: 'Ingresa tu número de DNI',
+          icon: Icons.perm_identity,
         ),
         SizedBox(height: 16.0),
         _buildTextField(
@@ -142,39 +164,26 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             },
           ),
         ),
-        if (_isProfessional) ...[
-          SizedBox(height: 16.0),
-          DropdownButtonFormField<String>(
-            value: _selectedDocumentType,
-            decoration: InputDecoration(
-              labelText: 'Tipo de Documento',
-              labelStyle: TextStyle(
-                  color: Color.fromRGBO(11, 191, 205, 1)), // Color del label
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.0),
-                borderSide:
-                    BorderSide(color: Color.fromRGBO(11, 191, 205, 1)), // Borde
-              ),
+        SizedBox(height: 16.0),
+        _buildTextField(
+          controller: _rePasswordController,
+          labelText: 'Re-Contraseña',
+          hintText: 'Re-ingresa tu contraseña',
+          icon: Icons.lock,
+          obscureText: _obscurePassword,
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+              color: Color.fromRGBO(11, 191, 205, 1), // Color del icono
             ),
-            items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-            onChanged: (newValue) {
+            onPressed: () {
               setState(() {
-                _selectedDocumentType = newValue;
+                _obscurePassword = !_obscurePassword;
               });
             },
           ),
-          SizedBox(height: 16.0),
-          _buildTextField(
-            controller: _identificationNumberController,
-            labelText: 'Número de Identificación',
-            hintText: 'Ingresa tu número de identificación',
-            icon: Icons.perm_identity,
-          ),
+        ),
+        if (_isProfessional) ...[
           SizedBox(height: 16.0),
           _buildTextField(
             controller: _nroMatriculaController,
@@ -239,21 +248,23 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       onPressed: () async {
         if (_validateInputs(context)) {
           String role = _isProfessional ? 'professional' : 'patient';
+          print('Attempting to register user with role: $role');
           await ref.read(authNotifierProvider.notifier).registerWithEmail(
+                name: _nameController.text.trim(),
+                lastName: _lastNameController.text.trim(),
                 email: _emailController.text.trim(),
+                dni: _dniController.text.trim(),
                 password: _passwordController.text,
                 role: role,
-                documentType: _isProfessional ? _selectedDocumentType : null,
-                documentNumber: _isProfessional
-                    ? _identificationNumberController.text.trim()
-                    : null,
-                nroMatricula: _isProfessional
-                    ? _nroMatriculaController.text.trim()
-                    : null,
+                n_matricula:
+                    _isProfessional ? _nroMatriculaController.text.trim() : '',
               );
           if (ref.read(authNotifierProvider) == AuthStatus.authenticated) {
             Navigator.pushNamedAndRemoveUntil(
                 context, '/home', (route) => false);
+          } else {
+            print(
+                'Registration failed: ${ref.read(authNotifierProvider.notifier).errorMessage}');
           }
         }
       },
@@ -323,9 +334,30 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _validateInputs(BuildContext context) {
     bool isValid = true;
 
+    if (_nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Por favor, ingresa tu nombre.')),
+      );
+      isValid = false;
+    }
+
+    if (_lastNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Por favor, ingresa tu apellido.')),
+      );
+      isValid = false;
+    }
+
     if (_emailController.text.isEmpty || !_emailController.text.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Por favor, ingresa un correo válido.')),
+      );
+      isValid = false;
+    }
+
+    if (_dniController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Por favor, ingresa tu número de DNI.')),
       );
       isValid = false;
     }
@@ -337,10 +369,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       isValid = false;
     }
 
-    if (_isProfessional &&
-        (_selectedDocumentType == null ||
-            _identificationNumberController.text.isEmpty ||
-            _nroMatriculaController.text.isEmpty)) {
+    if (_passwordController.text != _rePasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Las contraseñas no coinciden.')),
+      );
+      isValid = false;
+    }
+
+    if (_isProfessional && _nroMatriculaController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content:

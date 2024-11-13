@@ -18,17 +18,14 @@ class _PatientPageState extends State<PatientPage> {
   final _lastNameController = TextEditingController();
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _documentNumberController =
-      TextEditingController(); // Número de documento
+  final _dniController = TextEditingController(); // DNI
+  final _emailController = TextEditingController(); // Email
 
-  String? _documentType; // Tipo de documento
   String? uid; // UID del usuario autenticado
   bool _submitted = false;
   bool _isEditing = false;
   bool _isLoading = true;
   bool _hasData = false;
-  bool _isDocumentFieldsEditable =
-      false; // Controlar la edición de los campos bloqueados
 
   @override
   void initState() {
@@ -50,9 +47,8 @@ class _PatientPageState extends State<PatientPage> {
           _lastNameController.text = data['lastName'] ?? '';
           _addressController.text = data['address'] ?? '';
           _phoneController.text = data['phone'] ?? '';
-          _documentNumberController.text = data['documentNumber'] ?? '';
-          _documentType =
-              data['documentType'] ?? 'DNI'; // Tipo de documento predeterminado
+          _dniController.text = data['dni'] ?? ''; // Cargar DNI
+          _emailController.text = data['email'] ?? ''; // Cargar Email
 
           _hasData = _checkMandatoryData(
               data); // Verificar que todos los datos obligatorios estén completos
@@ -81,8 +77,8 @@ class _PatientPageState extends State<PatientPage> {
         data['lastName'] != null &&
         data['address'] != null &&
         data['phone'] != null &&
-        data['documentNumber'] != null &&
-        data['documentType'] != null;
+        data['dni'] != null &&
+        data['email'] != null;
   }
 
   @override
@@ -139,119 +135,28 @@ class _PatientPageState extends State<PatientPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Complete la siguiente información',
+            'Complete la información restante',
             style: TextStyle(
                 fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           SizedBox(height: 20),
+          _buildTextField(_dniController, 'DNI', 'Por favor ingrese su DNI'),
+          SizedBox(height: 10),
+          _buildTextField(
+              _emailController, 'Email', 'Por favor ingrese su email'),
+          SizedBox(height: 10),
           _buildTextField(
               _nameController, 'Nombre', 'Por favor ingrese su nombre'),
           SizedBox(height: 10),
           _buildTextField(
               _lastNameController, 'Apellido', 'Por favor ingrese su apellido'),
           SizedBox(height: 10),
-          _buildTextField(_addressController, 'Dirección',
-              'Por favor ingrese su dirección'),
-          SizedBox(height: 10),
           _buildTextField(_phoneController, 'Teléfono',
               'Por favor ingrese su número de teléfono',
               keyboardType: TextInputType.phone),
           SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _documentType,
-                  decoration: InputDecoration(
-                    labelText: 'Tipo de documento',
-                    labelStyle: TextStyle(color: Colors.white),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                  items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: _isDocumentFieldsEditable
-                      ? (newValue) {
-                          setState(() {
-                            _documentType = newValue;
-                          });
-                        }
-                      : null,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor seleccione el tipo de documento';
-                    }
-                    return null;
-                  },
-                  disabledHint: Text(_documentType ?? 'DNI'),
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.edit, color: Color.fromRGBO(11, 191, 205, 1)),
-                onPressed: () {
-                  setState(() {
-                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
-                  });
-                },
-              )
-            ],
-          ),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _documentNumberController,
-                  decoration: InputDecoration(
-                    labelText: 'Número de documento',
-                    labelStyle: TextStyle(color: Colors.white),
-                    enabled: _isDocumentFieldsEditable,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingrese su número de documento';
-                    }
-                    return null;
-                  },
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.edit, color: Color.fromRGBO(11, 191, 205, 1)),
-                onPressed: () {
-                  setState(() {
-                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
-                  });
-                },
-              )
-            ],
-          ),
+          _buildTextField(_addressController, 'Dirección',
+              'Por favor ingrese su dirección'),
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
@@ -323,16 +228,14 @@ class _PatientPageState extends State<PatientPage> {
         'lastName': _lastNameController.text,
         'address': _addressController.text,
         'phone': _phoneController.text,
-        'documentType': _documentType,
-        'documentNumber': _documentNumberController.text,
+        'dni': _dniController.text, // Guardar DNI
+        'email': _emailController.text, // Guardar Email
       }, SetOptions(merge: true));
 
       setState(() {
         _submitted = true;
         _hasData = true;
         _isEditing = false;
-        _isDocumentFieldsEditable =
-            false; // Deshabilitar edición de documentos después de guardar
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -376,11 +279,11 @@ class _PatientPageState extends State<PatientPage> {
               style: TextStyle(fontSize: 16, color: Colors.white),
             ),
             Text(
-              'Tipo de Documento: $_documentType',
+              'DNI: ${_dniController.text}',
               style: TextStyle(fontSize: 16, color: Colors.white),
             ),
             Text(
-              'Número de Documento: ${_documentNumberController.text}',
+              'Email: ${_emailController.text}',
               style: TextStyle(fontSize: 16, color: Colors.white),
             ),
             SizedBox(height: 20),

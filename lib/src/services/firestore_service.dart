@@ -25,9 +25,8 @@ class FirestoreService {
     String address,
     String phone,
     String? email,
-    String? documentType,
-    String documentNumber,
-    int matricula,
+    String dni, // Cambiado a dni
+    String n_matricula, // Cambiado a n_matricula
     List<String> selectedDays,
     String startTime,
     String endTime,
@@ -40,9 +39,8 @@ class FirestoreService {
         'address': address,
         'phone': phone,
         'email': email,
-        'documentType': documentType,
-        'documentNumber': documentNumber,
-        'n_matricula': matricula,
+        'dni': dni, // Guardar dni
+        'n_matricula': n_matricula, // Guardar n_matricula
         'availability': {
           'days': selectedDays,
           'start_time': startTime,

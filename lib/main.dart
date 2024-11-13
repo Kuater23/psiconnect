@@ -64,7 +64,7 @@ class _MyAppState extends State<MyApp> {
       ),
       initialRoute: '/home',
       routes: {
-        '/home': (context) => HomePage(),
+        '/home': (context) => HomePageWrapper(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),

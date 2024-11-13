@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-<
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math';
-
 
 class AdminPage extends StatefulWidget {
   @override
@@ -25,18 +23,18 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   Future<void> _fetchUsers() async {
-
-    final QuerySnapshot result = await FirebaseFirestore.instance.collection('users').get();
+    final QuerySnapshot result =
+        await FirebaseFirestore.instance.collection('users').get();
     final List<DocumentSnapshot> documents = result.docs;
     setState(() {
       _users = documents.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         data['id'] = doc.id;
-        data['isActive'] = data['isActive'] ?? true; // Asegúrate de que isActive no sea null
+        data['isActive'] =
+            data['isActive'] ?? true; // Asegúrate de que isActive no sea null
         return data;
       }).toList();
 
-    
       _filteredUsers = _users;
     });
   }
@@ -51,8 +49,8 @@ class _AdminPageState extends State<AdminPage> {
     });
   }
 
-
-  Future<void> _addUser(String email, String password, String role, String? documentType, String? idNumber, String? matricula) async {
+  Future<void> _addUser(String email, String password, String role,
+      String? documentType, String? idNumber, String? matricula) async {
     try {
       final response = await http.post(
         Uri.parse('http://localhost:3000/addUser'),
@@ -77,7 +75,8 @@ class _AdminPageState extends State<AdminPage> {
     }
   }
 
-  Future<void> _updateUser(String id, String email, String role, String? documentType, String? idNumber, String? matricula) async {
+  Future<void> _updateUser(String id, String email, String role,
+      String? documentType, String? idNumber, String? matricula) async {
     try {
       final response = await http.put(
         Uri.parse('http://localhost:3000/updateUser'),
@@ -136,16 +135,16 @@ class _AdminPageState extends State<AdminPage> {
       }
     } catch (e) {
       _showErrorSnackBar('Error: ${e.toString()}');
-
-  
     }
   }
 
   String _generateRandomPassword() {
     const length = 6;
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final rand = Random();
-    return List.generate(length, (index) => chars[rand.nextInt(chars.length)]).join();
+    return List.generate(length, (index) => chars[rand.nextInt(chars.length)])
+        .join();
   }
 
   void _showErrorSnackBar(String message) {
@@ -157,8 +156,10 @@ class _AdminPageState extends State<AdminPage> {
   void _showAddUserDialog() {
     final TextEditingController emailController = TextEditingController();
     final TextEditingController passwordController = TextEditingController();
-    final TextEditingController identificationNumberController = TextEditingController();
-    final TextEditingController nroMatriculaController = TextEditingController();
+    final TextEditingController identificationNumberController =
+        TextEditingController();
+    final TextEditingController nroMatriculaController =
+        TextEditingController();
     bool isProfessional = false;
     String? selectedDocumentType;
 
@@ -217,11 +218,13 @@ class _AdminPageState extends State<AdminPage> {
                       ),
                       TextField(
                         controller: identificationNumberController,
-                        decoration: InputDecoration(labelText: 'Número de Identificación'),
+                        decoration: InputDecoration(
+                            labelText: 'Número de Identificación'),
                       ),
                       TextField(
                         controller: nroMatriculaController,
-                        decoration: InputDecoration(labelText: 'Matrícula Nacional'),
+                        decoration:
+                            InputDecoration(labelText: 'Matrícula Nacional'),
                       ),
                     ],
                   ],
@@ -258,9 +261,12 @@ class _AdminPageState extends State<AdminPage> {
   }
 
   void _showEditUserDialog(Map<String, dynamic> user) {
-    final TextEditingController emailController = TextEditingController(text: user['email']);
-    final TextEditingController identificationNumberController = TextEditingController(text: user['idNumber'] ?? '');
-    final TextEditingController nroMatriculaController = TextEditingController(text: user['matricula'] ?? '');
+    final TextEditingController emailController =
+        TextEditingController(text: user['email']);
+    final TextEditingController identificationNumberController =
+        TextEditingController(text: user['idNumber'] ?? '');
+    final TextEditingController nroMatriculaController =
+        TextEditingController(text: user['matricula'] ?? '');
     bool isProfessional = user['role'] == 'professional';
     String? selectedDocumentType = user['documentType'];
 
@@ -314,11 +320,13 @@ class _AdminPageState extends State<AdminPage> {
                       ),
                       TextField(
                         controller: identificationNumberController,
-                        decoration: InputDecoration(labelText: 'Número de Identificación'),
+                        decoration: InputDecoration(
+                            labelText: 'Número de Identificación'),
                       ),
                       TextField(
                         controller: nroMatriculaController,
-                        decoration: InputDecoration(labelText: 'Matrícula Nacional'),
+                        decoration:
+                            InputDecoration(labelText: 'Matrícula Nacional'),
                       ),
                     ],
                   ],
@@ -439,7 +447,6 @@ class _AdminPageState extends State<AdminPage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -507,7 +514,9 @@ class _AdminPageState extends State<AdminPage> {
                         },
                       ),
                       IconButton(
-                        icon: Icon(user['isActive'] ? Icons.block : Icons.check_circle),
+                        icon: Icon(user['isActive']
+                            ? Icons.block
+                            : Icons.check_circle),
                         onPressed: () {
                           _toggleUserActivation(user['id'], !user['isActive']);
                         },

@@ -8,9 +8,8 @@ class ProfessionalState {
   final String? lastName;
   final String? address;
   final String? phone;
-  final String? documentNumber;
-  final String? documentType;
-  final String? licenseNumber;
+  final String? dni; // Nuevo campo para DNI
+  final String? n_matricula; // Nuevo campo para n_matricula
   final List<String> selectedDays;
   final String? startTime;
   final String? endTime;
@@ -25,9 +24,8 @@ class ProfessionalState {
     this.lastName,
     this.address,
     this.phone,
-    this.documentNumber,
-    this.documentType,
-    this.licenseNumber,
+    this.dni, // Inicializar el nuevo campo
+    this.n_matricula, // Inicializar el nuevo campo
     this.selectedDays = const [],
     this.startTime,
     this.endTime,
@@ -44,9 +42,8 @@ class ProfessionalState {
     String? lastName,
     String? address,
     String? phone,
-    String? documentNumber,
-    String? documentType,
-    String? licenseNumber,
+    String? dni, // Nuevo campo para DNI
+    String? n_matricula, // Nuevo campo para n_matricula
     List<String>? selectedDays,
     String? startTime,
     String? endTime,
@@ -61,9 +58,8 @@ class ProfessionalState {
       lastName: lastName ?? this.lastName,
       address: address ?? this.address,
       phone: phone ?? this.phone,
-      documentNumber: documentNumber ?? this.documentNumber,
-      documentType: documentType ?? this.documentType,
-      licenseNumber: licenseNumber ?? this.licenseNumber,
+      dni: dni ?? this.dni, // Copiar el nuevo campo
+      n_matricula: n_matricula ?? this.n_matricula, // Copiar el nuevo campo
       selectedDays: selectedDays ?? this.selectedDays,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
@@ -119,9 +115,9 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
           lastName: data['lastName'] ?? '',
           address: data['address'] ?? '',
           phone: data['phone'] ?? '',
-          documentNumber: data['documentNumber'] ?? '',
-          licenseNumber: data['n_matricula']?.toString() ?? '',
-          documentType: data['documentType'] ?? 'DNI',
+          dni: data['dni'] ?? '', // Cargar el nuevo campo
+          n_matricula:
+              data['n_matricula']?.toString() ?? '', // Cargar el nuevo campo
           selectedDays: List<String>.from(availability['days'] ?? []),
           startTime: availability['start_time'] ?? '09:00',
           endTime: availability['end_time'] ?? '17:00',
@@ -146,8 +142,8 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
     required String lastName,
     required String address,
     required String phone,
-    required String documentNumber,
-    required String licenseNumber,
+    required String dni, // Nuevo parámetro para DNI
+    required String n_matricula, // Nuevo parámetro para n_matricula
     required List<String> selectedDays,
     required String startTime,
     required String endTime,
@@ -158,14 +154,6 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
       return;
     }
 
-    // Validate and retain existing values if new values are empty
-    final currentDocumentNumber = state.documentNumber?.isNotEmpty == true
-        ? state.documentNumber
-        : documentNumber;
-    final currentLicenseNumber = state.licenseNumber?.isNotEmpty == true
-        ? state.licenseNumber
-        : licenseNumber;
-
     try {
       print('Saving user data for UID: ${state.uid}');
       await _firestoreService.updateUserData(
@@ -175,9 +163,8 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
         address,
         phone,
         FirebaseAuth.instance.currentUser?.email,
-        state.documentType,
-        currentDocumentNumber!,
-        int.tryParse(currentLicenseNumber!) ?? 0,
+        dni, // Guardar el nuevo campo
+        n_matricula, // Guardar el nuevo campo
         selectedDays,
         startTime,
         endTime,
@@ -189,8 +176,8 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
         lastName: lastName,
         address: address,
         phone: phone,
-        documentNumber: currentDocumentNumber,
-        licenseNumber: currentLicenseNumber,
+        dni: dni, // Actualizar el estado con el nuevo campo
+        n_matricula: n_matricula, // Actualizar el estado con el nuevo campo
         selectedDays: selectedDays,
         startTime: startTime,
         endTime: endTime,

@@ -1,18 +1,18 @@
-import 'package:Psiconnect/main.dart';
 import 'package:Psiconnect/src/navigation/nav_bar_button.dart';
-import 'package:Psiconnect/src/widgets/responsive_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:Psiconnect/src/providers/session_provider.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
-import 'package:Psiconnect/src/screens/professional/professional_home.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class NavBar extends ResponsiveWidget {
+class NavBar extends HookConsumerWidget {
   final Function(GlobalKey) scrollTo;
   final GlobalKey homeKey;
   final GlobalKey featureKey;
   final GlobalKey screenshotKey;
   final GlobalKey contactKey;
+  final VoidCallback onReload;
 
   const NavBar({
     Key? key,
@@ -21,45 +21,7 @@ class NavBar extends ResponsiveWidget {
     required this.featureKey,
     required this.screenshotKey,
     required this.contactKey,
-  }) : super(key: key);
-
-  @override
-  Widget buildDesktop(BuildContext context) {
-    return DesktopNavBar(
-      scrollTo: scrollTo,
-      homeKey: homeKey,
-      featureKey: featureKey,
-      screenshotKey: screenshotKey,
-      contactKey: contactKey,
-    );
-  }
-
-  @override
-  Widget buildMobile(BuildContext context) {
-    return MobileNavBar(
-      scrollTo: scrollTo,
-      homeKey: homeKey,
-      featureKey: featureKey,
-      screenshotKey: screenshotKey,
-      contactKey: contactKey,
-    );
-  }
-}
-
-class DesktopNavBar extends HookConsumerWidget {
-  final Function(GlobalKey) scrollTo;
-  final GlobalKey homeKey;
-  final GlobalKey featureKey;
-  final GlobalKey screenshotKey;
-  final GlobalKey contactKey;
-
-  const DesktopNavBar({
-    Key? key,
-    required this.scrollTo,
-    required this.homeKey,
-    required this.featureKey,
-    required this.screenshotKey,
-    required this.contactKey,
+    required this.onReload,
   }) : super(key: key);
 
   @override
@@ -69,55 +31,135 @@ class DesktopNavBar extends HookConsumerWidget {
     final textColor = Colors.white; // Letras en blanco
     final userSession = ref.watch(sessionProvider);
 
-    return Container(
-      width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
-      color: navBarColor, // Fondo de Psiconnect
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
-        child: Row(
-          children: [
-            // Logo a la izquierda
-            Image.asset(
-              'assets/images/logo.png',
-              height: 80,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 800) {
+          // Desktop layout
+          return Container(
+            width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
+            color: navBarColor, // Fondo de Psiconnect
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 10.0, horizontal: 20.0),
+              child: Row(
+                children: [
+                  // Logo a la izquierda
+                  Image.asset(
+                    'assets/images/logo.png',
+                    height: 80,
+                  ),
+                  Spacer(),
+                  // Botones alineados a la derecha
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NavBarButton(
+                        text: 'Inicio',
+                        onTap: () => scrollTo(homeKey),
+                        defaultColor: textColor,
+                      ),
+                      SizedBox(width: 10),
+                      NavBarButton(
+                        text: 'Sobre nosotros',
+                        onTap: () => scrollTo(featureKey),
+                        defaultColor: textColor,
+                      ),
+                      SizedBox(width: 10),
+                      NavBarButton(
+                        text: 'Servicios',
+                        onTap: () => scrollTo(screenshotKey),
+                        defaultColor: textColor,
+                      ),
+                      SizedBox(width: 10),
+                      NavBarButton(
+                        text: 'Contacto',
+                        onTap: () => scrollTo(contactKey),
+                        defaultColor: textColor,
+                      ),
+                      SizedBox(width: 10),
+
+                      // Verificamos el rol del usuario para mostrar la opción "Perfil"
+                      if (userSession != null)
+                        NavBarButton(
+                          text: 'Perfil',
+                          onTap: () {
+                            _navigateToRolePage(
+                                context, userSession.role, onReload);
+                          },
+                          defaultColor: textColor,
+                        )
+                      else ...[
+                        NavBarButton(
+                            text: 'Iniciar sesión',
+                            onTap: () {
+                              Navigator.pushNamed(context, '/login');
+                            },
+                            defaultColor: textColor),
+                        SizedBox(width: 10),
+                        NavBarButton(
+                            text: 'Registrarse',
+                            onTap: () {
+                              Navigator.pushNamed(context, '/register');
+                            },
+                            defaultColor: textColor),
+                      ],
+
+                      // Opciones para administradores
+                      if (userSession?.role == 'admin') ...[
+                        SizedBox(width: 10),
+                        NavBarButton(
+                          text: 'Panel de Administración',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => AdminPage()),
+                            ).then((_) => onReload());
+                          },
+                          defaultColor: textColor,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-            Spacer(),
-            // Botones alineados a la derecha
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          );
+        } else {
+          // Mobile layout
+          return Container(
+            color: navBarColor, // Fondo de Psiconnect
+            width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
+            child: Column(
               children: [
                 NavBarButton(
                   text: 'Inicio',
                   onTap: () => scrollTo(homeKey),
                   defaultColor: textColor,
                 ),
-                SizedBox(width: 10),
                 NavBarButton(
                   text: 'Sobre nosotros',
                   onTap: () => scrollTo(featureKey),
                   defaultColor: textColor,
                 ),
-                SizedBox(width: 10),
                 NavBarButton(
                   text: 'Servicios',
                   onTap: () => scrollTo(screenshotKey),
                   defaultColor: textColor,
                 ),
-                SizedBox(width: 10),
                 NavBarButton(
                   text: 'Contacto',
                   onTap: () => scrollTo(contactKey),
                   defaultColor: textColor,
                 ),
-                SizedBox(width: 10),
 
-                // Verificamos el rol del usuario para mostrar la opción "Perfil"
+                // Verificamos el rol para mostrar opciones adicionales
                 if (userSession != null)
                   NavBarButton(
                     text: 'Perfil',
                     onTap: () {
-                      _navigateToRolePage(context, userSession.role);
+                      _navigateToRolePage(context, userSession.role, onReload);
                     },
                     defaultColor: textColor,
                   )
@@ -128,7 +170,6 @@ class DesktopNavBar extends HookConsumerWidget {
                         Navigator.pushNamed(context, '/login');
                       },
                       defaultColor: textColor),
-                  SizedBox(width: 10),
                   NavBarButton(
                       text: 'Registrarse',
                       onTap: () {
@@ -139,142 +180,27 @@ class DesktopNavBar extends HookConsumerWidget {
 
                 // Opciones para administradores
                 if (userSession?.role == 'admin') ...[
-                  SizedBox(width: 10),
                   NavBarButton(
                     text: 'Panel de Administración',
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => AdminPage()),
-                      );
+                      ).then((_) => onReload());
                     },
                     defaultColor: textColor,
                   ),
                 ],
               ],
             ),
-          ],
-        ),
-      ),
+          );
+        }
+      },
     );
   }
 
-  void _navigateToRolePage(BuildContext context, String role) {
-    Widget page;
-    switch (role) {
-      case 'admin':
-        page = AdminPage();
-        break;
-      case 'patient':
-        page = PatientPageWrapper();
-        break;
-      case 'professional':
-        page = ProfessionalHome(
-          toggleTheme: () {}, // Funcionalidad de cambio de tema si la necesitas
-        );
-        break;
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rol desconocido')),
-        );
-        return;
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
-  }
-}
-
-class MobileNavBar extends HookConsumerWidget {
-  final Function(GlobalKey) scrollTo;
-  final GlobalKey homeKey;
-  final GlobalKey featureKey;
-  final GlobalKey screenshotKey;
-  final GlobalKey contactKey;
-
-  const MobileNavBar({
-    Key? key,
-    required this.scrollTo,
-    required this.homeKey,
-    required this.featureKey,
-    required this.screenshotKey,
-    required this.contactKey,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final userSession = ref.watch(sessionProvider);
-
-    return Container(
-      color: const Color.fromRGBO(1, 40, 45, 1), // Fondo de Psiconnect
-      width: MediaQuery.of(context).size.width, // Ocupar todo el ancho
-      child: Column(
-        children: [
-          NavBarButton(
-            text: 'Inicio',
-            onTap: () => scrollTo(homeKey),
-            defaultColor: Colors.white,
-          ),
-          NavBarButton(
-            text: 'Sobre nosotros',
-            onTap: () => scrollTo(featureKey),
-            defaultColor: Colors.white,
-          ),
-          NavBarButton(
-            text: 'Servicios',
-            onTap: () => scrollTo(screenshotKey),
-            defaultColor: Colors.white,
-          ),
-          NavBarButton(
-            text: 'Contacto',
-            onTap: () => scrollTo(contactKey),
-            defaultColor: Colors.white,
-          ),
-
-          // Verificamos el rol para mostrar opciones adicionales
-          if (userSession != null)
-            NavBarButton(
-              text: 'Perfil',
-              onTap: () {
-                _navigateToRolePage(context, userSession.role);
-              },
-              defaultColor: Colors.white,
-            )
-          else ...[
-            NavBarButton(
-                text: 'Iniciar sesión',
-                onTap: () {
-                  Navigator.pushNamed(context, '/login');
-                },
-                defaultColor: Colors.white),
-            NavBarButton(
-                text: 'Registrarse',
-                onTap: () {
-                  Navigator.pushNamed(context, '/register');
-                },
-                defaultColor: Colors.white),
-          ],
-
-          // Opciones para administradores
-          if (userSession?.role == 'admin') ...[
-            NavBarButton(
-              text: 'Panel de Administración',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AdminPage()),
-                );
-              },
-              defaultColor: Colors.white,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _navigateToRolePage(BuildContext context, String role) {
+  void _navigateToRolePage(
+      BuildContext context, String role, VoidCallback onReload) async {
     String route;
     switch (role) {
       case 'admin':
@@ -293,7 +219,36 @@ class MobileNavBar extends HookConsumerWidget {
         return;
     }
 
-    // Usa pushReplacementNamed para reemplazar la ruta actual sin dejar la anterior en el historial
-    Navigator.pushReplacementNamed(context, route);
+    // Esperar a que los datos del usuario se actualicen en Firestore
+    await Future.delayed(Duration(seconds: 2));
+
+    // Volver a obtener los datos del usuario desde Firestore
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Usuario no encontrado en Firestore')),
+        );
+        return;
+      }
+
+      final updatedRole = userDoc['role'] as String?;
+      if (updatedRole != null && updatedRole == role) {
+        Navigator.pushReplacementNamed(context, route).then((_) => onReload());
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Rol desconocido')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No estás autenticado')),
+      );
+    }
   }
 }

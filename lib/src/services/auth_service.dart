@@ -33,13 +33,11 @@ class AuthService {
   // Método para actualizar información adicional del profesional
   Future<void> updateProfessionalInfo({
     required String uid,
-    required String documentType,
     required String idNumber,
     required String matricula,
   }) async {
     try {
       await _firestore.collection('users').doc(uid).set({
-        'documentType': documentType,
         'idNumber': idNumber,
         'matricula': matricula,
       }, SetOptions(merge: true));
@@ -67,12 +65,13 @@ class AuthService {
 
   // Método para registrar con email y contraseña
   Future<User?> registerWithEmailAndPassword({
+    required String name,
+    required String lastName,
     required String email,
+    required String dni,
     required String password,
     required String role,
-    String? documentType,
-    String? documentNumber,
-    String? nroMatricula,
+    String? n_matricula,
   }) async {
     try {
       final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
@@ -84,18 +83,21 @@ class AuthService {
       if (user != null && !(await _userExists(user.uid))) {
         // Solo crear el documento si no existe
         await _firestore.collection('users').doc(user.uid).set({
+          'name': name,
+          'lastName': lastName,
           'email': user.email,
+          'dni': dni,
           'role': role,
-          'documentType': documentType,
-          'documentNumber': documentNumber,
-          'n_matricula': nroMatricula,
+          'n_matricula': n_matricula,
         });
       }
 
       return user;
     } on FirebaseAuthException catch (e) {
+      print('FirebaseAuthException: ${e.code} - ${e.message}');
       throw AuthException(code: e.code, message: e.message);
     } catch (e) {
+      print('Exception: $e');
       throw AuthException(message: 'Error desconocido al registrar.');
     }
   }
