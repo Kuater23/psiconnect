@@ -103,14 +103,6 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.calendar_today),
-              title: Text('Agenda'),
-              onTap: () {
-                Navigator.pushReplacementNamed(
-                    context, '/professional_appointments');
-              },
-            ),
-            ListTile(
               leading: Icon(Icons.folder),
               title: Text('Archivos por Paciente'),
               onTap: () {
@@ -181,7 +173,10 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
           .logOut(); // Limpiamos la sesión del provider
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+        MaterialPageRoute(
+            builder: (context) => HomePage(onReload: () {
+                  setState(() {});
+                })),
         (route) => false, // Eliminar todas las rutas previas
       );
     } catch (e) {

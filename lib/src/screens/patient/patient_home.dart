@@ -1,42 +1,36 @@
-import 'package:Psiconnect/src/widgets/shared_drawer.dart';
 import 'package:flutter/material.dart';
+import 'package:Psiconnect/src/widgets/shared_drawer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class PatientPage extends StatefulWidget {
-  final String email;
+class PatientHome extends StatefulWidget {
+  final VoidCallback toggleTheme;
 
-  PatientPage({required this.email});
+  PatientHome({required this.toggleTheme});
 
   @override
-  _PatientPageState createState() => _PatientPageState();
+  _PatientHomeState createState() => _PatientHomeState();
 }
 
-class _PatientPageState extends State<PatientPage> {
+class _PatientHomeState extends State<PatientHome> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _documentNumberController =
-      TextEditingController(); // Número de documento
+  final _dniController = TextEditingController();
+  final _emailController = TextEditingController();
 
-  String? _documentType; // Tipo de documento
-  String? uid; // UID del usuario autenticado
-  bool _submitted = false;
   bool _isEditing = false;
   bool _isLoading = true;
   bool _hasData = false;
-  bool _isDocumentFieldsEditable =
-      false; // Controlar la edición de los campos bloqueados
 
   @override
   void initState() {
     super.initState();
-    _loadUserData(); // Cargar los datos del usuario al iniciar la página
+    _loadUserData();
   }
 
-  // Cargar los datos del usuario desde Firestore utilizando el UID
   Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -50,24 +44,19 @@ class _PatientPageState extends State<PatientPage> {
           _lastNameController.text = data['lastName'] ?? '';
           _addressController.text = data['address'] ?? '';
           _phoneController.text = data['phone'] ?? '';
-          _documentNumberController.text = data['documentNumber'] ?? '';
-          _documentType =
-              data['documentType'] ?? 'DNI'; // Tipo de documento predeterminado
-
-          _hasData = _checkMandatoryData(
-              data); // Verificar que todos los datos obligatorios estén completos
-          _submitted = true; // Marcar como enviado
-          _isEditing = false;
+          _dniController.text = data['dni'] ?? '';
+          _emailController.text = data['email'] ?? '';
+          _hasData = _checkMandatoryData(data);
           _isLoading = false;
         });
       } else {
         setState(() {
-          _isLoading = false; // Los datos no existen
+          _isLoading = false;
         });
       }
     } else {
       setState(() {
-        _isLoading = false; // No hay usuario autenticado
+        _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No hay un usuario autenticado')),
@@ -75,51 +64,31 @@ class _PatientPageState extends State<PatientPage> {
     }
   }
 
-  // Verificar si todos los campos obligatorios están completos
   bool _checkMandatoryData(Map<String, dynamic> data) {
     return data['name'] != null &&
         data['lastName'] != null &&
         data['address'] != null &&
         data['phone'] != null &&
-        data['documentNumber'] != null &&
-        data['documentType'] != null;
+        data['dni'] != null &&
+        data['email'] != null;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(
-          2, 60, 67, 1), // Color base de Psiconnect para el fondo
       appBar: AppBar(
         title: Text('Información del Paciente'),
-        backgroundColor: Color.fromRGBO(
-            2, 60, 67, 1), // Color base de Psiconnect para el fondo
-        titleTextStyle: TextStyle(
-          color: Colors.white, // Color de texto blanco
-          fontSize: 24, // Tamaño del texto
-          fontWeight: FontWeight.bold, // Negrita para el texto
-        ),
         actions: [
-          Builder(
-            builder: (BuildContext context) {
-              return IconButton(
-                icon: Icon(Icons.menu),
-                onPressed: () {
-                  Scaffold.of(context).openDrawer();
-                },
-                tooltip: MaterialLocalizations.of(context).openAppDrawerTooltip,
-              );
-            },
+          IconButton(
+            icon: Icon(Icons.brightness_6),
+            onPressed: widget.toggleTheme,
           ),
         ],
       ),
-      drawer: SharedDrawer(), // Utilizar el Drawer compartido
+      drawer: SharedDrawer(),
       body: _isLoading
-          ? Center(
-              child:
-                  CircularProgressIndicator(), // Mostrar un spinner mientras se cargan los datos
-            )
-          : Padding(
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,7 +100,6 @@ class _PatientPageState extends State<PatientPage> {
     );
   }
 
-  // Formulario de ingreso o edición de datos
   Widget _buildForm() {
     return Form(
       key: _formKey,
@@ -140,180 +108,79 @@ class _PatientPageState extends State<PatientPage> {
         children: [
           Text(
             'Complete la siguiente información',
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 20),
           _buildTextField(
-              _nameController, 'Nombre', 'Por favor ingrese su nombre'),
-          SizedBox(height: 10),
-          _buildTextField(
-              _lastNameController, 'Apellido', 'Por favor ingrese su apellido'),
-          SizedBox(height: 10),
-          _buildTextField(_addressController, 'Dirección',
-              'Por favor ingrese su dirección'),
-          SizedBox(height: 10),
-          _buildTextField(_phoneController, 'Teléfono',
-              'Por favor ingrese su número de teléfono',
-              keyboardType: TextInputType.phone),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _documentType,
-                  decoration: InputDecoration(
-                    labelText: 'Tipo de documento',
-                    labelStyle: TextStyle(color: Colors.white),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                  items: ['DNI', 'Pasaporte', 'Otro'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: _isDocumentFieldsEditable
-                      ? (newValue) {
-                          setState(() {
-                            _documentType = newValue;
-                          });
-                        }
-                      : null,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor seleccione el tipo de documento';
-                    }
-                    return null;
-                  },
-                  disabledHint: Text(_documentType ?? 'DNI'),
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.edit, color: Color.fromRGBO(11, 191, 205, 1)),
-                onPressed: () {
-                  setState(() {
-                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
-                  });
-                },
-              )
-            ],
+            labelText: 'Nombre',
+            controller: _nameController,
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _documentNumberController,
-                  decoration: InputDecoration(
-                    labelText: 'Número de documento',
-                    labelStyle: TextStyle(color: Colors.white),
-                    enabled: _isDocumentFieldsEditable,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10.0),
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Por favor ingrese su número de documento';
-                    }
-                    return null;
-                  },
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              IconButton(
-                icon: Icon(Icons.edit, color: Color.fromRGBO(11, 191, 205, 1)),
-                onPressed: () {
-                  setState(() {
-                    _isDocumentFieldsEditable = !_isDocumentFieldsEditable;
-                  });
-                },
-              )
-            ],
+          _buildTextField(
+            labelText: 'Apellido',
+            controller: _lastNameController,
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
+          ),
+          SizedBox(height: 10),
+          _buildTextField(
+            labelText: 'Dirección',
+            controller: _addressController,
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
+          ),
+          SizedBox(height: 10),
+          _buildTextField(
+            labelText: 'Teléfono',
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
+          ),
+          SizedBox(height: 10),
+          _buildTextField(
+            labelText: 'DNI',
+            controller: _dniController,
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
+          ),
+          SizedBox(height: 10),
+          _buildTextField(
+            labelText: 'Email',
+            controller: _emailController,
+            validator: (value) =>
+                value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
               if (_formKey.currentState!.validate()) {
-                // Si el formulario es válido, guardar los datos en Firestore
                 _saveUserData();
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  Color.fromRGBO(11, 191, 205, 1), // Color de fondo del botón
-              padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              elevation: 10, // Aumentar la sombra para el botón
-            ),
-            child: Text(
-              _isEditing ? 'Actualizar' : 'Guardar',
-              style: TextStyle(
-                color: Colors.white, // Color del texto
-              ),
-            ),
+            child: Text(_isEditing ? 'Actualizar' : 'Guardar'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTextField(
-      TextEditingController controller, String labelText, String errorMessage,
-      {TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField({
+    required String labelText,
+    required TextEditingController controller,
+    TextInputType keyboardType = TextInputType.text,
+    FormFieldValidator<String>? validator,
+  }) {
     return TextFormField(
       controller: controller,
-      decoration: InputDecoration(
-        labelText: labelText,
-        labelStyle: TextStyle(color: Colors.white),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide(color: Colors.white),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide(color: Colors.white),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.0),
-          borderSide: BorderSide(color: Colors.white),
-        ),
-      ),
+      decoration: InputDecoration(labelText: labelText),
       keyboardType: keyboardType,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return errorMessage;
-        }
-        return null;
-      },
-      style: TextStyle(color: Colors.white),
+      validator: validator,
     );
   }
 
-  // Guardar o actualizar los datos del usuario en Firestore
   Future<void> _saveUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -323,16 +190,13 @@ class _PatientPageState extends State<PatientPage> {
         'lastName': _lastNameController.text,
         'address': _addressController.text,
         'phone': _phoneController.text,
-        'documentType': _documentType,
-        'documentNumber': _documentNumberController.text,
+        'dni': _dniController.text,
+        'email': _emailController.text,
       }, SetOptions(merge: true));
 
       setState(() {
-        _submitted = true;
         _hasData = true;
         _isEditing = false;
-        _isDocumentFieldsEditable =
-            false; // Deshabilitar edición de documentos después de guardar
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -345,15 +209,11 @@ class _PatientPageState extends State<PatientPage> {
     }
   }
 
-  // Muestra la información después de que se ingresen o carguen los datos
   Widget _buildPatientInfo() {
     return Card(
-      color: Color.fromRGBO(
-          1, 40, 45, 1), // Color de fondo del contenedor del login
-      elevation: 4.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15.0),
-      ),
+      elevation: 5,
+      margin: EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -364,48 +224,29 @@ class _PatientPageState extends State<PatientPage> {
               style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white),
+                  color: Colors.blueAccent),
             ),
+            Divider(color: Colors.blue), // Línea azul separadora
             SizedBox(height: 10),
-            Text(
-              'Dirección: ${_addressController.text}',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
-            Text(
-              'Teléfono: ${_phoneController.text}',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
-            Text(
-              'Tipo de Documento: $_documentType',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
-            Text(
-              'Número de Documento: ${_documentNumberController.text}',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
+            Text('Dirección: ${_addressController.text}',
+                style: TextStyle(fontSize: 16)),
+            Text('Teléfono: ${_phoneController.text}',
+                style: TextStyle(fontSize: 16)),
+            Text('DNI: ${_dniController.text}', style: TextStyle(fontSize: 16)),
+            Text('Email: ${_emailController.text}',
+                style: TextStyle(fontSize: 16)),
             SizedBox(height: 20),
-            Align(
-              alignment: Alignment.centerRight, // Mover el botón a la derecha
+            Center(
               child: ElevatedButton(
                 onPressed: () {
                   setState(() {
                     _isEditing = true;
                   });
                 },
+                child: Text('Editar'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color.fromRGBO(
-                      11, 191, 205, 1), // Color de fondo del botón
-                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                  elevation: 10, // Aumentar la sombra para el botón
-                ),
-                child: Text(
-                  'Editar',
-                  style: TextStyle(
-                    color: Colors.white, // Color del texto
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  textStyle: TextStyle(fontSize: 18),
                 ),
               ),
             ),

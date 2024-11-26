@@ -78,23 +78,25 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
 
   // Método para registrar un nuevo usuario
   Future<void> registerWithEmail({
+    required String name,
+    required String lastName,
     required String email,
+    required String dni,
     required String password,
     required String role,
-    String? documentType,
-    String? documentNumber,
-    String? nroMatricula,
+    String? n_matricula,
   }) async {
     state = AuthStatus.loading;
     _errorMessage = null;
     try {
       final user = await _authService.registerWithEmailAndPassword(
+        name: name,
+        lastName: lastName,
         email: email,
+        dni: dni,
         password: password,
         role: role,
-        documentType: documentType,
-        documentNumber: documentNumber,
-        nroMatricula: nroMatricula,
+        n_matricula: n_matricula,
       );
       if (user != null) {
         await ref
@@ -104,13 +106,14 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
       } else {
         state = AuthStatus.unauthenticated;
       }
-    } on FirebaseAuthException catch (e) {
+    } on AuthException catch (e) {
       state = AuthStatus.error;
-      _errorMessage =
-          e.message; // Guardamos el mensaje de error específico de Firebase
+      _errorMessage = e.message; // Guardamos el mensaje de error específico
+      print('AuthException: ${e.code} - ${e.message}');
     } catch (e) {
       state = AuthStatus.error;
       _errorMessage = 'Error desconocido al registrar';
+      print('Exception: $e');
     }
   }
 

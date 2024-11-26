@@ -7,7 +7,6 @@ import 'package:Psiconnect/src/screens/patient/patient_appointments.dart';
 import 'package:Psiconnect/src/screens/patient/patient_files.dart';
 import 'package:Psiconnect/src/screens/patient/patient_book_schedule.dart';
 import 'package:Psiconnect/src/screens/professional/professional_home.dart';
-import 'package:Psiconnect/src/screens/professional/professional_appointments.dart';
 import 'package:Psiconnect/src/screens/professional/professional_files.dart';
 import 'package:Psiconnect/src/screens/admin_page.dart';
 import 'package:Psiconnect/src/screens/login_page.dart';
@@ -64,7 +63,7 @@ class _MyAppState extends State<MyApp> {
       ),
       initialRoute: '/home',
       routes: {
-        '/home': (context) => HomePage(),
+        '/home': (context) => HomePageWrapper(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
         '/patient': (context) => PatientPageWrapper(),
@@ -73,7 +72,6 @@ class _MyAppState extends State<MyApp> {
             PatientFiles(professionalId: '', patientId: ''),
         '/professional': (context) =>
             ProfessionalHome(toggleTheme: _toggleTheme),
-        '/professional_appointments': (context) => ProfessionalAppointments(),
         '/professional_files': (context) => ProfessionalFiles(patientId: ''),
         '/admin': (context) => AdminPage(),
         '/bookSchedule': (context) => PatientBookSchedule(), // Define la ruta
@@ -174,6 +172,6 @@ class PatientPageWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    return user != null ? PatientPage(email: user.email!) : LoginPage();
+    return user != null ? PatientHome(toggleTheme: () {}) : LoginPage();
   }
 }

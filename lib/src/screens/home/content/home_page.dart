@@ -18,7 +18,27 @@ final contactKey = GlobalKey();
 final currentPageProvider = StateProvider<GlobalKey>((_) => homeKey);
 final scrolledProvider = StateProvider<bool>((_) => false);
 
+class HomePageWrapper extends StatefulWidget {
+  @override
+  _HomePageWrapperState createState() => _HomePageWrapperState();
+}
+
+class _HomePageWrapperState extends State<HomePageWrapper> {
+  @override
+  Widget build(BuildContext context) {
+    return HomePage(
+      onReload: () {
+        setState(() {});
+      },
+    );
+  }
+}
+
 class HomePage extends HookConsumerWidget {
+  final VoidCallback onReload;
+
+  HomePage({required this.onReload});
+
   void onScroll(ScrollController controller, WidgetRef ref) {
     final isScrolled = ref.read(scrolledProvider);
 
@@ -38,7 +58,10 @@ class HomePage extends HookConsumerWidget {
 
     useEffect(() {
       _controller.addListener(() => onScroll(_controller, ref));
-      return _controller.dispose;
+      return () {
+        _controller.removeListener(() => onScroll(_controller, ref));
+        _controller.dispose();
+      };
     }, [_controller]);
 
     double width =
@@ -59,6 +82,7 @@ class HomePage extends HookConsumerWidget {
             featureKey: featureKey,
             screenshotKey: screenshotKey,
             contactKey: contactKey,
+            onReload: onReload, // Añadir el argumento onReload aquí
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -84,12 +108,12 @@ class HomePage extends HookConsumerWidget {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => AdminPage()),
-      );
+      ).then((_) => onReload());
     } else if (role == 'patient') {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => PatientPageWrapper()),
-      );
+      ).then((_) => onReload());
     } else if (role == 'professional') {
       Navigator.push(
         context,
@@ -97,7 +121,7 @@ class HomePage extends HookConsumerWidget {
             builder: (context) => ProfessionalHome(
                   toggleTheme: () {},
                 )),
-      );
+      ).then((_) => onReload());
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Unknown role')),
