@@ -10,6 +10,7 @@ class ProfessionalState {
   final String? phone;
   final String? dni; // Nuevo campo para DNI
   final String? n_matricula; // Nuevo campo para n_matricula
+  final String? specialty; // Nuevo campo para Especialidad
   final List<String> selectedDays;
   final String? startTime;
   final String? endTime;
@@ -26,6 +27,7 @@ class ProfessionalState {
     this.phone,
     this.dni, // Inicializar el nuevo campo
     this.n_matricula, // Inicializar el nuevo campo
+    this.specialty, // Inicializar el nuevo campo
     this.selectedDays = const [],
     this.startTime,
     this.endTime,
@@ -44,6 +46,7 @@ class ProfessionalState {
     String? phone,
     String? dni, // Nuevo campo para DNI
     String? n_matricula, // Nuevo campo para n_matricula
+    String? specialty, // Nuevo campo para Especialidad
     List<String>? selectedDays,
     String? startTime,
     String? endTime,
@@ -60,6 +63,7 @@ class ProfessionalState {
       phone: phone ?? this.phone,
       dni: dni ?? this.dni, // Copiar el nuevo campo
       n_matricula: n_matricula ?? this.n_matricula, // Copiar el nuevo campo
+      specialty: specialty ?? this.specialty, // Copiar el nuevo campo
       selectedDays: selectedDays ?? this.selectedDays,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
@@ -118,6 +122,7 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
           dni: data['dni'] ?? '', // Cargar el nuevo campo
           n_matricula:
               data['n_matricula']?.toString() ?? '', // Cargar el nuevo campo
+          specialty: data['specialty'] ?? '', // Cargar el nuevo campo
           selectedDays: List<String>.from(availability['days'] ?? []),
           startTime: availability['start_time'] ?? '09:00',
           endTime: availability['end_time'] ?? '17:00',
@@ -144,6 +149,7 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
     required String phone,
     required String dni, // Nuevo parámetro para DNI
     required String n_matricula, // Nuevo parámetro para n_matricula
+    required String? specialty, // Nuevo parámetro para Especialidad
     required List<String> selectedDays,
     required String startTime,
     required String endTime,
@@ -165,6 +171,7 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
         FirebaseAuth.instance.currentUser?.email,
         dni, // Guardar el nuevo campo
         n_matricula, // Guardar el nuevo campo
+        specialty, // Guardar el nuevo campo
         selectedDays,
         startTime,
         endTime,
@@ -178,6 +185,7 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
         phone: phone,
         dni: dni, // Actualizar el estado con el nuevo campo
         n_matricula: n_matricula, // Actualizar el estado con el nuevo campo
+        specialty: specialty, // Actualizar el estado con el nuevo campo
         selectedDays: selectedDays,
         startTime: startTime,
         endTime: endTime,
@@ -209,4 +217,5 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
 // Provider para el notificador del profesional
 final professionalProvider =
     StateNotifierProvider<ProfessionalNotifier, ProfessionalState>(
-        (ref) => ProfessionalNotifier(FirestoreService()));
+  (ref) => ProfessionalNotifier(FirestoreService()),
+);

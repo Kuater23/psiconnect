@@ -103,14 +103,6 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.calendar_today),
-              title: Text('Agenda'),
-              onTap: () {
-                Navigator.pushReplacementNamed(
-                    context, '/professional_appointments');
-              },
-            ),
-            ListTile(
               leading: Icon(Icons.folder),
               title: Text('Archivos por Paciente'),
               onTap: () {

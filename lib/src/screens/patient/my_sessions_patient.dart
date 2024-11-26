@@ -41,10 +41,57 @@ class MySessionsPatientPage extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final session =
                         sessions[index].data() as Map<String, dynamic>;
-                    return ListTile(
-                      title: Text('Profesional: ${session['professionalId']}'),
-                      subtitle: Text(
-                          'Día: ${session['day']} - Hora: ${session['time']}'),
+                    return Card(
+                      margin: EdgeInsets.all(10),
+                      elevation: 5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Profesional: ${session['professionalId']}',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              'Día: ${session['day']}',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            Text(
+                              'Hora: ${session['time']}',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            SizedBox(height: 20),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  await FirebaseFirestore.instance
+                                      .collection('appointments')
+                                      .doc(sessions[index].id)
+                                      .delete();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Turno cancelado'),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
+                                child: Text('Cancelar Turno'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   },
                 );

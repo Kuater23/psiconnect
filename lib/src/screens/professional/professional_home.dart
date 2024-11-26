@@ -22,8 +22,18 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
   late TextEditingController _dniController;
   late TextEditingController _nMatriculaController;
   late TextEditingController _breakDurationController;
+  String?
+      _selectedSpecialty; // Añadir variable para la especialidad seleccionada
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
+
+  final List<String> _specialties = [
+    'Psicología Clínica',
+    'Psicología Educativa',
+    'Psicología Organizacional',
+    'Psicología Social',
+    'Psicología Forense'
+  ]; // Lista de especialidades
 
   @override
   void initState() {
@@ -40,6 +50,9 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
         TextEditingController(text: professionalState.n_matricula);
     _breakDurationController = TextEditingController(
         text: professionalState.breakDuration?.toString() ?? '15');
+    _selectedSpecialty = (professionalState.specialty?.isNotEmpty ?? false)
+        ? professionalState.specialty
+        : _specialties.first; // Inicializar especialidad seleccionada
     _startTime = professionalState.startTime != null
         ? TimeFormatHelper.parseTime(professionalState.startTime!)
         : null;
@@ -138,9 +151,20 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
                 value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
+          _buildDropdownField(
+            labelText: 'Especialidad',
+            value: _selectedSpecialty,
+            items: _specialties,
+            onChanged: (value) {
+              setState(() {
+                _selectedSpecialty = value;
+              });
+            },
+          ),
+          SizedBox(height: 10),
           _buildDaysSelector(ref),
           _buildTimeSelector(
-            context: context, // Pasa el contexto aquí
+            context: context,
             label: 'Hora de Inicio',
             initialTime: _startTime ?? TimeOfDay(hour: 9, minute: 0),
             onTimePicked: (pickedTime) {
@@ -150,7 +174,7 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
             },
           ),
           _buildTimeSelector(
-            context: context, // Pasa el contexto aquí
+            context: context,
             label: 'Hora de Fin',
             initialTime: _endTime ?? TimeOfDay(hour: 17, minute: 0),
             onTimePicked: (pickedTime) {
@@ -187,6 +211,7 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
                   phone: _phoneController.text,
                   dni: _dniController.text,
                   n_matricula: _nMatriculaController.text,
+                  specialty: _selectedSpecialty, // Guardar Especialidad
                   selectedDays: _selectedDays,
                   startTime: _startTime != null
                       ? TimeFormatHelper.formatTimeIn24Hours(_startTime!)
@@ -218,6 +243,26 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
       decoration: InputDecoration(labelText: labelText),
       keyboardType: keyboardType,
       validator: validator,
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String labelText,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(labelText: labelText),
+      value: value,
+      items: items.map((String specialty) {
+        return DropdownMenuItem<String>(
+          value: specialty,
+          child: Text(specialty),
+        );
+      }).toList(),
+      onChanged: onChanged,
+      validator: (value) => value == null ? 'Este campo es obligatorio' : null,
     );
   }
 
@@ -307,7 +352,7 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
             ),
             SizedBox(height: 10),
             Text(
-              'Especialista en Psicología Clínica',
+              'Especialista en ${professionalState.specialty}', // Mostrar Especialidad
               style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
             ),
             Divider(),
