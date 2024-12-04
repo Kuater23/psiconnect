@@ -77,7 +77,9 @@ class _PatientHomeState extends State<PatientHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Información del Paciente'),
+        title: Text(_hasData
+            ? 'Perfil de ${_nameController.text} ${_lastNameController.text}'
+            : 'Información del Paciente'),
         actions: [
           IconButton(
             icon: Icon(Icons.brightness_6),
@@ -85,7 +87,7 @@ class _PatientHomeState extends State<PatientHome> {
           ),
         ],
       ),
-      drawer: SharedDrawer(),
+      drawer: SharedDrawer(toggleTheme: widget.toggleTheme),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -228,13 +230,11 @@ class _PatientHomeState extends State<PatientHome> {
             ),
             Divider(color: Colors.blue), // Línea azul separadora
             SizedBox(height: 10),
-            Text('Dirección: ${_addressController.text}',
-                style: TextStyle(fontSize: 16)),
-            Text('Teléfono: ${_phoneController.text}',
-                style: TextStyle(fontSize: 16)),
-            Text('DNI: ${_dniController.text}', style: TextStyle(fontSize: 16)),
-            Text('Email: ${_emailController.text}',
-                style: TextStyle(fontSize: 16)),
+            _buildInfoRow(
+                Icons.location_on, 'Dirección: ${_addressController.text}'),
+            _buildInfoRow(Icons.phone, 'Teléfono: ${_phoneController.text}'),
+            _buildInfoRow(Icons.badge, 'DNI: ${_dniController.text}'),
+            _buildInfoRow(Icons.email, 'Email: ${_emailController.text}'),
             SizedBox(height: 20),
             Center(
               child: ElevatedButton(
@@ -253,6 +253,16 @@ class _PatientHomeState extends State<PatientHome> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.blueAccent),
+        SizedBox(width: 10),
+        Text(text, style: TextStyle(fontSize: 16)),
+      ],
     );
   }
 }

@@ -19,6 +19,10 @@ final currentPageProvider = StateProvider<GlobalKey>((_) => homeKey);
 final scrolledProvider = StateProvider<bool>((_) => false);
 
 class HomePageWrapper extends StatefulWidget {
+  final VoidCallback toggleTheme;
+
+  HomePageWrapper({required this.toggleTheme});
+
   @override
   _HomePageWrapperState createState() => _HomePageWrapperState();
 }
@@ -30,14 +34,16 @@ class _HomePageWrapperState extends State<HomePageWrapper> {
       onReload: () {
         setState(() {});
       },
+      toggleTheme: widget.toggleTheme,
     );
   }
 }
 
 class HomePage extends HookConsumerWidget {
   final VoidCallback onReload;
+  final VoidCallback toggleTheme;
 
-  HomePage({required this.onReload});
+  HomePage({required this.onReload, required this.toggleTheme});
 
   void onScroll(ScrollController controller, WidgetRef ref) {
     final isScrolled = ref.read(scrolledProvider);
@@ -112,14 +118,15 @@ class HomePage extends HookConsumerWidget {
     } else if (role == 'patient') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => PatientPageWrapper()),
+        MaterialPageRoute(
+            builder: (context) => PatientPageWrapper(toggleTheme: toggleTheme)),
       ).then((_) => onReload());
     } else if (role == 'professional') {
       Navigator.push(
         context,
         MaterialPageRoute(
             builder: (context) => ProfessionalHome(
-                  toggleTheme: () {},
+                  toggleTheme: toggleTheme,
                 )),
       ).then((_) => onReload());
     } else {
