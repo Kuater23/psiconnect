@@ -4,16 +4,35 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:Psiconnect/src/widgets/shared_drawer.dart'; // Importa el SharedDrawer
 
 class MySessionsPatientPage extends StatelessWidget {
+  final VoidCallback toggleTheme;
+
+  MySessionsPatientPage({required this.toggleTheme});
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
+      backgroundColor:
+          Theme.of(context).scaffoldBackgroundColor, // Fondo según el tema
       appBar: AppBar(
         title: Text('Mis Sesiones'),
-        backgroundColor: Color.fromRGBO(2, 60, 67, 1),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ??
+            Color.fromRGBO(
+                2, 60, 67, 1), // Color base de Psiconnect para el fondo
+        titleTextStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.brightness_6),
+            onPressed: toggleTheme,
+          ),
+        ],
       ),
-      drawer: SharedDrawer(), // Añade el SharedDrawer
+      drawer: SharedDrawer(toggleTheme: toggleTheme), // Añade el SharedDrawer
       body: user == null
           ? Center(child: Text('No estás autenticado'))
           : StreamBuilder<QuerySnapshot>(
@@ -42,6 +61,7 @@ class MySessionsPatientPage extends StatelessWidget {
                     final session =
                         sessions[index].data() as Map<String, dynamic>;
                     return Card(
+                      color: Theme.of(context).cardColor, // Color según el tema
                       margin: EdgeInsets.all(10),
                       elevation: 5,
                       shape: RoundedRectangleBorder(
@@ -57,16 +77,38 @@ class MySessionsPatientPage extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors
+                                        .black, // Color del texto según el tema
                               ),
                             ),
                             SizedBox(height: 10),
                             Text(
                               'Día: ${session['day']}',
-                              style: TextStyle(fontSize: 16),
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors
+                                        .black, // Color del texto según el tema
+                              ),
                             ),
                             Text(
                               'Hora: ${session['time']}',
-                              style: TextStyle(fontSize: 16),
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors
+                                        .black, // Color del texto según el tema
+                              ),
                             ),
                             SizedBox(height: 20),
                             Align(

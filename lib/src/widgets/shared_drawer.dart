@@ -10,6 +10,10 @@ import 'package:Psiconnect/src/screens/patient/appointments.dart'; // Importamos
 final userRoleProvider = StateProvider<String?>((ref) => null);
 
 class SharedDrawer extends ConsumerStatefulWidget {
+  final VoidCallback toggleTheme;
+
+  SharedDrawer({required this.toggleTheme});
+
   @override
   _SharedDrawerState createState() => _SharedDrawerState();
 }
@@ -128,7 +132,7 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
             ),
             ListTile(
               leading: Icon(Icons.calendar_today),
-              title: Text('Agenda'),
+              title: Text('Agenda Digital'),
               onTap: () {
                 Navigator.pushReplacementNamed(
                     context, '/patient_appointments');
@@ -174,9 +178,12 @@ class _SharedDrawerState extends ConsumerState<SharedDrawer> {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-            builder: (context) => HomePage(onReload: () {
-                  setState(() {});
-                })),
+            builder: (context) => HomePage(
+                  onReload: () {
+                    setState(() {});
+                  },
+                  toggleTheme: widget.toggleTheme,
+                )),
         (route) => false, // Eliminar todas las rutas previas
       );
     } catch (e) {

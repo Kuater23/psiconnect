@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class PatientBookSchedule extends StatefulWidget {
+  final VoidCallback toggleTheme;
+
+  PatientBookSchedule({required this.toggleTheme});
+
   @override
   _PatientBookScheduleState createState() => _PatientBookScheduleState();
 }
@@ -32,15 +36,24 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
     final String name = args['name'];
 
     return Scaffold(
-      backgroundColor: Color.fromRGBO(2, 60, 67, 1),
+      backgroundColor:
+          Theme.of(context).scaffoldBackgroundColor, // Fondo según el tema
       appBar: AppBar(
         title: Text('Agenda de Dr. $lastName, $name'),
-        backgroundColor: Color.fromRGBO(2, 60, 67, 1),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ??
+            Color.fromRGBO(
+                2, 60, 67, 1), // Color base de Psiconnect para el fondo
         titleTextStyle: TextStyle(
           color: Colors.white,
           fontSize: 24,
           fontWeight: FontWeight.bold,
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.brightness_6),
+            onPressed: widget.toggleTheme,
+          ),
+        ],
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance
@@ -69,7 +82,7 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: Card(
-              color: Color.fromRGBO(1, 40, 45, 1),
+              color: Theme.of(context).cardColor, // Color según el tema
               elevation: 4.0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.0),
@@ -81,12 +94,18 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                   children: [
                     Text(
                       'Dirección: ${professionalData['address']}',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 16,
+                          color: Theme.of(context).textTheme.bodyLarge?.color ??
+                              Colors.black),
                     ),
                     SizedBox(height: 8),
                     Text(
                       'Teléfono: ${professionalData['phone']}',
-                      style: TextStyle(fontSize: 16, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 16,
+                          color: Theme.of(context).textTheme.bodyLarge?.color ??
+                              Colors.black),
                     ),
                     SizedBox(height: 16),
                     Text(
@@ -94,29 +113,51 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                          color: Theme.of(context).textTheme.bodyLarge?.color ??
+                              Colors.black),
                     ),
                     SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         labelText: 'Selecciona un día',
-                        labelStyle: TextStyle(color: Colors.white),
+                        labelStyle: TextStyle(
+                            color:
+                                Theme.of(context).textTheme.bodyLarge?.color ??
+                                    Colors.black),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.0),
-                          borderSide: BorderSide(color: Colors.white),
+                          borderSide: BorderSide(
+                              color: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.color ??
+                                  Colors.black),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.0),
-                          borderSide: BorderSide(color: Colors.white),
+                          borderSide: BorderSide(
+                              color: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.color ??
+                                  Colors.black),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12.0),
-                          borderSide: BorderSide(color: Colors.white),
+                          borderSide: BorderSide(
+                              color: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.color ??
+                                  Colors.black),
                         ),
                         filled: true,
-                        fillColor: Color.fromRGBO(2, 60, 67, 0.5),
+                        fillColor: Theme.of(context)
+                            .inputDecorationTheme
+                            .fillColor, // Color según el tema
                       ),
-                      dropdownColor: Color.fromRGBO(2, 60, 67, 1),
+                      dropdownColor:
+                          Theme.of(context).cardColor, // Color según el tema
                       value: selectedDay,
                       onChanged: (String? newValue) async {
                         setState(() {
@@ -145,8 +186,13 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                           .map<DropdownMenuItem<String>>((day) {
                         return DropdownMenuItem<String>(
                           value: day,
-                          child:
-                              Text(day, style: TextStyle(color: Colors.white)),
+                          child: Text(day,
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.color ??
+                                      Colors.black)),
                         );
                       }).toList(),
                     ),
@@ -159,29 +205,54 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white),
+                            color:
+                                Theme.of(context).textTheme.bodyLarge?.color ??
+                                    Colors.black),
                       ),
                       SizedBox(height: 8),
                       DropdownButtonFormField<TimeOfDay>(
                         decoration: InputDecoration(
                           labelText: 'Selecciona una hora',
-                          labelStyle: TextStyle(color: Colors.white),
+                          labelStyle: TextStyle(
+                              color: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.color ??
+                                  Colors.black),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12.0),
-                            borderSide: BorderSide(color: Colors.white),
+                            borderSide: BorderSide(
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors.black),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12.0),
-                            borderSide: BorderSide(color: Colors.white),
+                            borderSide: BorderSide(
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors.black),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12.0),
-                            borderSide: BorderSide(color: Colors.white),
+                            borderSide: BorderSide(
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors.black),
                           ),
                           filled: true,
-                          fillColor: Color.fromRGBO(2, 60, 67, 0.5),
+                          fillColor: Theme.of(context)
+                              .inputDecorationTheme
+                              .fillColor, // Color según el tema
                         ),
-                        dropdownColor: Color.fromRGBO(2, 60, 67, 1),
+                        dropdownColor:
+                            Theme.of(context).cardColor, // Color según el tema
                         value: selectedTime,
                         onChanged: (TimeOfDay? newValue) {
                           setState(() {
@@ -193,7 +264,12 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                           return DropdownMenuItem<TimeOfDay>(
                             value: time,
                             child: Text(time.format(context),
-                                style: TextStyle(color: Colors.white)),
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.color ??
+                                        Colors.black)),
                           );
                         }).toList(),
                       ),
@@ -237,7 +313,9 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                               : null,
                           style: ElevatedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            backgroundColor: Color.fromRGBO(11, 191, 205, 1),
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .primary, // Color según el tema
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.0),
                             ),
@@ -255,7 +333,9 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                           },
                           style: ElevatedButton.styleFrom(
                             foregroundColor: Colors.white,
-                            backgroundColor: Colors.red,
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .secondary, // Color según el tema
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.0),
                             ),

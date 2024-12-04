@@ -63,22 +63,26 @@ class _MyAppState extends State<MyApp> {
       ),
       initialRoute: '/home',
       routes: {
-        '/home': (context) => HomePageWrapper(),
+        '/home': (context) => HomePageWrapper(toggleTheme: _toggleTheme),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
-        '/patient': (context) => PatientPageWrapper(),
-        '/patient_appointments': (context) => PatientAppointments(),
-        '/patient_files': (context) =>
-            PatientFiles(professionalId: '', patientId: ''),
+        '/patient': (context) => PatientPageWrapper(toggleTheme: _toggleTheme),
+        '/patient_appointments': (context) =>
+            PatientAppointments(toggleTheme: _toggleTheme),
+        '/patient_files': (context) => PatientFiles(
+            professionalId: '', patientId: '', toggleTheme: _toggleTheme),
         '/professional': (context) =>
             ProfessionalHome(toggleTheme: _toggleTheme),
-        '/professional_files': (context) => ProfessionalFiles(patientId: ''),
+        '/professional_files': (context) =>
+            ProfessionalFiles(patientId: '', toggleTheme: _toggleTheme),
         '/admin': (context) => AdminPage(),
-        '/bookSchedule': (context) => PatientBookSchedule(), // Define la ruta
-        '/my_sessions_professional': (context) =>
-            MySessionsProfessionalPage(), // Define la nueva ruta para profesionales
-        '/my_sessions_patient': (context) =>
-            MySessionsPatientPage(), // Define la nueva ruta para pacientes
+        '/bookSchedule': (context) =>
+            PatientBookSchedule(toggleTheme: _toggleTheme), // Define la ruta
+        '/my_sessions_professional': (context) => MySessionsProfessionalPage(
+            toggleTheme:
+                _toggleTheme), // Define la nueva ruta para profesionales
+        '/my_sessions_patient': (context) => MySessionsPatientPage(
+            toggleTheme: _toggleTheme), // Define la nueva ruta para pacientes
       },
       onGenerateRoute: (settings) {
         return MaterialPageRoute(
@@ -128,7 +132,7 @@ class AuthWrapper extends ConsumerWidget {
             if (userRole == 'professional') {
               return ProfessionalHome(toggleTheme: toggleTheme);
             } else if (userRole == 'patient') {
-              return PatientPageWrapper();
+              return PatientPageWrapper(toggleTheme: toggleTheme);
             } else if (userRole == 'admin') {
               return AdminPage();
             } else {
@@ -169,9 +173,13 @@ class ErrorScreen extends StatelessWidget {
 }
 
 class PatientPageWrapper extends StatelessWidget {
+  final VoidCallback toggleTheme;
+
+  PatientPageWrapper({required this.toggleTheme});
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    return user != null ? PatientHome(toggleTheme: () {}) : LoginPage();
+    return user != null ? PatientHome(toggleTheme: toggleTheme) : LoginPage();
   }
 }

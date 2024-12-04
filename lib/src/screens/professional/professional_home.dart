@@ -75,7 +75,7 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
           ),
         ],
       ),
-      drawer: SharedDrawer(),
+      drawer: SharedDrawer(toggleTheme: widget.toggleTheme),
       body: professionalState.isLoading
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
