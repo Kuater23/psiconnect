@@ -91,6 +91,9 @@ class _PatientAppointmentsState extends State<PatientAppointments> {
                 fillColor: Theme.of(context)
                     .inputDecorationTheme
                     .fillColor, // Color según el tema
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               value: _selectedSpecialty,
               items: _specialties.map((String specialty) {
@@ -167,161 +170,44 @@ class ProfessionalList extends StatelessWidget {
                     final data = professional.data() as Map<String, dynamic>;
                     return Card(
                       color: Theme.of(context).cardColor, // Color según el tema
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .secondary
-                                  .withOpacity(0.1), // Color para diferenciar
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(12.0),
-                                topRight: Radius.circular(12.0),
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              'Agenda Digital',
-                              style: TextStyle(
-                                  color: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.color ??
-                                      Colors
-                                          .black, // Color del texto según el tema
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.1), // Color para diferenciar
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(12.0),
-                                bottomRight: Radius.circular(12.0),
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      elevation: 5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.person,
-                                        color: Theme.of(context)
-                                                .iconTheme
-                                                .color ??
-                                            Colors
-                                                .black), // Color del icono según el tema
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Dr. ${data['lastName']}, ${data['name']}',
-                                      style: TextStyle(
-                                          color: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyLarge
-                                                  ?.color ??
-                                              Colors
-                                                  .black, // Color del texto según el tema
-                                          fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(Icons.location_on,
-                                        color: Theme.of(context)
-                                                .iconTheme
-                                                .color ??
-                                            Colors
-                                                .black), // Color del icono según el tema
-                                    SizedBox(width: 8),
-                                    Text(
-                                      data['address'],
-                                      style: TextStyle(
-                                          color: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyLarge
-                                                  ?.color ??
-                                              Colors
-                                                  .black, // Color del texto según el tema
-                                          fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(Icons.phone,
-                                        color: Theme.of(context)
-                                                .iconTheme
-                                                .color ??
-                                            Colors
-                                                .black), // Color del icono según el tema
-                                    SizedBox(width: 8),
-                                    Text(
-                                      data['phone'],
-                                      style: TextStyle(
-                                          color: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyLarge
-                                                  ?.color ??
-                                              Colors
-                                                  .black, // Color del texto según el tema
-                                          fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 8),
-                                if (data.containsKey('specialty'))
-                                  Row(
-                                    children: [
-                                      Icon(Icons.school,
-                                          color: Theme.of(context)
-                                                  .iconTheme
-                                                  .color ??
-                                              Colors
-                                                  .black), // Color del icono según el tema
-                                      SizedBox(width: 8),
-                                      Text(
-                                        data['specialty'],
-                                        style: TextStyle(
-                                            color: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyLarge
-                                                    ?.color ??
-                                                Colors
-                                                    .black, // Color del texto según el tema
-                                            fontSize: 14),
-                                      ),
-                                    ],
+                                Icon(Icons.person,
+                                    color: Colors.blueAccent, size: 40),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Dr. ${data['lastName']}, ${data['name']}',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blueAccent,
                                   ),
-                                SizedBox(height: 8),
+                                ),
                               ],
                             ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .secondary
-                                  .withOpacity(0.1), // Color para diferenciar
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(12.0),
-                                bottomRight: Radius.circular(12.0),
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(8.0),
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
+                            Divider(
+                                color:
+                                    Colors.blueAccent), // Línea azul separadora
+                            SizedBox(height: 10),
+                            _buildInfoRow(Icons.location_on,
+                                'Dirección: ${data['address']}'),
+                            _buildInfoRow(
+                                Icons.phone, 'Teléfono: ${data['phone']}'),
+                            if (data.containsKey('specialty'))
+                              _buildInfoRow(Icons.school,
+                                  'Especialidad: ${data['specialty']}'),
+                            SizedBox(height: 20),
+                            Center(
+                              child: OutlinedButton.icon(
                                 onPressed: () {
                                   final args = {
                                     'lastName': data['lastName'],
@@ -333,31 +219,22 @@ class ProfessionalList extends StatelessWidget {
                                     arguments: args,
                                   );
                                 },
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'Ver agenda',
-                                      style: TextStyle(
-                                          color: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyLarge
-                                                  ?.color ??
-                                              Colors
-                                                  .black), // Color del texto según el tema
-                                    ),
-                                    Icon(Icons.arrow_forward,
-                                        color: Theme.of(context)
-                                                .iconTheme
-                                                .color ??
-                                            Colors
-                                                .black), // Color del icono según el tema
-                                  ],
+                                icon: Icon(Icons.arrow_forward,
+                                    color: Colors.blueAccent),
+                                label: Text(
+                                  'Ver agenda',
+                                  style: TextStyle(color: Colors.blueAccent),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: Colors.blueAccent),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 32, vertical: 12),
+                                  textStyle: TextStyle(fontSize: 18),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
@@ -367,6 +244,24 @@ class ProfessionalList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blueAccent),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

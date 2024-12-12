@@ -65,6 +65,17 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
   Widget build(BuildContext context) {
     final professionalState = ref.watch(professionalProvider);
 
+    // Verificar si los datos del profesional están completos
+    final bool isDataComplete = professionalState.name!.isNotEmpty &&
+        professionalState.lastName!.isNotEmpty &&
+        professionalState.address!.isNotEmpty &&
+        professionalState.phone!.isNotEmpty &&
+        professionalState.dni!.isNotEmpty &&
+        professionalState.n_matricula!.isNotEmpty &&
+        professionalState.specialty != null &&
+        professionalState.startTime != null &&
+        professionalState.endTime != null;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Home Profesional'),
@@ -83,9 +94,10 @@ class _ProfessionalHomeState extends ConsumerState<ProfessionalHome> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  professionalState.hasData && !professionalState.isEditing
-                      ? _buildProfessionalInfo(ref)
-                      : _buildForm(ref, context),
+                  // Mostrar el formulario si los datos no están completos
+                  !isDataComplete || professionalState.isEditing
+                      ? _buildForm(ref, context)
+                      : _buildProfessionalInfo(ref),
                 ],
               ),
             ),

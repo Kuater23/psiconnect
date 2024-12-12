@@ -60,80 +60,182 @@ class MySessionsPatientPage extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final session =
                         sessions[index].data() as Map<String, dynamic>;
-                    return Card(
-                      color: Theme.of(context).cardColor, // Color según el tema
-                      margin: EdgeInsets.all(10),
-                      elevation: 5,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Profesional: ${session['professionalId']}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color ??
-                                    Colors
-                                        .black, // Color del texto según el tema
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              'Día: ${session['day']}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color ??
-                                    Colors
-                                        .black, // Color del texto según el tema
-                              ),
-                            ),
-                            Text(
-                              'Hora: ${session['time']}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Theme.of(context)
-                                        .textTheme
-                                        .bodyLarge
-                                        ?.color ??
-                                    Colors
-                                        .black, // Color del texto según el tema
-                              ),
-                            ),
-                            SizedBox(height: 20),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  await FirebaseFirestore.instance
-                                      .collection('appointments')
-                                      .doc(sessions[index].id)
-                                      .delete();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Turno cancelado'),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red,
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(session['professionalId'])
+                          .get(),
+                      builder: (context, professionalSnapshot) {
+                        if (professionalSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+
+                        if (professionalSnapshot.hasError ||
+                            !professionalSnapshot.hasData) {
+                          return Center(
+                              child: Text(
+                                  'Error al cargar los datos del profesional'));
+                        }
+
+                        final professionalData = professionalSnapshot.data!
+                            .data() as Map<String, dynamic>;
+
+                        return Card(
+                          color: Theme.of(context)
+                              .cardColor, // Color según el tema
+                          margin: EdgeInsets.all(10),
+                          elevation: 5,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Turno reservado con Dr. ${professionalData['lastName']}, ${professionalData['name']}',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blueAccent, // Color del texto
+                                  ),
                                 ),
-                                child: Text('Cancelar Turno'),
-                              ),
+                                Text(
+                                  professionalData['specialty'],
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.color ??
+                                        Colors
+                                            .black, // Color del texto según el tema
+                                  ),
+                                ),
+                                SizedBox(height: 10),
+                                Divider(
+                                    color: Colors
+                                        .blueAccent), // Línea azul separadora
+                                SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_today,
+                                        color: Colors.blueAccent),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Día y hora reservado: ${session['appointmentDay']}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.color ??
+                                            Colors
+                                                .black, // Color del texto según el tema
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Icon(Icons.email, color: Colors.blueAccent),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Email: ${professionalData['email']}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.color ??
+                                            Colors
+                                                .black, // Color del texto según el tema
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Icon(Icons.phone, color: Colors.blueAccent),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Teléfono: ${professionalData['phone']}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge
+                                                ?.color ??
+                                            Colors
+                                                .black, // Color del texto según el tema
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 20),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    onPressed: () async {
+                                      bool confirm = await showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: Text('Confirmar Cancelación'),
+                                          content: Text(
+                                              '¿Estás seguro de que deseas cancelar esta sesión?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(context)
+                                                      .pop(false),
+                                              child: Text('No'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.of(context)
+                                                      .pop(true),
+                                              child: Text('Sí'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (confirm) {
+                                        await FirebaseFirestore.instance
+                                            .collection('appointments')
+                                            .doc(sessions[index].id)
+                                            .delete();
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                Icon(Icons.check,
+                                                    color: Colors.blueAccent),
+                                                SizedBox(width: 10),
+                                                Text('Turno cancelado'),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    icon: Icon(Icons.cancel, color: Colors.red),
+                                    label: Text('Cancelar Turno'),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );
