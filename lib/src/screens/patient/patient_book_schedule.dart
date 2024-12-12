@@ -12,7 +12,8 @@ class PatientBookSchedule extends StatefulWidget {
 }
 
 class _PatientBookScheduleState extends State<PatientBookSchedule> {
-  String? selectedDay;
+  String? selectedDayOfWeek;
+  DateTime? selectedDate;
   List<TimeOfDay> availableTimes = [];
   TimeOfDay? selectedTime;
   bool isLoadingTimes = false;
@@ -92,21 +93,26 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Dirección: ${professionalData['address']}',
-                      style: TextStyle(
-                          fontSize: 16,
-                          color: Theme.of(context).textTheme.bodyLarge?.color ??
-                              Colors.black),
+                    Row(
+                      children: [
+                        Icon(Icons.person, color: Colors.blueAccent, size: 40),
+                        SizedBox(width: 10),
+                        Text(
+                          'Dr. $lastName, $name',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Teléfono: ${professionalData['phone']}',
-                      style: TextStyle(
-                          fontSize: 16,
-                          color: Theme.of(context).textTheme.bodyLarge?.color ??
-                              Colors.black),
-                    ),
+                    Divider(color: Colors.blueAccent), // Línea azul separadora
+                    SizedBox(height: 10),
+                    _buildInfoRow(Icons.location_on,
+                        'Dirección: ${professionalData['address']}'),
+                    _buildInfoRow(
+                        Icons.phone, 'Teléfono: ${professionalData['phone']}'),
                     SizedBox(height: 16),
                     Text(
                       'Disponibilidad:',
@@ -158,29 +164,14 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                       ),
                       dropdownColor:
                           Theme.of(context).cardColor, // Color según el tema
-                      value: selectedDay,
-                      onChanged: (String? newValue) async {
+                      value: selectedDayOfWeek,
+                      onChanged: (String? newValue) {
                         setState(() {
-                          selectedDay = newValue;
-                          isLoadingTimes = true;
+                          selectedDayOfWeek = newValue;
+                          selectedDate = null;
+                          availableTimes = [];
+                          selectedTime = null;
                         });
-
-                        try {
-                          final times = await _getAvailableTimes(
-                              professionalId, newValue!, availability);
-
-                          setState(() {
-                            availableTimes = times;
-                            selectedTime = null;
-                            isLoadingTimes = false;
-                          });
-                        } catch (e) {
-                          setState(() {
-                            isLoadingTimes = false;
-                          });
-                          // Manejar el error, mostrar un mensaje al usuario si es necesario
-                          print('Error al cargar los horarios: $e');
-                        }
                       },
                       items: (availability['days'] as List<dynamic>)
                           .map<DropdownMenuItem<String>>((day) {
@@ -197,9 +188,95 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                       }).toList(),
                     ),
                     SizedBox(height: 16),
+                    if (selectedDayOfWeek != null)
+                      DropdownButtonFormField<DateTime>(
+                        decoration: InputDecoration(
+                          labelText: 'Selecciona una fecha',
+                          labelStyle: TextStyle(
+                              color: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.color ??
+                                  Colors.black),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: BorderSide(
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors.black),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: BorderSide(
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors.black),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: BorderSide(
+                                color: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge
+                                        ?.color ??
+                                    Colors.black),
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context)
+                              .inputDecorationTheme
+                              .fillColor, // Color según el tema
+                        ),
+                        dropdownColor:
+                            Theme.of(context).cardColor, // Color según el tema
+                        value: selectedDate,
+                        onChanged: (DateTime? newValue) async {
+                          setState(() {
+                            selectedDate = newValue;
+                            isLoadingTimes = true;
+                          });
+
+                          try {
+                            final times = await _getAvailableTimes(
+                                professionalId, newValue!, availability);
+
+                            setState(() {
+                              availableTimes = times;
+                              selectedTime = null;
+                              isLoadingTimes = false;
+                            });
+                          } catch (e) {
+                            setState(() {
+                              isLoadingTimes = false;
+                            });
+                            // Manejar el error, mostrar un mensaje al usuario si es necesario
+                            print('Error al cargar los horarios: $e');
+                          }
+                        },
+                        items: _getAvailableDates(selectedDayOfWeek!,
+                                DateTime.now().year, DateTime.now().month)
+                            .map<DropdownMenuItem<DateTime>>((date) {
+                          return DropdownMenuItem<DateTime>(
+                            value: date,
+                            child: Text(
+                              '${_dayOfWeekToString(date.weekday)} ${date.day} de ${_monthToString(date.month)} ${date.year}',
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.color ??
+                                      Colors.black),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    SizedBox(height: 16),
                     if (isLoadingTimes)
                       Center(child: CircularProgressIndicator())
-                    else if (selectedDay != null) ...[
+                    else if (selectedDate != null) ...[
                       Text(
                         'Horarios disponibles:',
                         style: TextStyle(
@@ -277,15 +354,19 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                     SizedBox(height: 16),
                     Row(
                       children: [
-                        ElevatedButton(
-                          onPressed: selectedDay != null && selectedTime != null
+                        OutlinedButton.icon(
+                          onPressed: selectedDate != null &&
+                                  selectedTime != null
                               ? () async {
                                   final user =
                                       FirebaseAuth.instance.currentUser;
                                   if (user != null) {
                                     final patientId = user.uid;
+                                    final appointmentDay =
+                                        '${_dayOfWeekToString(selectedDate!.weekday)} ${selectedDate!.day} de ${_monthToString(selectedDate!.month)} ${selectedDate!.year} a las ${selectedTime!.format(context)}';
                                     final reservation = {
-                                      'day': selectedDay,
+                                      'appointmentDay': appointmentDay,
+                                      'date': selectedDate!.toIso8601String(),
                                       'time': selectedTime!.format(context),
                                       'patientId': patientId,
                                       'professionalId': professionalId,
@@ -299,48 +380,52 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                            'Sesión reservada para $selectedDay a las ${selectedTime!.format(context)}'),
+                                            'Sesión reservada para $appointmentDay'),
                                       ),
                                     );
 
                                     setState(() {
-                                      selectedDay = null;
+                                      selectedDayOfWeek = null;
+                                      selectedDate = null;
                                       selectedTime = null;
                                       availableTimes = [];
                                     });
                                   }
                                 }
                               : null,
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .primary, // Color según el tema
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
+                          icon: Icon(Icons.check, color: Colors.blueAccent),
+                          label: Text(
+                            'Reservar sesión',
+                            style: TextStyle(color: Colors.blueAccent),
                           ),
-                          child: Text('Reservar sesión'),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.blueAccent),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 12),
+                            textStyle: TextStyle(fontSize: 18),
+                          ),
                         ),
                         SizedBox(width: 16),
-                        ElevatedButton(
+                        OutlinedButton.icon(
                           onPressed: () {
                             setState(() {
-                              selectedDay = null;
+                              selectedDayOfWeek = null;
+                              selectedDate = null;
                               selectedTime = null;
                               availableTimes = [];
                             });
                           },
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Theme.of(context)
-                                .colorScheme
-                                .secondary, // Color según el tema
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.0),
-                            ),
+                          icon: Icon(Icons.clear, color: Colors.redAccent),
+                          label: Text(
+                            'Limpiar',
+                            style: TextStyle(color: Colors.redAccent),
                           ),
-                          child: Text('Limpiar'),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.redAccent),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 12),
+                            textStyle: TextStyle(fontSize: 18),
+                          ),
                         ),
                       ],
                     ),
@@ -354,15 +439,33 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
     );
   }
 
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blueAccent),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<List<TimeOfDay>> _getAvailableTimes(String professionalId,
-      String selectedDay, Map<String, dynamic> availability) async {
+      DateTime selectedDate, Map<String, dynamic> availability) async {
     final List<TimeOfDay> times = [];
 
     // Obtener las reservas para el día seleccionado
     final reservationsSnapshot = await FirebaseFirestore.instance
         .collection('appointments')
         .where('professionalId', isEqualTo: professionalId)
-        .where('day', isEqualTo: selectedDay)
+        .where('date', isEqualTo: selectedDate.toIso8601String())
         .where('status', isEqualTo: 'RESERVADO')
         .get();
 
@@ -424,5 +527,95 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
     final hours = totalMinutes ~/ 60;
     final mins = totalMinutes % 60;
     return TimeOfDay(hour: hours % 24, minute: mins);
+  }
+
+  List<DateTime> _getAvailableDates(String dayOfWeek, int year, int month) {
+    List<DateTime> dates = [];
+    DateTime firstDayOfMonth = DateTime(year, month, 1);
+    DateTime lastDayOfMonth = DateTime(year, month + 1, 0);
+    DateTime today = DateTime.now();
+
+    for (DateTime date = firstDayOfMonth;
+        date.isBefore(lastDayOfMonth) || date.isAtSameMomentAs(lastDayOfMonth);
+        date = date.add(Duration(days: 1))) {
+      if (date.weekday == _dayOfWeekToInt(dayOfWeek) && date.isAfter(today)) {
+        dates.add(date);
+      }
+    }
+
+    return dates;
+  }
+
+  int _dayOfWeekToInt(String dayOfWeek) {
+    switch (dayOfWeek.toLowerCase()) {
+      case 'lunes':
+        return DateTime.monday;
+      case 'martes':
+        return DateTime.tuesday;
+      case 'miércoles':
+        return DateTime.wednesday;
+      case 'jueves':
+        return DateTime.thursday;
+      case 'viernes':
+        return DateTime.friday;
+      case 'sábado':
+        return DateTime.saturday;
+      case 'domingo':
+        return DateTime.sunday;
+      default:
+        throw ArgumentError('Invalid day of week: $dayOfWeek');
+    }
+  }
+
+  String _dayOfWeekToString(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Lunes';
+      case DateTime.tuesday:
+        return 'Martes';
+      case DateTime.wednesday:
+        return 'Miércoles';
+      case DateTime.thursday:
+        return 'Jueves';
+      case DateTime.friday:
+        return 'Viernes';
+      case DateTime.saturday:
+        return 'Sábado';
+      case DateTime.sunday:
+        return 'Domingo';
+      default:
+        throw ArgumentError('Invalid weekday: $weekday');
+    }
+  }
+
+  String _monthToString(int month) {
+    switch (month) {
+      case 1:
+        return 'enero';
+      case 2:
+        return 'febrero';
+      case 3:
+        return 'marzo';
+      case 4:
+        return 'abril';
+      case 5:
+        return 'mayo';
+      case 6:
+        return 'junio';
+      case 7:
+        return 'julio';
+      case 8:
+        return 'agosto';
+      case 9:
+        return 'septiembre';
+      case 10:
+        return 'octubre';
+      case 11:
+        return 'noviembre';
+      case 12:
+        return 'diciembre';
+      default:
+        throw ArgumentError('Invalid month: $month');
+    }
   }
 }
