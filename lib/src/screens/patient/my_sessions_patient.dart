@@ -62,7 +62,7 @@ class MySessionsPatientPage extends StatelessWidget {
                         sessions[index].data() as Map<String, dynamic>;
                     return FutureBuilder<DocumentSnapshot>(
                       future: FirebaseFirestore.instance
-                          .collection('users')
+                          .collection('doctors')
                           .doc(session['professionalId'])
                           .get(),
                       builder: (context, professionalSnapshot) {
@@ -95,7 +95,7 @@ class MySessionsPatientPage extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Turno reservado con Dr. ${professionalData['lastName']}, ${professionalData['name']}',
+                                  'Turno reservado con Dr. ${professionalData['lastName']}, ${professionalData['firstName']}',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -163,7 +163,7 @@ class MySessionsPatientPage extends StatelessWidget {
                                     Icon(Icons.phone, color: Colors.blueAccent),
                                     SizedBox(width: 10),
                                     Text(
-                                      'Teléfono: ${professionalData['phone']}',
+                                      'Teléfono: ${professionalData['phoneN']}',
                                       style: TextStyle(
                                         fontSize: 16,
                                         color: Theme.of(context)

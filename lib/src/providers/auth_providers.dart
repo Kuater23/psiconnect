@@ -1,82 +1,90 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
-import 'professional_provider.dart'; // Import the professional provider
+import 'professional_provider.dart';
 
-// Definimos los posibles estados de autenticación
+/// Estados posibles de autenticación.
 enum AuthStatus { authenticated, unauthenticated, loading, error }
 
-// Clase que manejará el estado de autenticación
+/// Notifier que maneja la autenticación utilizando [AuthService] y Riverpod.
 class AuthNotifier extends StateNotifier<AuthStatus> {
   final AuthService _authService;
-  final Ref ref; // Add a reference to the provider container
+  final Ref ref;
   String? _errorMessage;
 
-  AuthNotifier(this._authService, this.ref) : super(AuthStatus.unauthenticated);
+  AuthNotifier(this._authService, this.ref)
+      : super(AuthStatus.unauthenticated);
 
-  // Método para obtener el mensaje de error (opcional para mostrar en UI)
+  /// Getter para el mensaje de error.
   String? get errorMessage => _errorMessage;
 
-  // Método para verificar si el usuario está autenticado (sesión persistente)
+  /// Establece el estado a "loading" y resetea el mensaje de error.
+  void _setLoading() {
+    state = AuthStatus.loading;
+    _errorMessage = null;
+  }
+
+  /// Establece el estado a "authenticated".
+  void _setAuthenticated() {
+    state = AuthStatus.authenticated;
+  }
+
+  /// Establece el estado a "unauthenticated".
+  void _setUnauthenticated() {
+    state = AuthStatus.unauthenticated;
+  }
+
+  /// Establece el estado a "error" y asigna el mensaje proporcionado.
+  void _setError(String message) {
+    state = AuthStatus.error;
+    _errorMessage = message;
+  }
+
+  /// Verifica el estado de autenticación actual.
   Future<void> checkAuthStatus() async {
     try {
-      final user = _authService
-          .getCurrentUser(); // Verifica si hay un usuario autenticado
-      if (user != null) {
-        state = AuthStatus.authenticated;
-      } else {
-        state = AuthStatus.unauthenticated;
-      }
+      final user = _authService.getCurrentUser();
+      state =
+          user != null ? AuthStatus.authenticated : AuthStatus.unauthenticated;
     } catch (e) {
-      state = AuthStatus.error;
-      _errorMessage = 'Error al verificar el estado de autenticación';
+      _setError('Error al verificar el estado de autenticación');
     }
   }
 
-  // Método para obtener el usuario actual
-  User? getCurrentUser() {
-    return _authService.getCurrentUser();
-  }
+  /// Retorna el usuario actual de Firebase.
+  User? getCurrentUser() => _authService.getCurrentUser();
 
-  // Método para actualizar el rol del usuario
+  /// Actualiza el rol del usuario en la base de datos.
   Future<void> updateRole(String uid, String role) async {
-    state = AuthStatus.loading;
-    _errorMessage = null;
+    _setLoading();
     try {
       await _authService.updateUserRole(uid, role);
-      state = AuthStatus.authenticated;
+      _setAuthenticated();
     } catch (e) {
-      state = AuthStatus.error;
-      _errorMessage = 'Error al actualizar el rol del usuario';
+      _setError('Error al actualizar el rol del usuario');
     }
   }
 
-  // Método para iniciar sesión con email y contraseña
+  /// Inicia sesión utilizando email y contraseña.
   Future<void> signInWithEmail(String email, String password) async {
-    state = AuthStatus.loading;
-    _errorMessage = null;
+    _setLoading();
     try {
       final user =
           await _authService.signInWithEmailAndPassword(email, password);
       if (user != null) {
-        await ref
-            .read(professionalProvider.notifier)
-            .reinitialize(); // Reinitialize professional state
-        state = AuthStatus.authenticated;
+        await ref.read(professionalProvider.notifier).reinitialize();
+        _setAuthenticated();
       } else {
-        state = AuthStatus.unauthenticated;
+        _setUnauthenticated();
       }
     } on FirebaseAuthException catch (e) {
-      state = AuthStatus.error;
-      _errorMessage =
-          e.message; // Guardamos el mensaje de error específico de Firebase
+      _setError(e.message ?? 'Error al iniciar sesión');
     } catch (e) {
-      state = AuthStatus.error;
-      _errorMessage = 'Error desconocido al iniciar sesión';
+      _setError('Error desconocido al iniciar sesión');
     }
   }
 
-  // Método para registrar un nuevo usuario
+  /// Registra un usuario utilizando email y contraseña junto con datos adicionales.
   Future<void> registerWithEmail({
     required String name,
     required String lastName,
@@ -86,8 +94,7 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
     required String role,
     String? n_matricula,
   }) async {
-    state = AuthStatus.loading;
-    _errorMessage = null;
+    _setLoading();
     try {
       final user = await _authService.registerWithEmailAndPassword(
         name: name,
@@ -99,68 +106,69 @@ class AuthNotifier extends StateNotifier<AuthStatus> {
         n_matricula: n_matricula,
       );
       if (user != null) {
-        await ref
-            .read(professionalProvider.notifier)
-            .reinitialize(); // Reinitialize professional state
-        state = AuthStatus.authenticated;
+        await ref.read(professionalProvider.notifier).reinitialize();
+        _setAuthenticated();
       } else {
-        state = AuthStatus.unauthenticated;
+        _setUnauthenticated();
       }
     } on AuthException catch (e) {
-      state = AuthStatus.error;
-      _errorMessage = e.message; // Guardamos el mensaje de error específico
+      _setError(e.message);
       print('AuthException: ${e.code} - ${e.message}');
     } catch (e) {
-      state = AuthStatus.error;
-      _errorMessage = 'Error desconocido al registrar';
+      _setError('Error desconocido al registrar');
       print('Exception: $e');
     }
   }
 
-  // Método para cerrar sesión
+  /// Cierra la sesión del usuario.
   Future<void> signOut() async {
-    state = AuthStatus.loading;
-    _errorMessage = null;
+    _setLoading();
     try {
       await _authService.signOut();
-      ref
-          .read(professionalProvider.notifier)
-          .resetState(); // Reset professional state
-      state = AuthStatus.unauthenticated;
+      ref.read(professionalProvider.notifier).resetState();
+      _setUnauthenticated();
     } catch (e) {
-      state = AuthStatus.error;
-      _errorMessage = 'Error al cerrar sesión';
+      _setError('Error al cerrar sesión');
     }
   }
 
-  // Método para iniciar sesión con Google
-  Future<void> signInWithGoogle() async {
-    state = AuthStatus.loading;
-    _errorMessage = null;
+  /// Inicia sesión utilizando Google.
+  Future<void> signInWithGoogle({required String role}) async {
+    _setLoading();
     try {
-      final user = await _authService.signInWithGoogle();
+      final user = await _authService.signInWithGoogle(role: role);
       if (user != null) {
-        await ref
-            .read(professionalProvider.notifier)
-            .reinitialize(); // Reinitialize professional state
-        state = AuthStatus.authenticated;
+        await ref.read(professionalProvider.notifier).reinitialize();
+        _setAuthenticated();
       } else {
-        state = AuthStatus.unauthenticated;
+        _setUnauthenticated();
       }
     } on FirebaseAuthException catch (e) {
-      state = AuthStatus.error;
-      _errorMessage =
-          e.message; // Guardamos el mensaje de error específico de Firebase
+      _setError(e.message ?? 'Error al iniciar sesión con Google');
     } catch (e) {
-      state = AuthStatus.error;
-      _errorMessage = 'Error desconocido al iniciar sesión con Google';
+      _setError('Error desconocido al iniciar sesión con Google');
     }
   }
 }
 
-// Proveedor de estado de autenticación usando Riverpod
+// ---------------- Provider Definitions ----------------
+
+/// Proveedor de la instancia de [AuthService].
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService();
+});
+
+/// Proveedor del [AuthNotifier] que expone el estado de autenticación.
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AuthStatus>((ref) {
-  final authService = AuthService();
+  final authService = ref.watch(authServiceProvider);
   return AuthNotifier(authService, ref);
 });
+
+/// Clase de excepción personalizada para la autenticación.
+class AuthException implements Exception {
+  final String code;
+  final String message;
+
+  AuthException(this.code, this.message);
+}

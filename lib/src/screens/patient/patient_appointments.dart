@@ -1,15 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:Psiconnect/src/widgets/shared_drawer.dart'; // Reutiliza el menú hamburguesa
-import 'package:intl/date_symbol_data_local.dart'; // Para inicializar la configuración regional
-import 'package:Psiconnect/src/screens/patient/patient_book_schedule.dart'; // Importa la pantalla de agendar citas
+import 'package:Psiconnect/src/widgets/shared_drawer.dart';
+
+class DoctorFields {
+  static const String firstName = 'firstName';
+  static const String lastName = 'lastName';
+  static const String address = 'address';
+  static const String phoneN = 'phoneN';
+  static const String specialty = 'specialty';
+}
 
 class PatientAppointments extends StatefulWidget {
   final VoidCallback toggleTheme;
 
-  PatientAppointments({required this.toggleTheme});
+  const PatientAppointments({Key? key, required this.toggleTheme}) : super(key: key);
 
   @override
   _PatientAppointmentsState createState() => _PatientAppointmentsState();
@@ -24,29 +29,27 @@ class _PatientAppointmentsState extends State<PatientAppointments> {
     'Psicología Organizacional',
     'Psicología Social',
     'Psicología Forense'
-  ]; // Lista de especialidades
+  ];
 
   @override
   Widget build(BuildContext context) {
     final String? patientId = FirebaseAuth.instance.currentUser?.uid;
 
+    // Si no hay un paciente autenticado, se muestra un mensaje.
     if (patientId == null) {
       return Scaffold(
-        backgroundColor:
-            Theme.of(context).scaffoldBackgroundColor, // Fondo según el tema
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: Text('Agenda Digital'),
-          backgroundColor: Theme.of(context).appBarTheme.backgroundColor ??
-              Color.fromRGBO(
-                  2, 60, 67, 1), // Color base de Psiconnect para el fondo
-          titleTextStyle: TextStyle(
+          title: const Text('Agenda Digital'),
+          backgroundColor: Theme.of(context).appBarTheme.backgroundColor ?? const Color.fromRGBO(2, 60, 67, 1),
+          titleTextStyle: const TextStyle(
             color: Colors.white,
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.brightness_6),
+              icon: const Icon(Icons.brightness_6),
               onPressed: widget.toggleTheme,
             ),
           ],
@@ -56,25 +59,26 @@ class _PatientAppointmentsState extends State<PatientAppointments> {
           child: Text(
             'No se encontró el paciente autenticado',
             style: TextStyle(
-                color: Theme.of(context).textTheme.bodyLarge?.color ??
-                    Colors.black), // Color del texto según el tema
+              color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black,
+            ),
           ),
         ),
       );
     }
+
     return Scaffold(
-      backgroundColor:
-          Theme.of(context).scaffoldBackgroundColor, // Fondo según el tema
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Agenda Digital'),
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ??
-            Color.fromRGBO(
-                2, 60, 67, 1), // Color base de Psiconnect para el fondo
-        titleTextStyle: TextStyle(
-            color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+        title: const Text('Agenda Digital'),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ?? const Color.fromRGBO(2, 60, 67, 1),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.brightness_6),
+            icon: const Icon(Icons.brightness_6),
             onPressed: widget.toggleTheme,
           ),
         ],
@@ -88,9 +92,7 @@ class _PatientAppointmentsState extends State<PatientAppointments> {
               decoration: InputDecoration(
                 labelText: 'Filtrar por Especialidad',
                 filled: true,
-                fillColor: Theme.of(context)
-                    .inputDecorationTheme
-                    .fillColor, // Color según el tema
+                fillColor: Theme.of(context).inputDecorationTheme.fillColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -110,7 +112,8 @@ class _PatientAppointmentsState extends State<PatientAppointments> {
             ),
           ),
           Expanded(
-              child: ProfessionalList(selectedSpecialty: _selectedSpecialty)),
+            child: ProfessionalList(selectedSpecialty: _selectedSpecialty),
+          ),
         ],
       ),
     );
@@ -120,130 +123,138 @@ class _PatientAppointmentsState extends State<PatientAppointments> {
 class ProfessionalList extends StatelessWidget {
   final String? selectedSpecialty;
 
-  ProfessionalList({this.selectedSpecialty});
+  const ProfessionalList({Key? key, this.selectedSpecialty}) : super(key: key);
+
+  Stream<QuerySnapshot> _getFilteredStream() {
+    if (selectedSpecialty != null && selectedSpecialty != 'Todas') {
+      return FirebaseFirestore.instance
+          .collection('doctors')
+          .where('specialty', isEqualTo: selectedSpecialty)
+          .snapshots();
+    }
+    return FirebaseFirestore.instance.collection('doctors').snapshots();
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: 'professional')
-          .snapshots(),
+      stream: _getFilteredStream(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Center(child: CircularProgressIndicator());
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
 
-        final professionals = snapshot.data!.docs.where((professional) {
-          final data = professional.data() as Map<String, dynamic>;
-          if (selectedSpecialty == null || selectedSpecialty == 'Todas') {
-            return true;
-          }
-          return data.containsKey('specialty') &&
-              data['specialty'] == selectedSpecialty;
-        }).toList();
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-        final totalProfessionals = professionals.length;
+        final professionals = snapshot.data!.docs;
+        
+        return _buildProfessionalsList(context, professionals);
+      },
+    );
+  }
 
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    '$totalProfessionals resultados encontrados',
-                    style: TextStyle(
-                      color: Theme.of(context).textTheme.bodyLarge?.color ??
-                          Colors.black, // Color del texto según el tema
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Wrap(
-                  spacing: 10.0, // Espaciado horizontal entre tarjetas
-                  runSpacing: 10.0, // Espaciado vertical entre tarjetas
-                  children: professionals.map((professional) {
-                    final data = professional.data() as Map<String, dynamic>;
-                    return Card(
-                      color: Theme.of(context).cardColor, // Color según el tema
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 5,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.person,
-                                    color: Colors.blueAccent, size: 40),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Dr. ${data['lastName']}, ${data['name']}',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blueAccent,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Divider(
-                                color:
-                                    Colors.blueAccent), // Línea azul separadora
-                            SizedBox(height: 10),
-                            _buildInfoRow(Icons.location_on,
-                                'Dirección: ${data['address']}'),
-                            _buildInfoRow(
-                                Icons.phone, 'Teléfono: ${data['phone']}'),
-                            if (data.containsKey('specialty'))
-                              _buildInfoRow(Icons.school,
-                                  'Especialidad: ${data['specialty']}'),
-                            SizedBox(height: 20),
-                            Center(
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  final args = {
-                                    'lastName': data['lastName'],
-                                    'name': data['name'],
-                                  };
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/bookSchedule',
-                                    arguments: args,
-                                  );
-                                },
-                                icon: Icon(Icons.arrow_forward,
-                                    color: Colors.blueAccent),
-                                label: Text(
-                                  'Ver agenda',
-                                  style: TextStyle(color: Colors.blueAccent),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: Colors.blueAccent),
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 32, vertical: 12),
-                                  textStyle: TextStyle(fontSize: 18),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
+  // Rest of the code remains the same...
+}
+
+  Widget _buildProfessionalsList(BuildContext context, List<QueryDocumentSnapshot> professionals) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildResultsCount(context, professionals.length),
+            _buildProfessionalsGrid(context, professionals),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultsCount(BuildContext context, int count) {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        '$count resultados encontrados',
+        style: TextStyle(
+          color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black,
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfessionalsGrid(BuildContext context, List<QueryDocumentSnapshot> professionals) {
+    return Wrap(
+      spacing: 10.0,
+      runSpacing: 10.0,
+      children: professionals.map((professional) => 
+        ProfessionalCard(professional: professional)).toList(),
+    );
+  }
+
+class ProfessionalCard extends StatelessWidget {
+  final QueryDocumentSnapshot professional;
+
+  const ProfessionalCard({Key? key, required this.professional}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final data = professional.data() as Map<String, dynamic>;
+
+    return Card(
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      elevation: 5,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(data),
+            const Divider(color: Colors.blueAccent),
+            const SizedBox(height: 10),
+            _buildInfoSection(data),
+            const SizedBox(height: 20),
+            _buildScheduleButton(context, data),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(Map<String, dynamic> data) {
+    return Row(
+      children: [
+        const Icon(Icons.person, color: Colors.blueAccent, size: 40),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Dr. ${data[DoctorFields.lastName]}, ${data[DoctorFields.firstName]}',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.blueAccent,
             ),
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoSection(Map<String, dynamic> data) {
+    return Column(
+      children: [
+        _buildInfoRow(Icons.location_on, 'Dirección: ${data[DoctorFields.address]}'),
+        _buildInfoRow(Icons.phone, 'Teléfono: ${data[DoctorFields.phoneN]}'),
+        if (data.containsKey(DoctorFields.specialty))
+          _buildInfoRow(Icons.school, 'Especialidad: ${data[DoctorFields.specialty]}'),
+      ],
     );
   }
 
@@ -253,15 +264,41 @@ class ProfessionalList extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, color: Colors.blueAccent),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildScheduleButton(BuildContext context, Map<String, dynamic> data) {
+    return Center(
+      child: OutlinedButton.icon(
+        onPressed: () => _navigateToSchedule(context, data),
+        icon: const Icon(Icons.arrow_forward, color: Colors.blueAccent),
+        label: const Text('Ver agenda', style: TextStyle(color: Colors.blueAccent)),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.blueAccent),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          textStyle: const TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToSchedule(BuildContext context, Map<String, dynamic> data) {
+    Navigator.pushNamed(
+      context,
+      '/bookSchedule',
+      arguments: {
+        DoctorFields.lastName: data[DoctorFields.lastName],
+        DoctorFields.firstName: data[DoctorFields.firstName],
+      },
     );
   }
 }

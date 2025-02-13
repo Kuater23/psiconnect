@@ -1,56 +1,81 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:Psiconnect/src/services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfessionalState {
-  final String? uid; // Unique identifier for the user
-  final String? name;
-  final String? lastName;
-  final String? address;
-  final String? phone;
-  final String? dni; // Nuevo campo para DNI
-  final String? n_matricula; // Nuevo campo para n_matricula
-  final String? specialty; // Nuevo campo para Especialidad
+  final String uid;
+  final String name;
+  final String lastName;
+  final String address;
+  final String phone;
+  final String email;
+  final String dni;
+  final String n_matricula;
+  final String role;
+  final String specialty; // Campo para especialidad
   final List<String> selectedDays;
-  final String? startTime;
-  final String? endTime;
-  final int? breakDuration; // Nuevo campo para la duración del descanso
+  final String startTime;
+  final String endTime;
+  final int breakDuration;
   final bool isLoading;
   final bool hasData;
   final bool isEditing;
 
   ProfessionalState({
-    this.uid,
-    this.name,
-    this.lastName,
-    this.address,
-    this.phone,
-    this.dni, // Inicializar el nuevo campo
-    this.n_matricula, // Inicializar el nuevo campo
-    this.specialty, // Inicializar el nuevo campo
-    this.selectedDays = const [],
-    this.startTime,
-    this.endTime,
-    this.breakDuration, // Inicializar el nuevo campo
-    this.isLoading = true,
+    required this.uid,
+    required this.name,
+    required this.lastName,
+    required this.address,
+    required this.phone,
+    required this.email,
+    required this.dni,
+    required this.n_matricula,
+    required this.role,
+    required this.specialty,
+    required this.selectedDays,
+    required this.startTime,
+    required this.endTime,
+    required this.breakDuration,
+    this.isLoading = false,
     this.hasData = false,
     this.isEditing = false,
   });
 
-  // Copiar estado para mutabilidad
+  factory ProfessionalState.initial() {
+    return ProfessionalState(
+      uid: '',
+      name: '',
+      lastName: '',
+      address: '',
+      phone: '',
+      email: '',
+      dni: '',
+      n_matricula: '',
+      role: '',
+      specialty: '',
+      selectedDays: [],
+      startTime: '09:00',
+      endTime: '17:00',
+      breakDuration: 15,
+    );
+  }
+
   ProfessionalState copyWith({
     String? uid,
     String? name,
     String? lastName,
     String? address,
     String? phone,
-    String? dni, // Nuevo campo para DNI
-    String? n_matricula, // Nuevo campo para n_matricula
-    String? specialty, // Nuevo campo para Especialidad
+    String? email,
+    String? dni,
+    String? n_matricula,
+    String? role,
+    String? specialty,
     List<String>? selectedDays,
     String? startTime,
     String? endTime,
-    int? breakDuration, // Nuevo campo para la duración del descanso
+    int? breakDuration,
     bool? isLoading,
     bool? hasData,
     bool? isEditing,
@@ -61,14 +86,16 @@ class ProfessionalState {
       lastName: lastName ?? this.lastName,
       address: address ?? this.address,
       phone: phone ?? this.phone,
-      dni: dni ?? this.dni, // Copiar el nuevo campo
-      n_matricula: n_matricula ?? this.n_matricula, // Copiar el nuevo campo
-      specialty: specialty ?? this.specialty, // Copiar el nuevo campo
-      selectedDays: selectedDays ?? this.selectedDays,
+      email: email ?? this.email,
+      dni: dni ?? this.dni,
+      n_matricula: n_matricula ?? this.n_matricula,
+      role: role ?? this.role,
+      specialty: specialty ?? this.specialty,
+      // Se crea una copia de la lista para preservar la inmutabilidad.
+      selectedDays: selectedDays ?? List<String>.from(this.selectedDays),
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
-      breakDuration:
-          breakDuration ?? this.breakDuration, // Copiar el nuevo campo
+      breakDuration: breakDuration ?? this.breakDuration,
       isLoading: isLoading ?? this.isLoading,
       hasData: hasData ?? this.hasData,
       isEditing: isEditing ?? this.isEditing,
@@ -80,141 +107,135 @@ class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
   final FirestoreService _firestoreService;
 
   ProfessionalNotifier(this._firestoreService)
-      : super(ProfessionalState(isLoading: true)) {
+      : super(ProfessionalState.initial()) {
     _initialize();
   }
 
   Future<void> _initialize() async {
-    final User? user = FirebaseAuth.instance.currentUser;
-
+    // Primero se comprueba si ya hay un usuario autenticado.
+    final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      print('User is authenticated with UID: ${user.uid}');
-      await _loadUserData(user.uid); // Fetch user data using UID
+      await _loadUserData(user.uid);
     } else {
-      print('User is not authenticated, listening for auth state changes...');
+      // Si no hay usuario, se suscribe a los cambios en el estado de autenticación.
       FirebaseAuth.instance.authStateChanges().listen((User? user) {
         if (user != null) {
-          print('User authenticated with UID: ${user.uid}');
-          _loadUserData(user.uid); // Fetch user data using UID
+          _loadUserData(user.uid);
         } else {
-          print('User is not authenticated');
-          state = state.copyWith(isLoading: false);
+          state = ProfessionalState.initial();
         }
       });
     }
   }
 
-  // Método para cargar los datos del profesional desde Firestore
   Future<void> _loadUserData(String uid) async {
     try {
-      print('Loading user data for UID: $uid');
-      final data =
-          await _firestoreService.getUserData(uid); // Fetch data using UID
+      state = state.copyWith(isLoading: true);
+      final data = await _firestoreService.getUserData(uid);
+      
       if (data != null) {
-        print('User data loaded successfully for UID: $uid');
-        final availability = data['availability'] ?? {};
+        // Verifica que 'availability' sea un Map antes de usarlo.
+        final availabilityRaw = data['availability'];
+        final Map<String, dynamic> availability = availabilityRaw is Map<String, dynamic>
+            ? availabilityRaw
+            : {};
+
         state = state.copyWith(
-          uid: uid, // Store UID in state
+          uid: uid,
           name: data['name'] ?? '',
           lastName: data['lastName'] ?? '',
           address: data['address'] ?? '',
           phone: data['phone'] ?? '',
-          dni: data['dni'] ?? '', // Cargar el nuevo campo
-          n_matricula:
-              data['n_matricula']?.toString() ?? '', // Cargar el nuevo campo
-          specialty: data['specialty'] ?? '', // Cargar el nuevo campo
+          email: data['email'] ?? '',
+          dni: data['dni'] ?? '',
+          n_matricula: data['n_matricula'] ?? '',
+          specialty: data['specialty'] ?? '',
+          role: data['role'] ?? '',
           selectedDays: List<String>.from(availability['days'] ?? []),
           startTime: availability['start_time'] ?? '09:00',
           endTime: availability['end_time'] ?? '17:00',
-          breakDuration: availability['break_duration'] ??
-              15, // Cargar la duración del descanso
+          breakDuration: availability['break_duration'] ?? 15,
           isLoading: false,
           hasData: true,
         );
       } else {
-        print('No user data found for UID: $uid');
         state = state.copyWith(isLoading: false, hasData: false);
       }
     } catch (e) {
-      print('Error loading user data for UID: $uid, Error: $e');
+      debugPrint('Error loading user data: $e');
       state = state.copyWith(isLoading: false);
     }
   }
 
-  // Guardar los datos del profesional
   Future<void> saveUserData({
     required String name,
     required String lastName,
     required String address,
     required String phone,
-    required String dni, // Nuevo parámetro para DNI
-    required String n_matricula, // Nuevo parámetro para n_matricula
-    required String? specialty, // Nuevo parámetro para Especialidad
+    required String dni,
+    required String n_matricula,
+    required String specialty,
     required List<String> selectedDays,
     required String startTime,
     required String endTime,
-    required int breakDuration, // Nuevo parámetro para la duración del descanso
+    required int breakDuration,
   }) async {
-    if (state.uid == null || state.uid!.isEmpty) {
-      print('UID is null or empty');
-      return;
-    }
-
     try {
-      print('Saving user data for UID: ${state.uid}');
+      state = state.copyWith(isLoading: true);
+      
+      // Se actualizan los datos en Firestore, seleccionando la colección adecuada
+      // según el rol: 'doctors' para profesionales, 'patients' para pacientes.
       await _firestoreService.updateUserData(
-        state.uid!, // Use UID to update data
+        state.uid,
         name,
         lastName,
-        address,
+        address, 
         phone,
-        FirebaseAuth.instance.currentUser?.email,
-        dni, // Guardar el nuevo campo
-        n_matricula, // Guardar el nuevo campo
-        specialty, // Guardar el nuevo campo
+        state.email,
+        dni,
+        n_matricula,
+        specialty,
         selectedDays,
         startTime,
         endTime,
-        breakDuration, // Guardar la duración del descanso
+        breakDuration,
+        state.role == 'professional' ? 'doctors' : 'patients',
       );
-      print('User data saved successfully');
+
       state = state.copyWith(
         name: name,
         lastName: lastName,
         address: address,
         phone: phone,
-        dni: dni, // Actualizar el estado con el nuevo campo
-        n_matricula: n_matricula, // Actualizar el estado con el nuevo campo
-        specialty: specialty, // Actualizar el estado con el nuevo campo
+        dni: dni,
+        n_matricula: n_matricula,
+        specialty: specialty,
         selectedDays: selectedDays,
         startTime: startTime,
         endTime: endTime,
-        breakDuration:
-            breakDuration, // Actualizar el estado con la duración del descanso
+        breakDuration: breakDuration,
+        isLoading: false,
         isEditing: false,
       );
     } catch (e) {
-      print('Error saving user data: $e');
+      debugPrint('Error saving user data: $e');
+      state = state.copyWith(isLoading: false);
     }
   }
 
-  // Método para resetear el estado del profesional
-  void resetState() {
-    state = ProfessionalState(isLoading: false);
-  }
-
-  // Método para re-inicializar el estado del profesional
-  Future<void> reinitialize() async {
-    await _initialize();
-  }
-
-  // Alternar entre edición y visualización
   void setEditing(bool isEditing) {
     state = state.copyWith(isEditing: isEditing);
   }
+
+  void resetState() {
+    state = ProfessionalState.initial();
+  }
+
+  Future<void> reinitialize() async {
+    await _initialize();
+  }
 }
 
-// Provider para el notificador del profesional
 final professionalProvider =
     StateNotifierProvider<ProfessionalNotifier, ProfessionalState>(
   (ref) => ProfessionalNotifier(FirestoreService()),

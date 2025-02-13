@@ -3,13 +3,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // Fetch user data by uid
+  /// Obtiene los datos del usuario dado un [uid], buscando en las colecciones
+  /// 'patients' y 'doctors'. Retorna un [Map<String, dynamic>] si se encuentra
+  /// el documento o `null` en caso contrario.
   Future<Map<String, dynamic>?> getUserData(String uid) async {
     try {
-      DocumentSnapshot userDoc = await _db.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        return userDoc.data() as Map<String, dynamic>?;
+      // Se intenta obtener el documento del usuario en la colección 'patients'.
+      DocumentSnapshot patientDoc = await _db.collection('patients').doc(uid).get();
+      if (patientDoc.exists) {
+        return patientDoc.data() as Map<String, dynamic>?;
       }
+
+      // Si no se encontró en 'patients', se busca en 'doctors'.
+      DocumentSnapshot doctorDoc = await _db.collection('doctors').doc(uid).get();
+      if (doctorDoc.exists) {
+        return doctorDoc.data() as Map<String, dynamic>?;
+      }
+
+      // Si el documento no existe en ninguna de las colecciones, se retorna null.
       return null;
     } catch (e) {
       print('Error fetching user data: $e');
@@ -17,7 +28,8 @@ class FirestoreService {
     }
   }
 
-  // Update user data
+  /// Actualiza los datos del usuario en la colección especificada por [role].
+  /// Se utiliza [SetOptions(merge: true)] para no sobrescribir datos previos.
   Future<void> updateUserData(
     String uid,
     String name,
@@ -25,40 +37,40 @@ class FirestoreService {
     String address,
     String phone,
     String? email,
-    String dni, // Cambiado a dni
-    String n_matricula, // Cambiado a n_matricula
-    String? specialty, // Nuevo parámetro para Especialidad
+    String dni,
+    String n_matricula,
+    String? specialty,
     List<String> selectedDays,
     String startTime,
     String endTime,
-    int breakDuration, // Nuevo parámetro para la duración del descanso
+    int breakDuration,
+    String role,
   ) async {
     try {
-      await _db.collection('users').doc(uid).update({
+      await _db.collection(role).doc(uid).set({
         'name': name,
         'lastName': lastName,
         'address': address,
         'phone': phone,
         'email': email,
-        'dni': dni, // Guardar dni
-        'n_matricula': n_matricula, // Guardar n_matricula
-        'specialty': specialty, // Guardar Especialidad
+        'dni': dni,
+        'n_matricula': n_matricula,
+        'specialty': specialty,
         'availability': {
           'days': selectedDays,
           'start_time': startTime,
           'end_time': endTime,
-          'break_duration': breakDuration, // Guardar la duración del descanso
+          'break_duration': breakDuration,
         },
-      });
+      }, SetOptions(merge: true));
     } catch (e) {
       print('Error updating user data: $e');
       throw e;
     }
   }
 
-  // Method to get a specific document from a collection
-  Future<DocumentSnapshot> getDocument(
-      String collectionPath, String docId) async {
+  /// Método genérico para obtener un documento específico de una colección.
+  Future<DocumentSnapshot> getDocument(String collectionPath, String docId) async {
     try {
       return await _db.collection(collectionPath).doc(docId).get();
     } catch (e) {
@@ -66,9 +78,8 @@ class FirestoreService {
     }
   }
 
-  // Method to get all documents from a collection
-  Future<List<QueryDocumentSnapshot>> getCollection(
-      String collectionPath) async {
+  /// Método genérico para obtener todos los documentos de una colección.
+  Future<List<QueryDocumentSnapshot>> getCollection(String collectionPath) async {
     try {
       QuerySnapshot querySnapshot = await _db.collection(collectionPath).get();
       return querySnapshot.docs;
@@ -77,9 +88,8 @@ class FirestoreService {
     }
   }
 
-  // Method to add a new document to a collection
-  Future<void> addDocument(
-      String collectionPath, Map<String, dynamic> data) async {
+  /// Método genérico para agregar un nuevo documento a una colección.
+  Future<void> addDocument(String collectionPath, Map<String, dynamic> data) async {
     try {
       await _db.collection(collectionPath).add(data);
     } catch (e) {
@@ -87,9 +97,8 @@ class FirestoreService {
     }
   }
 
-  // Method to update an existing document
-  Future<void> updateDocument(
-      String collectionPath, String docId, Map<String, dynamic> data) async {
+  /// Método genérico para actualizar un documento existente en una colección.
+  Future<void> updateDocument(String collectionPath, String docId, Map<String, dynamic> data) async {
     try {
       await _db.collection(collectionPath).doc(docId).update(data);
     } catch (e) {
@@ -97,7 +106,7 @@ class FirestoreService {
     }
   }
 
-  // Method to delete a document from a collection
+  /// Método genérico para eliminar un documento de una colección.
   Future<void> deleteDocument(String collectionPath, String docId) async {
     try {
       await _db.collection(collectionPath).doc(docId).delete();
@@ -106,7 +115,7 @@ class FirestoreService {
     }
   }
 
-  // Method to get a list of documents by a field condition (where)
+  /// Obtiene documentos de una colección que cumplen con una condición sobre un campo.
   Future<List<QueryDocumentSnapshot>> getDocumentsByField(
       String collectionPath, String fieldName, dynamic fieldValue) async {
     try {
@@ -120,20 +129,17 @@ class FirestoreService {
     }
   }
 
-  // Method to add or update a document (upsert)
-  Future<void> setDocument(
-      String collectionPath, String docId, Map<String, dynamic> data) async {
+  /// Agrega o actualiza (upsert) un documento en la colección especificada.
+  Future<void> setDocument(String collectionPath, String docId, Map<String, dynamic> data) async {
     try {
-      await _db
-          .collection(collectionPath)
-          .doc(docId)
-          .set(data, SetOptions(merge: true));
+      await _db.collection(collectionPath).doc(docId).set(data, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Error upserting document: $e');
     }
   }
 
-  // Method to get paginated documents from a collection
+  /// Obtiene documentos de forma paginada de una colección.
+  /// [startAfterDoc] permite especificar el documento a partir del cual iniciar.
   Future<QuerySnapshot> getPaginatedCollection(String collectionPath,
       {DocumentSnapshot? startAfterDoc, int limit = 10}) async {
     try {

@@ -1,38 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    Fore more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-  -->
-  <base href="/psi-connect/Psiconnect/">
+  <!-- Adjusted base href for dynamic environment setup -->
+  <base href="/psi-connect/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Basic landing webpage">
+  <meta name="description" content="Psiconnect: Conecta pacientes con profesionales de la salud mental.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- iOS meta tags & icons -->
+  <!-- SEO and accessibility improvements -->
+  <meta name="keywords" content="Psiconnect, psicología, salud mental, citas online">
+  <meta name="author" content="Equipo Psiconnect">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="basic_landing_webpage">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="Psiconnect">
 
-  <title>basic_landing_webpage</title>
+  <!-- Icons for PWA -->
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
   <link rel="manifest" href="manifest.json">
+
+  <title>Psiconnect - Inicio</title>
+
+  <!-- Preloading critical resources -->
+  <link rel="preload" href="main.dart.js" as="script">
+  <link rel="preload" href="icons/Icon-192.png" as="image">
 </head>
 <body>
-  <!-- This script installs service_worker.js to provide PWA functionality to
-       application. For more information, see:
-       https://developers.google.com/web/fundamentals/primers/service-workers -->
+  <div id="loading">Cargando la aplicación...</div>
+
   <script>
     var serviceWorkerVersion = '{{flutter_service_worker_version}}';
     var scriptLoaded = false;
+
     function loadMainDartJs() {
       if (scriptLoaded) {
         return;
@@ -42,55 +42,47 @@
       scriptTag.src = 'main.dart.js';
       scriptTag.type = 'application/javascript';
       document.body.append(scriptTag);
+      document.getElementById('loading').style.display = 'none';
     }
 
     if ('serviceWorker' in navigator) {
-      // Service workers are supported. Use them.
       window.addEventListener('load', function () {
-        // Wait for registration to finish before dropping the <script> tag.
-        // Otherwise, the browser will load the script multiple times,
-        // potentially different versions.
         var serviceWorkerUrl = 'flutter_service_worker.js?v=' + serviceWorkerVersion;
+
         navigator.serviceWorker.register(serviceWorkerUrl)
           .then((reg) => {
             function waitForActivation(serviceWorker) {
               serviceWorker.addEventListener('statechange', () => {
-                if (serviceWorker.state == 'activated') {
-                  console.log('Installed new service worker.');
+                if (serviceWorker.state === 'activated') {
+                  console.log('Nuevo service worker activado.');
                   loadMainDartJs();
                 }
               });
             }
+
             if (!reg.active && (reg.installing || reg.waiting)) {
-              // No active web worker and we have installed or are installing
-              // one for the first time. Simply wait for it to activate.
               waitForActivation(reg.installing || reg.waiting);
             } else if (!reg.active.scriptURL.endsWith(serviceWorkerVersion)) {
-              // When the app updates the serviceWorkerVersion changes, so we
-              // need to ask the service worker to update.
-              console.log('New service worker available.');
+              console.log('Actualizando service worker.');
               reg.update();
               waitForActivation(reg.installing);
             } else {
-              // Existing service worker is still good.
-              console.log('Loading app from service worker.');
+              console.log('Cargando la aplicación desde el service worker existente.');
               loadMainDartJs();
             }
+          }).catch(error => {
+            console.error('Error registrando el Service Worker:', error);
+            loadMainDartJs();
           });
 
-        // If service worker doesn't succeed in a reasonable amount of time,
-        // fallback to plaint <script> tag.
         setTimeout(() => {
           if (!scriptLoaded) {
-            console.warn(
-              'Failed to load app from service worker. Falling back to plain <script> tag.',
-            );
+            console.warn('Fallo al cargar desde el service worker. Cargando con <script> simple.');
             loadMainDartJs();
           }
         }, 4000);
       });
     } else {
-      // Service workers not supported. Just drop the <script> tag.
       loadMainDartJs();
     }
   </script>

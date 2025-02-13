@@ -7,6 +7,7 @@ class NavBarButton extends HookConsumerWidget {
   final String text;
   final Color hoverColor;
   final Color defaultColor;
+  final double fontSize;
 
   const NavBarButton({
     Key? key,
@@ -14,6 +15,7 @@ class NavBarButton extends HookConsumerWidget {
     required this.text,
     this.hoverColor = Colors.blue,
     this.defaultColor = Colors.black,
+    this.fontSize = 15.0,
   }) : super(key: key);
 
   @override
@@ -24,24 +26,26 @@ class NavBarButton extends HookConsumerWidget {
       label: text,
       button: true,
       child: MouseRegion(
-        onEnter: (value) {
-          textColor.value = hoverColor;
-        },
-        onExit: (value) {
-          textColor.value = defaultColor;
-        },
+        onEnter: (_) => textColor.value = hoverColor,
+        onExit: (_) => textColor.value = defaultColor,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
+            borderRadius: BorderRadius.circular(5),
             child: Container(
-              height: 30,
+              height: 40,
+              padding: EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.center,
               margin: EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(color: textColor.value, width: 1.2),
+              ),
               child: Text(
                 text,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: fontSize,
                   fontWeight: FontWeight.w600,
                   color: textColor.value,
                 ),

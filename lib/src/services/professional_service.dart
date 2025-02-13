@@ -12,7 +12,7 @@ class AppointmentService {
         .snapshots();
   }
 
-  // Crear una nueva cita (método optimizado para añadir citas manualmente)
+  // Crear una nueva cita
   Future<void> createAppointment({
     required String patientId,
     required String professionalId,
@@ -24,16 +24,17 @@ class AppointmentService {
         'patient_id': patientId,
         'professional_id': professionalId,
         'date': date.toIso8601String(),
-        'status': 'pending', // Estado inicial de la cita
+        'status': 'pending',
         'details': details,
         'created_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       print("Error al crear la cita: $e");
+      throw Exception("Error al crear la cita: $e");
     }
   }
 
-  // Actualizar el estado de una cita (pendiente, confirmada, cancelada)
+  // Actualizar el estado de una cita
   Future<void> updateAppointmentStatus({
     required String appointmentId,
     required String status,
@@ -41,9 +42,11 @@ class AppointmentService {
     try {
       await _firestore.collection('appointments').doc(appointmentId).update({
         'status': status,
+        'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       print("Error al actualizar el estado de la cita: $e");
+      throw Exception("Error al actualizar la cita: $e");
     }
   }
 
@@ -53,6 +56,7 @@ class AppointmentService {
       await _firestore.collection('appointments').doc(appointmentId).delete();
     } catch (e) {
       print("Error al eliminar la cita: $e");
+      throw Exception("Error al eliminar la cita: $e");
     }
   }
 
@@ -65,6 +69,22 @@ class AppointmentService {
           .get();
     } catch (e) {
       throw Exception('Error al obtener la cita: $e');
+    }
+  }
+
+  // Obtener todas las citas de un profesional dentro de un rango de fechas
+  Future<List<QueryDocumentSnapshot>> getAppointmentsByDateRange(
+      String professionalId, DateTime startDate, DateTime endDate) async {
+    try {
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('appointments')
+          .where('professional_id', isEqualTo: professionalId)
+          .where('date', isGreaterThanOrEqualTo: startDate.toIso8601String())
+          .where('date', isLessThanOrEqualTo: endDate.toIso8601String())
+          .get();
+      return querySnapshot.docs;
+    } catch (e) {
+      throw Exception("Error al obtener citas por rango de fecha: $e");
     }
   }
 }

@@ -5,7 +5,7 @@ class Appointment {
   final String id;
   final String patientId;
   final String professionalId;
-  final String date;
+  final DateTime date;
   final String status;
   final String? details;
 
@@ -25,11 +25,20 @@ class Appointment {
       id: doc.id,
       patientId: data['patient_id'] ?? '',
       professionalId: data['professional_id'] ?? '',
-      date: data['date'] ?? '',
+      date: (data['date'] as Timestamp).toDate(), // Convertir Timestamp a DateTime
       status: data['status'] ?? 'pending',
       details: data['details'],
     );
   }
 
-  // Otros métodos, si es necesario...
+  // Método para convertir una instancia de Appointment a un mapa para Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'patient_id': patientId,
+      'professional_id': professionalId,
+      'date': Timestamp.fromDate(date), // Convertir DateTime a Timestamp
+      'status': status,
+      'details': details,
+    };
+  }
 }

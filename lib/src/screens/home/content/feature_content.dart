@@ -1,6 +1,5 @@
 import 'package:Psiconnect/src/widgets/responsive_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 class FeaturesContent extends ResponsiveWidget {
   FeaturesContent({Key? key}) : super(key: key);

@@ -44,33 +44,27 @@ class SessionNotifier extends StateNotifier<UserSession?> {
     }
   }
 
-  // Función para obtener el rol del usuario desde Firestore
+  // Función para obtener el rol del usuario desde Firestore en collections 'doctors' o 'patients'
   Future<String> _getUserRole(String uid, {int retries = 3}) async {
     for (int attempt = 0; attempt < retries; attempt++) {
       try {
-        final doc =
-            await FirebaseFirestore.instance.collection('users').doc(uid).get();
-        if (doc.exists && doc.data() != null) {
-          final data = doc.data()!;
-          final role = data['role'];
-          if (role != null && role is String) {
-            print('Rol obtenido: $role');
-            return role;
-          } else {
-            throw Exception(
-                'El campo role no está definido o es inválido en Firestore. Datos del documento: $data');
-          }
-        } else {
-          throw Exception(
-              'Documento de usuario no encontrado en Firestore. UID: $uid');
+        final patientDoc = await FirebaseFirestore.instance.collection('patients').doc(uid).get();
+        if (patientDoc.exists) {
+          return 'patient';
         }
+
+        final doctorDoc = await FirebaseFirestore.instance.collection('doctors').doc(uid).get();
+        if (doctorDoc.exists) {
+          return 'professional';
+        }
+
+        throw Exception('Documento de usuario no encontrado en Firestore. UID: $uid');
       } catch (e) {
         print('Error obteniendo el rol del usuario en intento $attempt: $e');
         if (attempt < retries - 1) {
-          // Esperar antes de volver a intentar
           await Future.delayed(Duration(milliseconds: 500));
         } else {
-          return 'unknown'; // Si se agotan los intentos, devuelve el valor predeterminado
+          return 'unknown';
         }
       }
     }
