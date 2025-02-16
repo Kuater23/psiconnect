@@ -14,7 +14,7 @@ final patientAppointmentsProvider =
   try {
     final snapshot = await FirebaseFirestore.instance
         .collection('appointments')
-        .where('patient_id', isEqualTo: session.user.uid)
+        .where('patient_id', isEqualTo: session.user?.uid)
         .get();
 
     return snapshot.docs

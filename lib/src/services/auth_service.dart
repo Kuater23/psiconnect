@@ -126,27 +126,42 @@ class AuthService {
   /// Inicia sesión con Google.
   /// En web se utiliza [signInWithPopup] y en móvil se utiliza [GoogleSignIn].
   Future<User?> signInWithGoogle({required String role}) async {
-    try {
-      UserCredential userCredential;
-      if (kIsWeb) {
-        final googleProvider = GoogleAuthProvider();
-        userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
-      } else {
-        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        if (googleUser == null) {
-          throw AuthException(message: 'Inicio de sesión cancelado.');
-        }
-        final googleAuth = await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-        userCredential = await _firebaseAuth.signInWithCredential(credential);
+  try {
+    UserCredential userCredential;
+    if (kIsWeb) {
+      final googleProvider = GoogleAuthProvider();
+      userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
+    } else {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        throw AuthException(message: 'Inicio de sesión cancelado.');
       }
-      final user = userCredential.user;
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      userCredential = await _firebaseAuth.signInWithCredential(credential);
+    }
 
-      // Si es un usuario nuevo, se crea el documento en la colección correspondiente.
-      if (user != null && (userCredential.additionalUserInfo?.isNewUser ?? false)) {
+    final user = userCredential.user;
+
+    // Verificamos si es un usuario completamente nuevo
+    final bool isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+    if (user != null && isNewUser) {
+      // Si no nos pasaron un 'role' válido => NO creamos doc, lanzamos excepción
+      if (role.isEmpty) {
+        // Este caso indica que vino de la pantalla de Login sin un rol, o no queremos crear doc
+        // Forzamos que se registre en la pantalla adecuada
+        // Cerrar la sesión que acabamos de crear para no dejar al usuario "loggeado"
+        await _firebaseAuth.signOut();
+
+        throw AuthException(
+          code: 'user-new-no-registration',
+          message: 'No tienes una cuenta registrada. Por favor regístrate primero.',
+        );
+      } else {
+        // Caso normal: si hay un role => creamos el documento en Firestore
         final String collection = role == 'professional' ? 'doctors' : 'patients';
         await _firestore.collection(collection).doc(user.uid).set({
           'email': user.email,
@@ -154,14 +169,15 @@ class AuthService {
           'name': user.displayName,
         });
       }
-
-      return user;
-    } on FirebaseAuthException catch (e) {
-      throw AuthException(code: e.code, message: e.message);
-    } catch (e) {
-      throw AuthException(message: 'Error desconocido al iniciar sesión con Google.');
     }
+
+    return user;
+  } on FirebaseAuthException catch (e) {
+    throw AuthException(code: e.code, message: e.message);
+  } catch (e) {
+    throw AuthException(message: 'Error desconocido al iniciar sesión con Google.');
   }
+}
 
   /// Cierra la sesión del usuario.
   Future<void> signOut() async {

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:intl/intl.dart'; // Para formatear la fecha
-import 'package:google_sign_in/google_sign_in.dart'; // Para registro con Google
-import 'package:flutter_signin_button/flutter_signin_button.dart'; // Botón de Google
-import 'package:flutter/services.dart'; // Para input formatters
+import 'package:intl/intl.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:flutter/services.dart';
 import 'login_page.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
@@ -16,12 +16,8 @@ class RegisterPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
-  // Controladores de los campos del formulario.
-  // Se guardarán en la DB con los nuevos nombres:
-  // "first" para el nombre y "last" para el apellido.
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
-  // Se guardará en "age" (con fecha formateada DD/MM/YYYY)
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _dniController = TextEditingController();
@@ -33,7 +29,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _isProfessional = false;
   bool _obscurePassword = true;
   
-  // Lista actualizada de especialidades.
   final List<String> _specialties = [
     "Psicología Clínica",
     "Psicología Educativa",
@@ -62,25 +57,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       body: Stack(
         children: [
           _buildContent(context),
-          // Aquí podrías agregar un indicador de carga si lo deseas.
         ],
       ),
     );
   }
   
-  /// Muestra el logo de la aplicación.
   Widget _buildLogo() {
     return Container(
       height: 100,
       child: Image.asset(
-        'assets/images/logo.png', // Asegúrate de que este asset exista
+        'assets/images/logo.png',
         fit: BoxFit.contain,
       ),
     );
   }
   
-  /// Widget genérico para campos de texto, con parámetros opcionales para 
-  /// limitar la longitud y aplicar input formatters, de forma similar al login.
   Widget _buildTextField({
     required TextEditingController controller,
     required String labelText,
@@ -102,7 +93,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         labelStyle: const TextStyle(color: Colors.white70),
         prefixIcon: Icon(icon, color: Colors.white70),
         prefixText: prefixText,
-        counterText: "", // Oculta el contador de caracteres.
+        counterText: "",
         enabledBorder: OutlineInputBorder(
           borderSide: const BorderSide(color: Colors.white30),
           borderRadius: BorderRadius.circular(8),
@@ -118,8 +109,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
   
-  /// Campo para seleccionar la fecha de nacimiento mediante un DatePicker,
-  /// formateando la fecha a DD/MM/YYYY.
   Widget _buildDatePickerField() {
     return TextFormField(
       controller: _dobController,
@@ -157,7 +146,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
   
-  /// Botón para registrar al usuario con email y contraseña.
   Widget _buildRegisterButton(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
@@ -168,7 +156,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         ),
       ),
       onPressed: () async {
-        // Validaciones específicas para profesionales.
         if (_isProfessional) {
           if (_nroMatriculaController.text.trim().length != 7) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -191,7 +178,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         }
   
         try {
-          // Registro con email y contraseña utilizando FirebaseAuth.
           final UserCredential userCredential = await FirebaseAuth.instance
               .createUserWithEmailAndPassword(
             email: _emailController.text.trim(),
@@ -199,17 +185,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           );
           final String uid = userCredential.user!.uid;
   
-          // Preparar los datos del usuario, usando los nuevos nombres de campo.
           Map<String, dynamic> userData = {
             'firstName': _nameController.text.trim(),
             'lastName': _lastNameController.text.trim(),
-            'dob': _dobController.text.trim(), // Se guarda como "age" en lugar de "dob".
+            'dob': _dobController.text.trim(),
             'email': _emailController.text.trim(),
-            'password': _passwordController.text.trim(), // Contraseña en texto plano.
+            'password': _passwordController.text.trim(),
             'uid': uid,
           };
   
-          // Si el usuario es profesional, se agregan campos adicionales.
           if (_isProfessional) {
             userData.addAll({
               'specialty': _selectedSpecialty,
@@ -219,7 +203,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             });
           }
   
-          // Se determina la colección destino: "patients" para pacientes y "doctors" para profesionales.
           final String collectionName = _isProfessional ? 'doctors' : 'patients';
   
           await FirebaseFirestore.instance
@@ -227,7 +210,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               .doc(uid)
               .set(userData);
   
-          // Luego de un registro exitoso se redirige al LoginPage.
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -244,8 +226,26 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       ),
     );
   }
+
+  Widget _buildLoginButton(BuildContext context) {
+    return TextButton(
+      onPressed: () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      },
+      child: const Text(
+        '¿Ya tienes una cuenta? Inicia sesión aquí',
+        style: TextStyle(
+          color: Color.fromRGBO(11, 191, 205, 1),
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
   
-  /// Botón para el registro con Google (disponible solo para pacientes).
   Widget _buildGoogleRegisterButton(BuildContext context) {
     return SignInButton(
       Buttons.Google,
@@ -254,7 +254,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         try {
           final GoogleSignIn googleSignIn = GoogleSignIn();
           final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-          if (googleUser == null) return; // Usuario canceló el registro.
+          if (googleUser == null) return;
           final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
           final credential = GoogleAuthProvider.credential(
             accessToken: googleAuth.accessToken,
@@ -264,7 +264,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               await FirebaseAuth.instance.signInWithCredential(credential);
           final String uid = userCredential.user!.uid;
   
-          // Extraer el primer y último nombre de googleUser.displayName, si existe.
           String firstName = '';
           String lastName = '';
           if (googleUser.displayName != null) {
@@ -277,12 +276,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             }
           }
   
-          // Preparar los datos del usuario.
-          // Nota: Al usar Google, no se obtiene una contraseña, por lo que se guarda "google" en el campo password.
           Map<String, dynamic> userData = {
             'first': firstName,
             'last': lastName,
-            'age': _dobController.text.trim(), // El usuario debe seleccionar su fecha de nacimiento.
+            'age': _dobController.text.trim(),
             'email': googleUser.email,
             'password': 'google',
             'uid': uid,
@@ -306,7 +303,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
   
-  /// Dropdown para seleccionar la especialidad (solo para profesionales).
   Widget _buildDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -341,7 +337,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
   
-  /// Contenido principal del formulario, organizado en una card similar a la de LoginPage.
   Widget _buildContent(BuildContext context) {
     return Center(
       child: SingleChildScrollView(
@@ -360,17 +355,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 children: [
                   _buildLogo(),
                   const SizedBox(height: 20),
-                  // Se muestra el formulario correspondiente según el rol seleccionado.
                   _isProfessional ? _buildProfessionalForm() : _buildPatientForm(),
                   const SizedBox(height: 20),
                   _buildRoleSwitch(),
                   const SizedBox(height: 20),
-                  // Para pacientes se muestra la opción de registro con Google.
                   if (!_isProfessional) ...[
                     _buildGoogleRegisterButton(context),
                     const SizedBox(height: 20),
                   ],
                   _buildRegisterButton(context),
+                  const SizedBox(height: 10),
+                  _buildLoginButton(context),
                 ],
               ),
             ),
@@ -380,7 +375,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
   
-  /// Formulario base para pacientes (campos comunes).
   Widget _buildPatientForm() {
     return Column(
       children: [
@@ -414,7 +408,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
   
-  /// Formulario adicional para profesionales.
   Widget _buildProfessionalForm() {
     return Column(
       children: [
@@ -448,23 +441,47 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
   
-  /// Switch para elegir entre paciente y profesional.
-  /// Esto solo afecta la colección de guardado y la opción de registro con Google.
   Widget _buildRoleSwitch() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text('Paciente', style: TextStyle(color: Colors.white)),
-        Switch(
-          value: _isProfessional,
-          onChanged: (value) {
-            setState(() {
-              _isProfessional = value;
-            });
-          },
-        ),
-        const Text('Profesional', style: TextStyle(color: Colors.white)),
-      ],
-    );
-  }
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      const Text(
+        'Paciente', 
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        )
+      ),
+      const SizedBox(width: 8), // Add spacing
+      Switch(
+        value: _isProfessional,
+        onChanged: (value) {
+          setState(() {
+            _isProfessional = value;
+            if (!value) {
+              _selectedSpecialty = null;
+              _nroMatriculaController.clear();
+              _phoneController.clear();
+              _dniController.clear();
+            }
+          });
+        },
+        activeColor: Colors.white, // Color of the thumb when active
+        activeTrackColor: Colors.teal, // Color of the track when active
+        inactiveThumbColor: Colors.white, // Color of the thumb when inactive
+        inactiveTrackColor: Colors.grey.withOpacity(0.5), // Color of the track when inactive
+      ),
+      const SizedBox(width: 8), // Add spacing
+      const Text(
+        'Profesional', 
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        )
+      ),
+    ],
+  );
+}
 }
