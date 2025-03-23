@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Default rule - deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+    
+    // Patient documents - allow professionals to upload and both patients and professionals to view
+    match /patient_documents/{patientId}/{documentName} {
+      allow read: if request.auth != null && (
+        request.auth.uid == patientId || 
+        exists(/databases/$(database)/documents/professionals/$(request.auth.uid))
+      );
+      
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/professionals/$(request.auth.uid));
+    }
+    
+    // Profile images - allow users to manage their own profile images
+    match /profile_images/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

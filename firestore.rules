@@ -1,0 +1,149 @@
+// firestore.rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Common functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Updated role checking functions to check collection membership
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    function isProfessional() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
+    }
+    
+    function isPatient() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/patients/$(request.auth.uid));
+    }
+    
+    // Users collection - replace with the actual collections
+    match /doctors/{userId} {
+      // Anyone can create their account (controlled by application logic)
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      
+      // Only the user or admin can read/update user data
+      allow read: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Patients collection
+    match /patients/{userId} {
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isOwner(userId) || isAdmin() || isProfessional();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Admin collection
+    match /admins/{userId} {
+      allow create: if isAdmin();  // Only admins can create other admins
+      allow read: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Appointments collection
+    match /appointments/{appointmentId} {
+      // Patients can create appointments and read their own appointments
+      allow create: if isSignedIn() && (
+        (isPatient() && request.resource.data.patientId == request.auth.uid) ||
+        isProfessional() || 
+        isAdmin()
+      );
+      
+      // Users can read appointments they're involved in
+      allow read: if isSignedIn() && (
+        (isPatient() && resource.data.patientId == request.auth.uid) ||
+        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        isAdmin()
+      );
+      
+      // Professionals can update appointments assigned to them
+      // Patients can update certain fields of their own appointments
+      allow update: if isSignedIn() && (
+        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        (isPatient() && resource.data.patientId == request.auth.uid && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'patientNotes'])) ||
+        isAdmin()
+      );
+      
+      // Only professionals and admins can delete appointments
+      allow delete: if isSignedIn() && (
+        (isProfessional() && resource.data.professionalId == request.auth.uid) || 
+        isAdmin()
+      );
+    }
+    
+    // Patient documents collection
+    match /patient_documents/{documentId} {
+      // Professionals can create documents
+      allow create: if isProfessional() || isAdmin();
+      
+      // Patients can read their own documents
+      // Professionals can read documents they created
+      allow read: if isSignedIn() && (
+        (isPatient() && resource.data.patientId == request.auth.uid) ||
+        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        isAdmin()
+      );
+      
+      // Professionals can update documents they created
+      allow update: if isSignedIn() && (
+        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        isAdmin()
+      );
+      
+      // Professionals can delete documents they created
+      allow delete: if isSignedIn() && (
+        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        isAdmin()
+      );
+    }
+    
+    // Medical history collection
+    match /medical_history/{entryId} {
+      // Professionals can create entries
+      allow create: if isProfessional() || isAdmin();
+      
+      // Patients can read their own medical history
+      // Professionals can read entries they created
+      allow read: if isSignedIn() && (
+        (isPatient() && resource.data.patientId == request.auth.uid) ||
+        (isProfessional() && resource.data.createdBy == request.auth.uid) ||
+        isAdmin()
+      );
+      
+      // Professionals can update entries they created
+      allow update: if isSignedIn() && (
+        (isProfessional() && resource.data.createdBy == request.auth.uid) ||
+        isAdmin()
+      );
+      
+      // Professionals can delete entries they created
+      allow delete: if isSignedIn() && (
+        (isProfessional() && resource.data.createdBy == request.auth.uid) ||
+        isAdmin()
+      );
+    }
+    
+    // Default: deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
