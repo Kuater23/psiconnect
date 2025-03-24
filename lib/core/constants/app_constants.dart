@@ -76,7 +76,7 @@ class ExternalServiceConstants {
 }
 
 // Professional Specialties
-class SpecialtyConstants {
+class SpecialityConstants {
   static const List<String> psychologyTypes = [
     'Psicología Clínica',
     'Psicología Educativa',

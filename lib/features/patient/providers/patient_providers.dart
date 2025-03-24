@@ -395,7 +395,7 @@ class ProfessionalSearchNotifier extends StateNotifier<AsyncValue<List<Map<Strin
   /// Search for professionals
   Future<void> searchProfessionals({
     String? name,
-    String? specialty,
+    String? speciality,
   }) async {
     try {
       state = AsyncValue.loading();
@@ -403,8 +403,8 @@ class ProfessionalSearchNotifier extends StateNotifier<AsyncValue<List<Map<Strin
       Query query = FirebaseFirestore.instance
           .collection('doctors'); 
       
-      if (specialty != null && specialty.isNotEmpty) {
-        query = query.where('specialty', isEqualTo: specialty);
+      if (speciality != null && speciality.isNotEmpty) {
+        query = query.where('speciality', isEqualTo: speciality);
       }
       
       final snapshot = await query.get();
@@ -425,7 +425,7 @@ class ProfessionalSearchNotifier extends StateNotifier<AsyncValue<List<Map<Strin
               'id': doc.id,
               'name': data['firstName'] ?? '',
               'lastName': data['lastName'] ?? '',
-              'specialty': data['speciality'] ?? 'Psicología',
+              'speciality': data['speciality'] ?? 'Psicología',
               'rating': data['rating'] ?? 0.0,
             };
           })

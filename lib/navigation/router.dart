@@ -362,7 +362,7 @@ extension RouterExtension on BuildContext {
   void goAdmin() => go(RoutePaths.admin);
   
   /// Navigate to patient book schedule
-  void goPatientBookSchedule() => go(RoutePaths.patientBookSchedule);
+  void goPatientBookSchedule({required String appointmentId}) => go(RoutePaths.patientBookSchedule);
   
   /// Navigate to patient appointments
   void goPatientAppointments() => go(RoutePaths.patientAppointments);
