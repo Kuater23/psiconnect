@@ -7,18 +7,18 @@ class AppointmentService {
   Stream<QuerySnapshot> getAppointmentsByPatient(String patientId) {
     return _firestore
         .collection('appointments')
-        .where('patient_id', isEqualTo: patientId)
+        .where('patientId', isEqualTo: patientId)
         .orderBy('date')
         .snapshots();
   }
 
   // Crear una nueva cita (opcional, para añadir citas manualmente)
-  Future<void> createAppointment(String patientId, String professionalId,
+  Future<void> createAppointment(String patientId, String doctorId,
       DateTime date, String details) async {
     try {
       await _firestore.collection('appointments').add({
-        'patient_id': patientId,
-        'professional_id': professionalId,
+        'patientId': patientId,
+        'doctorId': doctorId,
         'date': date.toIso8601String(),
         'status': 'pending', // Estado inicial de la cita
         'details': details,

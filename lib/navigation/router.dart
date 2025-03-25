@@ -257,7 +257,7 @@ class AppRouter {
             final patientName = state.uri.queryParameters['patientName'];
             
             return PatientMedicalRecords(
-              professionalId: FirebaseAuth.instance.currentUser?.uid ?? '',
+              doctorId: FirebaseAuth.instance.currentUser?.uid ?? '',
               patientId: patientId,
               patientName: patientName,
               toggleTheme: () {},

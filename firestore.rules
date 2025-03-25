@@ -69,14 +69,14 @@ service cloud.firestore {
       // Users can read appointments they're involved in
       allow read: if isSignedIn() && (
         (isPatient() && resource.data.patientId == request.auth.uid) ||
-        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        (isProfessional() && resource.data.doctorId == request.auth.uid) ||
         isAdmin()
       );
       
       // Professionals can update appointments assigned to them
       // Patients can update certain fields of their own appointments
       allow update: if isSignedIn() && (
-        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        (isProfessional() && resource.data.doctorId == request.auth.uid) ||
         (isPatient() && resource.data.patientId == request.auth.uid && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'patientNotes'])) ||
         isAdmin()
@@ -84,7 +84,7 @@ service cloud.firestore {
       
       // Only professionals and admins can delete appointments
       allow delete: if isSignedIn() && (
-        (isProfessional() && resource.data.professionalId == request.auth.uid) || 
+        (isProfessional() && resource.data.doctorId == request.auth.uid) || 
         isAdmin()
       );
     }
@@ -98,19 +98,19 @@ service cloud.firestore {
       // Professionals can read documents they created
       allow read: if isSignedIn() && (
         (isPatient() && resource.data.patientId == request.auth.uid) ||
-        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        (isProfessional() && resource.data.doctorId == request.auth.uid) ||
         isAdmin()
       );
       
       // Professionals can update documents they created
       allow update: if isSignedIn() && (
-        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        (isProfessional() && resource.data.doctorId == request.auth.uid) ||
         isAdmin()
       );
       
       // Professionals can delete documents they created
       allow delete: if isSignedIn() && (
-        (isProfessional() && resource.data.professionalId == request.auth.uid) ||
+        (isProfessional() && resource.data.doctorId == request.auth.uid) ||
         isAdmin()
       );
     }

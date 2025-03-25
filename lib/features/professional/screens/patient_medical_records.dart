@@ -17,14 +17,14 @@ import '/core/services/error_logger.dart';
 /// Patient medical records screen
 /// Allows professionals to view and manage patient medical records
 class PatientMedicalRecords extends StatefulWidget {
-  final String professionalId;
+  final String doctorId;
   final String patientId;
   final String? patientName;
   final VoidCallback toggleTheme;
   
   const PatientMedicalRecords({
     Key? key,
-    required this.professionalId,
+    required this.doctorId,
     required this.patientId,
     this.patientName,
     required this.toggleTheme,
@@ -497,7 +497,7 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
             onPressed: () => Navigator.pop(context),
             child: const Text('Cerrar'),
           ),
-          if (createdBy == widget.professionalId)
+          if (createdBy == widget.doctorId)
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -539,7 +539,7 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
                 _showHistoryEntryDetails(entry, entryId);
               },
             ),
-            if (createdBy == widget.professionalId) ...[
+            if (createdBy == widget.doctorId) ...[
               ListTile(
                 leading: const Icon(Icons.edit, color: Colors.green),
                 title: const Text('Editar'),
@@ -781,7 +781,7 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
                       'content': content,
                       'patientId': widget.patientId,
                       'tags': selectedTags,
-                      'createdBy': widget.professionalId,
+                      'createdBy': widget.doctorId,
                       'updatedAt': FieldValue.serverTimestamp(),
                     };
                     
@@ -1033,7 +1033,7 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
                 _downloadDocument(data);
               },
             ),
-            if (uploadedBy == widget.professionalId) ...[
+            if (uploadedBy == widget.doctorId) ...[
               ListTile(
                 leading: const Icon(Icons.edit, color: Colors.orange),
                 title: const Text('Editar Descripción'),
@@ -1553,13 +1553,13 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
       // Save metadata to Firestore
       await FirebaseFirestore.instance.collection('patient_documents').add({
         'patientId': widget.patientId,
-        'professionalId': widget.professionalId,
+        'doctorId': widget.doctorId,
         'fileName': fileName,
         'fileUrl': downloadUrl,
         'fileType': path.extension(fileName).toLowerCase(),
         'description': description,
         'uploadedAt': FieldValue.serverTimestamp(),
-        'uploadedBy': widget.professionalId,
+        'uploadedBy': widget.doctorId,
       });
       
       // Update UI

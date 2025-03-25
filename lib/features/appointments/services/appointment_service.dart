@@ -28,30 +28,32 @@ class AppointmentService {
   }
 
   // Get appointments filtered by professional with web optimizations
-  Stream<QuerySnapshot> getAppointmentsByProfessional(String professionalId) {
+  Stream<QuerySnapshot> getAppointmentsByProfessional(String doctorId) {
+    print('Buscando citas para doctor con ID: $doctorId');
+    
     try {
       return _firestore
           .collection('appointments')
-          .where('professional_id', isEqualTo: professionalId)
+          .where('doctorId', isEqualTo: doctorId) // Asegúrate que este campo coincide exactamente con tu BD
           .orderBy('date', descending: true)
           .snapshots();
     } catch (e, stackTrace) {
+      print('Error en consulta de Firebase: $e');
       ErrorLogger.logError(
         'Error getting professional appointments', 
         e, 
         stackTrace,
-        additionalData: {'professionalId': professionalId}
+        additionalData: {'doctorId': doctorId}
       );
       rethrow;
     }
   }
 
-  // Get appointments filtered by patient with web optimizations
   Stream<QuerySnapshot> getAppointmentsByPatient(String patientId) {
     try {
       return _firestore
           .collection('appointments')
-          .where('patient_id', isEqualTo: patientId)
+          .where('patientId', isEqualTo: patientId)
           .orderBy('date', descending: true)
           .snapshots();
     } catch (e, stackTrace) {
@@ -65,10 +67,9 @@ class AppointmentService {
     }
   }
 
-  // Create a new appointment with better error handling
   Future<String?> createAppointment({
     required String patientId,
-    required String professionalId,
+    required String doctorId,
     required DateTime date,
     required String details,
     String? location,
@@ -77,8 +78,8 @@ class AppointmentService {
   }) async {
     try {
       final appointmentData = {
-        'patient_id': patientId,
-        'professional_id': professionalId,
+        'patientId': patientId,
+        'doctorId': doctorId,
         'date': date.toIso8601String(),
         'details': details,
         'status': 'pending',
@@ -103,7 +104,7 @@ class AppointmentService {
         stackTrace,
         additionalData: {
           'patientId': patientId,
-          'professionalId': professionalId,
+          'doctorId': doctorId,
           'date': date.toString()
         }
       );
@@ -225,7 +226,7 @@ class AppointmentService {
   Future<List<QueryDocumentSnapshot>> getUpcomingAppointments(String userId, String role, {int limit = 5}) async {
     try {
       final now = DateTime.now().toIso8601String();
-      final roleField = role == 'professional' ? 'professional_id' : 'patient_id';
+      final roleField = role == 'professional' ? 'doctorId' : 'patientId';
       
       final querySnapshot = await _firestore
           .collection('appointments')

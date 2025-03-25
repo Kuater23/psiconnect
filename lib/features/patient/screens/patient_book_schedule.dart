@@ -1200,4 +1200,88 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
       ),
     );
   }
+
+  /// Check if doctor is available on a specific day and time
+  Future<bool> _isDoctorAvailable(String doctorId, DateTime selectedDate, TimeOfDay selectedTime) async {
+    try {
+      // Create start and end timestamps for the selected day
+      final DateTime dayStart = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+      );
+      
+      final DateTime dayEnd = dayStart.add(const Duration(days: 1));
+      
+      // Convert selected time to a datetime to check specific time slot
+      final DateTime selectedDateTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+      
+      // Get all appointments for this doctor on this day
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('appointmentDateTime', isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart))
+          .where('appointmentDateTime', isLessThan: Timestamp.fromDate(dayEnd))
+          .get();
+      
+      // Check if there's already an appointment at the selected time
+      // We'll consider appointments that overlap with a 1-hour window
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final Timestamp timestamp = data['appointmentDateTime'];
+        final DateTime appointmentDateTime = timestamp.toDate();
+        
+        // Check if the appointment time is within 1 hour of the selected time
+        final difference = appointmentDateTime.difference(selectedDateTime).inMinutes.abs();
+        if (difference < 60) {
+          // There's already an appointment within an hour of the selected time
+          return false;
+        }
+      }
+      
+      // No conflicting appointments found
+      return true;
+    } catch (e) {
+      print('Error checking doctor availability: $e');
+      // In case of error, assume doctor is not available to prevent double booking
+      return false;
+    }
+  }
+
+  // Example of using the availability check in your time selection method
+  void _selectTime(BuildContext context) async {
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: selectedTime ?? TimeOfDay.now(),
+    );
+    
+    if (pickedTime != null && selectedDay != null && selectedDoctor != null) {
+      // Check if doctor is available at this time
+      final isAvailable = await _isDoctorAvailable(
+        selectedDoctor!['id'],
+        selectedDay!,
+        pickedTime
+      );
+      
+      if (isAvailable) {
+        setState(() {
+          selectedTime = pickedTime;
+        });
+      } else {
+        // Doctor is not available at this time
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('El doctor no está disponible en el horario seleccionado'),
+            backgroundColor: Colors.red,
+          )
+        );
+      }
+    }
+  }
 }

@@ -5,13 +5,17 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:Psiconnect/navigation/router.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:Psiconnect/navigation/shared_drawer.dart'; // Importar el drawer compartido
 
-class PatientAppointments extends StatefulWidget {
+class PatientAppointments extends ConsumerStatefulWidget {
+  const PatientAppointments({Key? key}) : super(key: key);
+  
   @override
-  _PatientAppointmentsState createState() => _PatientAppointmentsState();
+  ConsumerState<PatientAppointments> createState() => _PatientAppointmentsState();
 }
 
-class _PatientAppointmentsState extends State<PatientAppointments> with TickerProviderStateMixin {
+class _PatientAppointmentsState extends ConsumerState<PatientAppointments> with TickerProviderStateMixin {
   // Get the current patient ID from Firebase Auth
   String? get currentPatientId => FirebaseAuth.instance.currentUser?.uid;
   late TabController _tabController;
@@ -49,80 +53,8 @@ class _PatientAppointmentsState extends State<PatientAppointments> with TickerPr
           labelColor: isDarkMode ? Colors.white : primaryColor,
         ),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: primaryColor,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white.withOpacity(0.3),
-                    child: Icon(Icons.person, size: 40, color: Colors.white),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Menú del Paciente',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home),
-              title: Text('Inicio'),
-              onTap: () {
-                Navigator.pop(context);
-                GoRouterHelper(context).go('/patient');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.calendar_today),
-              title: Text('Solicitar Cita'),
-              onTap: () {
-                Navigator.pop(context);
-                GoRouterHelper(context).go('/patient/book');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.history),
-              title: Text('Mis Citas'),
-              selected: true,
-              selectedTileColor: primaryColor.withOpacity(0.1),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            Divider(),
-            ListTile(
-              leading: Icon(Icons.settings),
-              title: Text('Configuración'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.exit_to_app),
-              title: Text('Cerrar Sesión'),
-              onTap: () async {
-                Navigator.pop(context);
-                await FirebaseAuth.instance.signOut();
-                GoRouterHelper(context).go('/login');
-              },
-            ),
-          ],
-        ),
-      ),
+      // Usar el SharedDrawer en lugar del drawer personalizado
+      drawer: const SharedDrawer(),
       body: currentPatientId == null
           ? Center(
               child: Column(
@@ -136,7 +68,7 @@ class _PatientAppointmentsState extends State<PatientAppointments> with TickerPr
                   ),
                   SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: () => GoRouterHelper(context).go('/login'),
+                    onPressed: () => GoRouter.of(context).go('/login'),
                     child: Text('Iniciar Sesión'),
                   ),
                 ],

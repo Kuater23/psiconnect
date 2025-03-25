@@ -17,10 +17,10 @@ final professionalProvider = StateNotifierProvider<ProfessionalNotifier, Profess
 });
 
 /// Provider for professional availability
-final professionalAvailabilityProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, professionalId) async {
+final professionalAvailabilityProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, doctorId) async {
   try {
     final firestoreService = WebFirestoreService();
-    final doc = await firestoreService.getDocument('professionals', professionalId);
+    final doc = await firestoreService.getDocument('professionals', doctorId);
     
     if (doc == null || !doc.exists) {
       return [];
@@ -65,7 +65,7 @@ final professionalUpcomingAppointmentsProvider = StreamProvider.autoDispose<List
   try {
     return FirebaseFirestore.instance
         .collection('appointments')
-        .where('professional_id', isEqualTo: userId)
+        .where('doctorId', isEqualTo: userId)
         .where('date', isGreaterThan: now.toIso8601String())
         .orderBy('date')
         .limit(10)
@@ -92,12 +92,12 @@ final professionalPatientsProvider = StreamProvider.autoDispose<List<Map<String,
     // Get all patients who have had appointments with this professional
     return FirebaseFirestore.instance
         .collection('appointments')
-        .where('professional_id', isEqualTo: userId)
+        .where('doctorId', isEqualTo: userId)
         .snapshots()
         .asyncMap((snapshot) async {
           // Extract unique patient IDs
           final Set<String> patientIds = snapshot.docs
-              .map((doc) => (doc.data() as Map<String, dynamic>)['patient_id'] as String)
+              .map((doc) => (doc.data() as Map<String, dynamic>)['patientId'] as String)
               .toSet();
               
           // Fetch patient details
@@ -145,14 +145,14 @@ final professionalStatsProvider = FutureProvider.autoDispose<Map<String, dynamic
     // Get appointments for this month
     final monthlyAppointments = await FirebaseFirestore.instance
         .collection('appointments')
-        .where('professional_id', isEqualTo: userId)
+        .where('doctorId', isEqualTo: userId)
         .where('date', isGreaterThanOrEqualTo: startOfMonth.toIso8601String())
         .get();
     
     // Get upcoming appointments
     final upcomingAppointments = await FirebaseFirestore.instance
         .collection('appointments')
-        .where('professional_id', isEqualTo: userId)
+        .where('doctorId', isEqualTo: userId)
         .where('date', isGreaterThan: now.toIso8601String())
         .get();
     
@@ -208,7 +208,7 @@ final professionalProfileCompletionProvider = Provider.autoDispose<double>((ref)
 /// Helper function to get the last appointment date for a patient
 String _getLastAppointmentDate(List<QueryDocumentSnapshot> docs, String patientId) {
   final patientAppointments = docs
-      .where((doc) => (doc.data() as Map<String, dynamic>)['patient_id'] == patientId)
+      .where((doc) => (doc.data() as Map<String, dynamic>)['patientId'] == patientId)
       .toList();
       
   if (patientAppointments.isEmpty) return 'N/A';

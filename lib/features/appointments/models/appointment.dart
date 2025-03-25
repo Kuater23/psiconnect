@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Appointment {
   final String id;
   final String patientId;
-  final String professionalId;
+  final String doctorId;
   final String date;
   final String status;
   final String? details;
@@ -12,7 +12,7 @@ class Appointment {
   Appointment({
     required this.id,
     required this.patientId,
-    required this.professionalId,
+    required this.doctorId,
     required this.date,
     required this.status,
     this.details,
@@ -23,8 +23,8 @@ class Appointment {
     final data = doc.data() as Map<String, dynamic>;
     return Appointment(
       id: doc.id,
-      patientId: data['patient_id'] ?? '',
-      professionalId: data['professional_id'] ?? '',
+      patientId: data['patientId'] ?? '',
+      doctorId: data['doctorId'] ?? '',
       date: data['date'] ?? '',
       status: data['status'] ?? 'pending',
       details: data['details'],

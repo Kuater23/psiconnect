@@ -121,7 +121,7 @@ final patientUpcomingAppointmentsProvider = StreamProvider.autoDispose<List<Appo
   try {
     return FirebaseFirestore.instance
         .collection('appointments')
-        .where('patient_id', isEqualTo: patientId)
+        .where('patientId', isEqualTo: patientId)
         .where('date', isGreaterThan: now.toIso8601String())
         .where('status', whereIn: ['pending', 'confirmed'])
         .orderBy('date')
@@ -150,7 +150,7 @@ final patientPastAppointmentsProvider = StreamProvider.autoDispose<List<Appointm
   try {
     return FirebaseFirestore.instance
         .collection('appointments')
-        .where('patient_id', isEqualTo: patientId)
+        .where('patientId', isEqualTo: patientId)
         .where('date', isLessThan: now.toIso8601String())
         .orderBy('date', descending: true)
         .limit(10)
