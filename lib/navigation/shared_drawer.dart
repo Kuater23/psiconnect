@@ -27,6 +27,7 @@ class SharedDrawer extends HookConsumerWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
+                // Inicio - siempre lleva al home principal
                 _buildNavigationTile(
                   context,
                   title: 'Inicio',
@@ -38,30 +39,28 @@ class SharedDrawer extends HookConsumerWidget {
                   },
                 ),
                 
-                // Public pages
-                _buildNavigationTile(
-                  context,
-                  title: 'Servicios',
-                  icon: Icons.medical_services_outlined,
-                  selected: false,
-                  onTap: () {
-                    Navigator.pop(context);
-                    GoRouter.of(context).go(RoutePaths.home);
-                    // Could add scrolling to the section
-                  },
-                ),
-                
-                _buildNavigationTile(
-                  context,
-                  title: 'Contacto',
-                  icon: Icons.contact_support_outlined,
-                  selected: false,
-                  onTap: () {
-                    Navigator.pop(context);
-                    GoRouter.of(context).go(RoutePaths.home);
-                    // Could add scrolling to the section
-                  },
-                ),
+                // Perfil - solo si está autenticado
+                if (userSession != null) 
+                  _buildNavigationTile(
+                    context,
+                    title: 'Mi Perfil',
+                    icon: Icons.person_outline,
+                    selected: (userSession.role == 'patient' && 
+                              (location == '/patient' || location == '/patient/home')) ||
+                             (userSession.role == 'professional' && 
+                              (location == '/professional' || location == '/professional/home')),
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Navegar según el rol
+                      if (userSession.role == 'patient') {
+                        GoRouter.of(context).go('/patient/home');
+                      } else if (userSession.role == 'professional') {
+                        GoRouter.of(context).go('/professional/home');
+                      } else if (userSession.role == 'admin') {
+                        GoRouter.of(context).go('/admin');
+                      }
+                    },
+                  ),
                 
                 if (userSession == null) ...[
                   const Divider(),
@@ -243,81 +242,74 @@ class SharedDrawer extends HookConsumerWidget {
     String location
   ) {
     switch (role) {
+      case 'patient':
+        return Column(
+          children: [
+            _buildNavigationTile(
+              context,
+              title: 'Mis Citas',
+              icon: Icons.calendar_today,
+              selected: location.startsWith('/patient/appointments'),
+              onTap: () {
+                Navigator.pop(context);
+                GoRouter.of(context).go('/patient/appointments');
+              },
+            ),
+            _buildNavigationTile(
+              context,
+              title: 'Solicitar Cita',
+              icon: Icons.add_circle_outline,
+              selected: location.startsWith('/patient/book'),
+              onTap: () {
+                Navigator.pop(context);
+                GoRouter.of(context).go('/patient/book');
+              },
+            ),
+            // Otras opciones para pacientes...
+          ],
+        );
+        
+      case 'professional':
+        return Column(
+          children: [
+            _buildNavigationTile(
+              context,
+              title: 'Mis Citas',
+              icon: Icons.calendar_today,
+              selected: location.startsWith('/professional/appointments'),
+              onTap: () {
+                Navigator.pop(context);
+                GoRouter.of(context).go('/professional/appointments');
+              },
+            ),
+            _buildNavigationTile(
+              context,
+              title: 'Archivos de Pacientes',
+              icon: Icons.folder_shared,
+              selected: location.startsWith('/professional/patient-files'),
+              onTap: () {
+                Navigator.pop(context);
+                GoRouter.of(context).go('/professional/patient-files');
+              },
+            ),
+            // Otras opciones para profesionales...
+          ],
+        );
+        
       case 'admin':
         return Column(
           children: [
             _buildNavigationTile(
               context,
               title: 'Panel de Administración',
-              icon: Icons.admin_panel_settings_outlined,
-              selected: location == RoutePaths.admin,
+              icon: Icons.admin_panel_settings,
+              selected: location.startsWith('/admin'),
               onTap: () {
                 Navigator.pop(context);
-                GoRouter.of(context).go(RoutePaths.admin);
+                GoRouter.of(context).go('/admin');
               },
             ),
-          ],
-        );
-      
-      case 'professional':
-        return Column(
-          children: [
-            _buildNavigationTile(
-              context,
-              title: 'Mi Perfil',
-              icon: Icons.person_outline,
-              selected: location == RoutePaths.professionalHome,
-              onTap: () {
-                Navigator.pop(context);
-                GoRouter.of(context).go(RoutePaths.professionalHome);
-              },
-            ),
-            _buildNavigationTile(
-              context,
-              title: 'Mis Sesiones',
-              icon: Icons.calendar_today_outlined,
-              selected: location == RoutePaths.professionalAppointments,
-              onTap: () {
-                Navigator.pop(context);
-                GoRouter.of(context).go(RoutePaths.professionalAppointments);
-              },
-            ),
-          ],
-        );
-        
-      case 'patient':
-        return Column(
-          children: [
-            _buildNavigationTile(
-              context,
-              title: 'Mi Perfil',
-              icon: Icons.person_outline,
-              selected: location == RoutePaths.patientHome,
-              onTap: () {
-                Navigator.pop(context);
-                GoRouter.of(context).go(RoutePaths.patientHome);
-              },
-            ),
-            _buildNavigationTile(
-              context,
-              title: 'Mis Citas',
-              icon: Icons.calendar_today_outlined,
-              selected: location == RoutePaths.patientAppointments,
-              onTap: () {
-                Navigator.pop(context);
-                GoRouter.of(context).go(RoutePaths.patientAppointments);
-              },
-            ),
-            _buildNavigationTile(
-              context,
-              title: 'Reservar Cita',
-              icon: Icons.add_circle_outline,
-              selected: location == RoutePaths.patientBookSchedule,
-              onTap: () {
-                Navigator.pop(context);
-                GoRouter.of(context).go(RoutePaths.patientBookSchedule);
-              },
-            ),   
+            // Otras opciones para administrador...
           ],
         );
         

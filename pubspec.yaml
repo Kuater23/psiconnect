@@ -7,12 +7,13 @@ environment:
   sdk: ">=3.4.3 <4.0.0"
 
 dependencies:
+  path: ^1.8.2
+  url_launcher: ^6.1.7
   flutter:
     sdk: flutter
   path_provider: ^2.0.11
   provider: ^6.0.0
   intl: ^0.20.2
-  url_launcher: ^6.2.1
   url_strategy: ^0.3.0
   hooks_riverpod: ^2.5.2
   webview_flutter_web: ^0.2.2+3
@@ -30,6 +31,7 @@ dependencies:
   cached_network_image: ^3.4.1
   firebase_storage: ^12.4.4
   file_picker: ^9.0.2
+  universal_html: ^2.2.4
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,5 @@
 // lib/navigation/router.dart
 
-import 'package:Psiconnect/features/auth/providers/session_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,6 +8,7 @@ import 'package:flutter/foundation.dart';
 
 import '/core/exceptions/app_exception.dart';
 import '/core/services/error_logger.dart';
+import '/core/theme/theme_provider.dart';
 
 // Admin pages
 import '/features/admin/screens/admin_page.dart';
@@ -29,113 +29,33 @@ import '/features/patient/screens/patient_book_schedule.dart';
 import '/features/professional/screens/professional_home.dart';
 import '/features/professional/screens/professional_appointments.dart';
 import '/features/professional/screens/patient_medical_records.dart';
+import '/features/professional/screens/patient_files_list.dart';
+
+// Auth providers
+import '/features/auth/providers/session_provider.dart';
 
 /// Router paths for the application
 class RoutePaths {
-  // Public routes
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
-  static const String notFound = '/404';
-  
+
   // Patient routes
-  static const String patientHome = '/patient';
+  static const String patientHome = '/patient/home';
   static const String patientAppointments = '/patient/appointments';
-  static const String patientBookSchedule = '/patient/book';
-  
+  static const String patientBook = '/patient/book';
+
   // Professional routes
-  static const String professionalHome = '/professional';
+  static const String professionalHome = '/professional/home';
   static const String professionalAppointments = '/professional/appointments';
   static const String patientMedicalRecords = '/professional/patient/records';
-  
+  static const String professionalPatientFiles = '/professional/patient-files';
+
   // Admin routes
-  static const String admin = '/admin';
-  static const String adminUsers = '/admin/users';
-  static const String adminSettings = '/admin/settings';
-}
-
-/// Provider that exposes the GoRouter instance
-final routerProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
-    navigatorKey: AppRouter._rootNavigatorKey,
-    initialLocation: RoutePaths.home,
-    debugLogDiagnostics: kDebugMode,
-    
-    // Redirección global para "/home"
-    redirect: (context, state) {
-      // Get the current path
-      final String location = state.uri.toString();
-      
-      // Authentication state
-      final bool isLoggedIn = ref.read(isLoggedInProvider);
-      final String userRole = ref.read(userRoleProvider);
-      
-      // Public routes that don't require authentication
-      final bool isPublicRoute = 
-          location == RoutePaths.home || 
-          location == RoutePaths.login || 
-          location == RoutePaths.register;
-          
-      // Role specific routes
-      final bool isPatientRoute = location.startsWith('/patient');
-      final bool isProfessionalRoute = location.startsWith('/professional');
-      final bool isAdminRoute = location.startsWith('/admin');
-      
-      // Home routes based on roles
-      final String userHome = getHomeRouteForRole(userRole);
-      
-      // If user is not authenticated and trying to access protected route
-      if (!isLoggedIn && !isPublicRoute) {
-        return RoutePaths.login;
-      }
-      
-      // If user is authenticated on login or register page, redirect to role-specific home
-      if (isLoggedIn && (location == RoutePaths.login || location == RoutePaths.register)) {
-        return userHome;
-      }
-      
-      // If user is authenticated and on the root page, redirect to role-specific home
-      if (isLoggedIn && location == RoutePaths.home) {
-        return userHome;
-      }
-      
-      // Role-based access control
-      if (isLoggedIn) {
-        if (isPatientRoute && userRole != 'patient' && userRole != 'admin') {
-          return userHome; // Redirect non-patients away from patient routes
-        }
-        
-        if (isProfessionalRoute && userRole != 'professional' && userRole != 'admin') {
-          return userHome; // Redirect non-professionals away from professional routes
-        }
-        
-        if (isAdminRoute && userRole != 'admin') {
-          return userHome; // Redirect non-admins away from admin routes
-        }
-      }
-      
-      // Allow access to the requested page
-      return null;
-    },
-    
-    routes: AppRouter._buildRoutes(),
-  );
-});
-
-/// Helper function to get home route based on role
-String getHomeRouteForRole(String role) {
-  print('Determinando ruta para el rol: $role');
+  static const String adminHome = '/admin';
   
-  switch (role) {
-    case 'admin':
-      return RoutePaths.admin;
-    case 'professional':
-      return RoutePaths.professionalHome;
-    case 'patient':
-      return RoutePaths.patientHome;
-    default:
-      return RoutePaths.home;
-  }
+  // 404 Not Found route
+  static const String notFound = '/404';
 }
 
 /// Central router configuration for the app
@@ -147,17 +67,36 @@ class AppRouter {
   static final GlobalKey<NavigatorState> _shellNavigatorKey = 
       GlobalKey<NavigatorState>(debugLabel: 'shell');
 
+  /// Helper function to get home route based on role
+  static String _getHomeRouteForRole(String role) {
+    switch (role) {
+      case 'admin':
+        return RoutePaths.adminHome;
+      case 'professional':
+        return RoutePaths.professionalHome;
+      case 'patient':
+        return RoutePaths.patientHome;
+      default:
+        return RoutePaths.home;
+    }
+  }
+
   /// Build all application routes
-  static List<RouteBase> _buildRoutes() {
+  static List<RouteBase> _buildRoutes(ProviderRef<GoRouter> ref, ThemeNotifier themeNotifier) {
+    // Helper function to toggle theme
+    void toggleTheme() {
+      themeNotifier.toggleTheme();
+    }
+    
     return [
       // Public routes
       _buildPublicRoutes(),
       
       // Patient routes
-      _buildPatientRoutes(),
+      _buildPatientRoutes(toggleTheme),
       
       // Professional routes
-      _buildProfessionalRoutes(),
+      _buildProfessionalRoutes(ref, toggleTheme),
       
       // Admin routes
       _buildAdminRoutes(),
@@ -201,7 +140,7 @@ class AppRouter {
   }
   
   /// Patient routes builder
-  static RouteBase _buildPatientRoutes() {
+  static RouteBase _buildPatientRoutes(VoidCallback toggleTheme) {
     return ShellRoute(
       builder: (context, state, child) => child,
       routes: [
@@ -209,7 +148,7 @@ class AppRouter {
         GoRoute(
           path: RoutePaths.patientHome,
           name: 'patientHome',
-          builder: (context, state) => PatientHome(toggleTheme: () {}),
+          builder: (context, state) => PatientHome(toggleTheme: toggleTheme),
         ),
         
         // Patient appointments
@@ -221,7 +160,7 @@ class AppRouter {
         
         // Patient book schedule
         GoRoute(
-          path: RoutePaths.patientBookSchedule,
+          path: RoutePaths.patientBook,
           name: 'patientBookSchedule',
           builder: (context, state) => PatientBookSchedule(),
         ),
@@ -230,7 +169,7 @@ class AppRouter {
   }
   
   /// Professional routes builder
-  static RouteBase _buildProfessionalRoutes() {
+  static RouteBase _buildProfessionalRoutes(ProviderRef<GoRouter> ref, VoidCallback toggleTheme) {
     return ShellRoute(
       builder: (context, state, child) => child,
       routes: [
@@ -238,14 +177,14 @@ class AppRouter {
         GoRoute(
           path: RoutePaths.professionalHome,
           name: 'professionalHome',
-          builder: (context, state) => ProfessionalHome(toggleTheme: () {}),
+          builder: (context, state) => ProfessionalHome(toggleTheme: toggleTheme),
         ),
         
         // Professional appointments
         GoRoute(
           path: RoutePaths.professionalAppointments,
           name: 'professionalAppointments',
-          builder: (context, state) => ProfessionalAppointments(toggleTheme: () {}),
+          builder: (context, state) => ProfessionalAppointments(toggleTheme: toggleTheme),
         ),
         
         // Professional patient medical records
@@ -260,9 +199,17 @@ class AppRouter {
               doctorId: FirebaseAuth.instance.currentUser?.uid ?? '',
               patientId: patientId,
               patientName: patientName,
-              toggleTheme: () {},
+              toggleTheme: toggleTheme,
             );
           },
+        ),
+        // Patient files list for professionals
+        GoRoute(
+          path: RoutePaths.professionalPatientFiles,
+          name: 'professionalPatientFiles',
+          builder: (context, state) => PatientFilesList(
+            toggleTheme: toggleTheme,
+          ),
         ),
       ],
     );
@@ -275,7 +222,7 @@ class AppRouter {
       routes: [
         // Admin home
         GoRoute(
-          path: RoutePaths.admin,
+          path: RoutePaths.adminHome,
           name: 'admin',
           builder: (context, state) => AdminPage(),
         ),
@@ -283,6 +230,85 @@ class AppRouter {
     );
   }
 }
+
+/// Provider that exposes the GoRouter instance
+final routerProvider = Provider<GoRouter>((ref) {
+  // Get necessary providers for navigation
+  final themeNotifier = ref.watch(themeNotifierProvider.notifier);
+  
+  return GoRouter(
+    navigatorKey: AppRouter._rootNavigatorKey,
+    initialLocation: RoutePaths.home,
+    debugLogDiagnostics: kDebugMode,
+    
+    // Redirección global para "/home"
+    redirect: (context, state) {
+      // Get the current path
+      final String location = state.uri.toString();
+      
+      // Authentication state
+      final bool isLoggedIn = ref.read(isLoggedInProvider);
+      final String userRole = ref.read(userRoleProvider);
+      
+      // Public routes that don't require authentication
+      final bool isPublicRoute = 
+          location == RoutePaths.home || 
+          location == RoutePaths.login || 
+          location == RoutePaths.register;
+          
+      // Role specific routes
+      final bool isPatientRoute = location.startsWith('/patient');
+      final bool isProfessionalRoute = location.startsWith('/professional');
+      final bool isAdminRoute = location.startsWith('/admin');
+      
+      // Home routes based on roles
+      final String userHome = AppRouter._getHomeRouteForRole(userRole);
+      
+      // If user is not authenticated and trying to access protected route
+      if (!isLoggedIn && !isPublicRoute) {
+        return RoutePaths.login;
+      }
+      
+      // If user is authenticated on login or register page, redirect to role-specific home
+      if (isLoggedIn && (location == RoutePaths.login || location == RoutePaths.register)) {
+        return userHome;
+      }
+      
+      // If user is authenticated and on the root page, redirect to role-specific home
+      if (isLoggedIn && location == RoutePaths.home) {
+        return userHome;
+      }
+      
+      // Role-based access control - only redirect if not already at user's home page
+      if (isLoggedIn) {
+        // Prevent redirect loops - don't redirect if user is already at their home route
+        if (location == userHome) {
+          return null;
+        }
+        
+        if (isPatientRoute && userRole != 'patient' && userRole != 'admin') {
+          return userHome; // Redirect non-patients away from patient routes
+        }
+        
+        if (isProfessionalRoute && userRole != 'professional' && userRole != 'admin') {
+          return userHome; // Redirect non-professionals away from professional routes
+        }
+        
+        if (isAdminRoute && userRole != 'admin') {
+          return userHome; // Redirect non-admins away from admin routes
+        }
+      }
+      
+      // Allow access to the requested page
+      return null;
+    },
+    errorBuilder: (context, state) {
+      final location = state.uri.toString();
+      return NotFoundPage(location: location);
+    },
+    routes: AppRouter._buildRoutes(ref, themeNotifier),
+  );
+});
 
 /// 404 Not Found page
 class NotFoundPage extends StatelessWidget {
@@ -359,10 +385,10 @@ extension RouterExtension on BuildContext {
   void goProfessionalHome() => go(RoutePaths.professionalHome);
   
   /// Navigate to admin page
-  void goAdmin() => go(RoutePaths.admin);
+  void goAdmin() => go(RoutePaths.adminHome);
   
   /// Navigate to patient book schedule
-  void goPatientBookSchedule({required String appointmentId}) => go(RoutePaths.patientBookSchedule);
+  void goPatientBookSchedule({required String appointmentId}) => go(RoutePaths.patientBook);
   
   /// Navigate to patient appointments
   void goPatientAppointments() => go(RoutePaths.patientAppointments);

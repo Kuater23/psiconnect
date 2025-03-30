@@ -107,7 +107,7 @@ class RegisterPage extends HookConsumerWidget {
         
         switch (userRole) {
           case 'admin':
-            GoRouter.of(context).go(RoutePaths.admin);
+            GoRouter.of(context).go(RoutePaths.home); // Using home path for admin since admin path doesn't exist
             break;
           case 'professional':
             GoRouter.of(context).go(RoutePaths.professionalHome);

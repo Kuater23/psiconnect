@@ -8,6 +8,11 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data'; 
+
+import 'dart:io';
+import 'package:universal_html/html.dart' as html if (dart.library.js) 'dart:html';
 
 import '/navigation/shared_drawer.dart';
 import '/core/widgets/responsive_widget.dart';
@@ -1072,8 +1077,14 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
       return;
     }
     
-    // For web app, open the URL in a new tab
-    launchURL(fileUrl);
+    // Para web, abrir en nueva pestaña
+    if (kIsWeb) {
+      html.window.open(fileUrl, '_blank');
+    } else {
+      // Para aplicaciones móviles, usar algún plugin como url_launcher
+      // Aquí puedes integrar url_launcher cuando implemente para móviles
+      debugPrint('Abriendo URL en dispositivo móvil: $fileUrl');
+    }
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Abriendo $fileName')),
@@ -1095,18 +1106,23 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
       return;
     }
     
-    // For web app, trigger download
-    launchURL(fileUrl);
+    // Para web, descargar directamente
+    if (kIsWeb) {
+      // Crear un elemento anchor invisible para descargar
+      html.AnchorElement anchor = html.AnchorElement(href: fileUrl);
+      anchor.download = fileName ?? 'documento';
+      anchor.style.display = 'none';
+      html.document.body?.children.add(anchor);
+      anchor.click();
+      html.document.body?.children.remove(anchor);
+    } else {
+      // Para aplicaciones móviles, usar algún plugin como url_launcher o path_provider + http
+      debugPrint('Descargando en dispositivo móvil: $fileUrl');
+    }
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Descargando $fileName')),
     );
-  }
-  
-  /// Launch URL in browser
-  void launchURL(String url) {
-    // For a real implementation, you would use url_launcher package
-    debugPrint('Launching URL: $url');
   }
   
   /// Edit document description
@@ -1362,20 +1378,69 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
             const SizedBox(height: 16),
           ],
           
-          // Upload area
-          Container(
-            width: double.infinity,
-            height: 200,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                style: BorderStyle.solid,
+          // Upload area - optimizada para web
+          _buildUploadArea(),
+          
+          const SizedBox(height: 24),
+          
+          // Alternative button
+          if (!_isUploading)
+            Center(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Seleccionar Archivo'),
+                onPressed: () => _pickAndUploadFile(),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
               ),
             ),
-            child: InkWell(
+        ],
+      ),
+    );
+  }
+
+  // Nueva función para construir el área de carga
+  Widget _buildUploadArea() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _isUploading ? Theme.of(context).primaryColor : Colors.grey.shade300,
+          width: _isUploading ? 2 : 1,
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: _isUploading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 64,
+                    height: 64,
+                    child: CircularProgressIndicator(
+                      value: _uploadProgress,
+                      strokeWidth: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Subiendo: ${(_uploadProgress * 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            )
+          : InkWell(
               onTap: () => _pickAndUploadFile(),
+              borderRadius: BorderRadius.circular(12),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1393,36 +1458,18 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'o arrastra y suelta aquí',
+                    Text(
+                      kIsWeb 
+                        ? 'o arrastra y suelta aquí' 
+                        : 'desde tu dispositivo',
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: Colors.grey.shade700,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Alternative button
-          Center(
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.upload_file),
-              label: const Text('Seleccionar Archivo'),
-              onPressed: () => _pickAndUploadFile(),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
   
@@ -1432,6 +1479,8 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png'],
+        // Importante para web: solicitar bytes
+        withData: true,
       );
       
       if (result != null && result.files.isNotEmpty) {
@@ -1461,14 +1510,23 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
           _errorMessage = null;
         });
         
-        if (file.path != null) {
+        // Obtener los bytes para la carga
+        if (file.bytes != null) {
+          // Usar bytes del archivo para compatibilidad con web
           await _uploadFile(
-            File(file.path!),
+            file.bytes!, // Use the null assertion operator to convert Uint8List? to Uint8List
+            fileName,
+            description,
+          );
+        } else if (!kIsWeb && file.path != null) {
+          // Fallback para plataformas móviles si los bytes no están disponibles
+          await _uploadFileFromPath(
+            file.path!,
             fileName,
             description,
           );
         } else {
-          throw Exception('No se pudo acceder al archivo seleccionado');
+          throw Exception('No se pudo acceder a los datos del archivo');
         }
       }
     } catch (e) {
@@ -1523,7 +1581,7 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
   
   /// Upload file to Firebase Storage
   Future<void> _uploadFile(
-    File file,
+    Uint8List fileBytes,
     String fileName,
     String description,
   ) async {
@@ -1535,8 +1593,19 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
           .child(widget.patientId)
           .child('${DateTime.now().millisecondsSinceEpoch}_$fileName');
       
-      // Upload with progress tracking
-      final uploadTask = storageRef.putFile(file);
+      // Upload with progress tracking (using putData for web compatibility)
+      final uploadTask = storageRef.putData(
+        fileBytes,
+        SettableMetadata(
+          contentType: _getContentType(fileName),
+          customMetadata: {
+            'patientId': widget.patientId,
+            'doctorId': widget.doctorId,
+            'description': description,
+            'uploadDate': DateTime.now().toIso8601String(),
+          },
+        ),
+      );
       
       uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
         setState(() {
@@ -1560,6 +1629,7 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
         'description': description,
         'uploadedAt': FieldValue.serverTimestamp(),
         'uploadedBy': widget.doctorId,
+        'fileSize': fileBytes.length,
       });
       
       // Update UI
@@ -1588,6 +1658,129 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
         e, 
         StackTrace.current,
       );
+    }
+  }
+  
+  /// Upload file from path (for mobile platforms)
+  Future<void> _uploadFileFromPath(
+    String filePath,
+    String fileName,
+    String description,
+  ) async {
+    try {
+      if (kIsWeb) {
+        throw Exception('Este método no debe usarse en entornos web');
+      }
+      
+      // Importación dinámica de dart:io solo cuando no es web
+      dynamic fileInstance;
+      if (!kIsWeb) {
+        // Usamos dynamic para evitar errores de compilación en web
+        fileInstance = File(filePath);
+      }
+      
+      // Create storage reference
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('patient_documents')
+          .child(widget.patientId)
+          .child('${DateTime.now().millisecondsSinceEpoch}_$fileName');
+      
+      // Upload with progress tracking
+      final uploadTask = storageRef.putFile(
+        fileInstance,
+        SettableMetadata(
+          contentType: _getContentType(fileName),
+          customMetadata: {
+            'patientId': widget.patientId,
+            'doctorId': widget.doctorId,
+            'description': description,
+            'uploadDate': DateTime.now().toIso8601String(),
+          },
+        ),
+      );
+      
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        setState(() {
+          _uploadProgress = snapshot.bytesTransferred / snapshot.totalBytes;
+        });
+      });
+      
+      // Wait for upload to complete
+      await uploadTask.whenComplete(() {});
+      
+      // Get download URL
+      final downloadUrl = await storageRef.getDownloadURL();
+      
+      // Obtener el tamaño del archivo
+      int fileSize = 0;
+      if (!kIsWeb) {
+        fileSize = await fileInstance.length();
+      }
+      
+      // Save metadata to Firestore
+      await FirebaseFirestore.instance.collection('patient_documents').add({
+        'patientId': widget.patientId,
+        'doctorId': widget.doctorId,
+        'fileName': fileName,
+        'fileUrl': downloadUrl,
+        'fileType': path.extension(fileName).toLowerCase(),
+        'description': description,
+        'uploadedAt': FieldValue.serverTimestamp(),
+        'uploadedBy': widget.doctorId,
+        'fileSize': fileSize,
+      });
+      
+      // Update UI
+      setState(() {
+        _isUploading = false;
+        _uploadProgress = 0.0;
+      });
+      
+      // Show feedback
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Archivo subido correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // Switch to documents tab
+      _tabController.animateTo(1); // Documents tab
+    } catch (e) {
+      setState(() {
+        _isUploading = false;
+        _errorMessage = 'Error al subir archivo: $e';
+      });
+      ErrorLogger.logError(
+        'Error al subir archivo', 
+        e, 
+        StackTrace.current,
+      );
+    }
+  }
+  
+  /// Determine content type based on file extension
+  String _getContentType(String fileName) {
+    final extension = path.extension(fileName).toLowerCase();
+    
+    switch (extension) {
+      case '.pdf':
+        return 'application/pdf';
+      case '.doc':
+      case '.docx':
+        return 'application/msword';
+      case '.txt':
+        return 'text/plain';
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      case '.gif':
+        return 'image/gif';
+      default:
+        return 'application/octet-stream';
     }
   }
 }

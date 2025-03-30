@@ -49,7 +49,6 @@ C:.
 ³   ÃÄÄÄappointments
 ³   ³   ÃÄÄÄmodels
 ³   ³   ³       appointment.dart
-³   ³   ³       appointments.dart
 ³   ³   ³       
 ³   ³   ÃÄÄÄproviders
 ³   ³   ³       appointment_providers.dart
@@ -97,6 +96,7 @@ C:.
 ³       ³       professional_providers.dart
 ³       ³       
 ³       ÀÄÄÄscreens
+³               patient_files_list.dart
 ³               patient_medical_records.dart
 ³               professional_appointments.dart
 ³               professional_home.dart
