@@ -1,5 +1,6 @@
 // lib/features/auth/screens/register_page.dart
 
+import 'package:Psiconnect/features/auth/widgets/role_selection_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -100,23 +101,71 @@ class RegisterPage extends HookConsumerWidget {
         isLoading.value = true;
         errorMessage.value = null;
         
-        await ref.read(sessionProvider.notifier).logInWithGoogle();
-        
-        // Navigate based on user role
-        final userRole = ref.read(userRoleProvider);
-        
-        switch (userRole) {
-          case 'admin':
-            GoRouter.of(context).go(RoutePaths.home); // Using home path for admin since admin path doesn't exist
-            break;
-          case 'professional':
-            GoRouter.of(context).go(RoutePaths.professionalHome);
-            break;
-          case 'patient':
-            GoRouter.of(context).go(RoutePaths.patientHome);
-            break;
-          default:
-            GoRouter.of(context).go(RoutePaths.home);
+        // Instead of immediately signing in, show a dialog to select role
+        if (context.mounted) {
+          final user = await ref.read(sessionProvider.notifier).logInWithGoogle();
+          
+          // If the user is already registered, just navigate to their page
+          if (user != null && context.mounted) {
+            final userRole = ref.read(userRoleProvider);
+            
+            // If the user already exists in one of our collections,
+            // the session listener will have set their role and we can navigate
+            if (userRole != 'guest') {
+              switch (userRole) {
+                case 'admin':
+                  GoRouter.of(context).go(RoutePaths.home);
+                  break;
+                case 'professional':
+                  GoRouter.of(context).go(RoutePaths.professionalHome);
+                  break;
+                case 'patient':
+                  GoRouter.of(context).go(RoutePaths.patientHome);
+                  break;
+                default:
+                  GoRouter.of(context).go(RoutePaths.home);
+              }
+              return;
+            }
+            
+            // If they're a new user, show role selection dialog
+            if (context.mounted) {
+              // Show role selection dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext context) {
+                  return RoleSelectionDialog(
+                    onRoleSelected: (UserRole selectedRole) async {
+                      // Close the dialog
+                      Navigator.of(context).pop();
+                      
+                      try {
+                        // Register the user with the selected role
+                        final role = selectedRole == UserRole.professional 
+                            ? 'professional' 
+                            : 'patient';
+                        
+                        await ref.read(sessionProvider.notifier)
+                            .registerWithGoogle(role);
+                        
+                        // Navigate based on selected role
+                        if (context.mounted) {
+                          if (selectedRole == UserRole.professional) {
+                            GoRouter.of(context).go(RoutePaths.professionalHome);
+                          } else {
+                            GoRouter.of(context).go(RoutePaths.patientHome);
+                          }
+                        }
+                      } catch (e) {
+                        errorMessage.value = 'Error al registrarse con Google: ${e.toString()}';
+                      }
+                    },
+                  );
+                },
+              );
+            }
+          }
         }
       } on AuthException catch (e) {
         errorMessage.value = e.message;

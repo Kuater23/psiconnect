@@ -221,10 +221,11 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   }
   
   // Login with Google
-  Future<void> logInWithGoogle() async {
+  Future<User?> logInWithGoogle() async {
     try {
-      await _authService.signInWithGoogle();
+      final user = await _authService.signInWithGoogle();
       // State will be updated by the auth listener
+      return user;
     } catch (e) {
       print('Error durante el login con Google: $e'); // Debug log
       rethrow; // Let the UI handle the error
@@ -310,6 +311,80 @@ class SessionNotifier extends StateNotifier<UserSession?> {
       // Estado se actualizará a través del auth listener
     } catch (e) {
       print('Error during registration: $e'); // Debug log
+      rethrow; // Let the UI handle the error
+    }
+  }
+  
+  // Add a new method for Google registration with role selection
+  Future<void> registerWithGoogle(String role) async {
+    try {
+      // First, authenticate with Google
+      final user = await _authService.signInWithGoogle();
+      
+      if (user == null) {
+        throw AuthException('Error during Google authentication');
+      }
+      
+      // Check if the user already exists in any collection
+      bool exists = false;
+      
+      // Check doctors collection
+      final doctorDoc = await _firestore.collection('doctors').doc(user.uid).get();
+      if (doctorDoc.exists) {
+        exists = true;
+      }
+      
+      // Check patients collection if not found in doctors
+      if (!exists) {
+        final patientDoc = await _firestore.collection('patients').doc(user.uid).get();
+        if (patientDoc.exists) {
+          exists = true;
+        }
+      }
+      
+      // Check admins collection if not found yet
+      if (!exists) {
+        final adminDoc = await _firestore.collection('admins').doc(user.uid).get();
+        if (adminDoc.exists) {
+          exists = true;
+        }
+      }
+      
+      // If user doesn't exist in any collection, create a new document in the selected role's collection
+      if (!exists) {
+        // Extract name from displayName if available
+        List<String> nameParts = (user.displayName ?? '').split(' ');
+        String firstName = nameParts.isNotEmpty ? nameParts[0] : '';
+        String lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+        
+        // Common user data
+        Map<String, dynamic> userData = {
+          'firstName': firstName,
+          'lastName': lastName,
+          'email': user.email ?? '',
+          'uid': user.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+          'registerMethod': 'google',
+        };
+        
+        // Determine which collection to use based on role
+        String collection;
+        if (role == 'professional') {
+          collection = 'doctors';
+        } else {
+          // Default to patient
+          collection = 'patients';
+        }
+        
+        // Create document in the appropriate collection
+        await _firestore.collection(collection).doc(user.uid).set(userData);
+        
+        print('Created new Google user in collection: $collection'); // Debug log
+      }
+      
+      // The auth listener will update the session state
+    } catch (e) {
+      print('Error during Google registration: $e'); // Debug log
       rethrow; // Let the UI handle the error
     }
   }

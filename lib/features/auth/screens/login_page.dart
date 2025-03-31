@@ -1,6 +1,7 @@
 // lib/features/auth/screens/login_page.dart
 
 import 'package:Psiconnect/core/exceptions/exception_handler.dart';
+import 'package:Psiconnect/features/auth/widgets/role_selection_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -91,25 +92,62 @@ class LoginPage extends HookConsumerWidget {
         isLoading.value = true;
         
         // Log in with Google using session provider
-        await ref.read(sessionProvider.notifier).logInWithGoogle();
+        final user = await ref.read(sessionProvider.notifier).logInWithGoogle();
         
-        // After successful Google login, navigate based on user role
-        if (context.mounted) {
+        // If it's a new user with no role assigned yet, we need to show role selection
+        if (user != null && context.mounted) {
           final userRole = ref.read(userRoleProvider);
           
-          // Use context extension methods for cleaner navigation
-          switch (userRole) {
-            case 'admin':
-              context.goAdmin();
-              break;
-            case 'professional':
-              context.goProfessionalHome();
-              break;
-            case 'patient':
-              context.goPatientHome();
-              break;
-            default:
-              context.goHome();
+          if (userRole == 'guest') {
+            // Show role selection dialog
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                return RoleSelectionDialog(
+                  onRoleSelected: (UserRole selectedRole) async {
+                    // Close the dialog
+                    Navigator.of(context).pop();
+                    
+                    try {
+                      // Register the user with the selected role
+                      final role = selectedRole == UserRole.professional 
+                          ? 'professional' 
+                          : 'patient';
+                      
+                      await ref.read(sessionProvider.notifier)
+                          .registerWithGoogle(role);
+                      
+                      // Navigate based on selected role
+                      if (context.mounted) {
+                        if (selectedRole == UserRole.professional) {
+                          context.goProfessionalHome();
+                        } else {
+                          context.goPatientHome();
+                        }
+                      }
+                    } catch (e) {
+                      errorMessage.value = 'Error al registrarse con Google: ${e.toString()}';
+                    }
+                  },
+                );
+              },
+            );
+          } else {
+            // User already has a role, navigate accordingly
+            switch (userRole) {
+              case 'admin':
+                context.goAdmin();
+                break;
+              case 'professional':
+                context.goProfessionalHome();
+                break;
+              case 'patient':
+                context.goPatientHome();
+                break;
+              default:
+                context.goHome();
+            }
           }
         }
       } catch (e) {
