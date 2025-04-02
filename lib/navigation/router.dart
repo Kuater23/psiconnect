@@ -56,6 +56,8 @@ class RoutePaths {
   
   // 404 Not Found route
   static const String notFound = '/404';
+
+  static String get admin => '/admin';
 }
 
 /// Central router configuration for the app

@@ -1,6 +1,7 @@
 // lib/features/auth/screens/register_page.dart
 
 import 'package:Psiconnect/features/auth/widgets/role_selection_dialog.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -11,6 +12,8 @@ import '/navigation/router.dart';
 import '/features/auth/providers/session_provider.dart';
 import '/core/constants/app_constants.dart';
 import '/core/utils/validation_helper.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegisterPage extends HookConsumerWidget {
   const RegisterPage({Key? key}) : super(key: key);
@@ -95,82 +98,78 @@ class RegisterPage extends HookConsumerWidget {
       }
     }
     
+
+    
     // Google sign-in function
     Future<void> handleGoogleSignIn() async {
       try {
         isLoading.value = true;
         errorMessage.value = null;
-        
-        // Instead of immediately signing in, show a dialog to select role
+
+        final googleSignIn = GoogleSignIn(
+          clientId: '953533544770-j5flo9m30pi1lnri9csb9pannkkhapj4.apps.googleusercontent.com',
+        );
+
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          print('Google Sign-In cancelado por el usuario.');
+          isLoading.value = false;
+          return;
+        }
+
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        // 2. Autenticamos con Firebase usando las credenciales de Google
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        final user = userCredential.user;
+        if (user == null) {
+          print('Error: No se obtuvo el usuario tras el sign-in.');
+          isLoading.value = false;
+          return;
+        }
+
+        // 3. Ahora mostramos el diálogo de selección de rol
+        final selectedRole = await showDialog<UserRole>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) {
+            return RoleSelectionDialog(
+              onRoleSelected: (UserRole role) {
+                Navigator.of(dialogContext).pop(role);
+              },
+            );
+          },
+        );
+
+        if (selectedRole == null) {
+          print('El usuario canceló la selección de rol. Se cerrará sesión.');
+          // Cerramos sesión ya que no sabemos qué rol quiere el usuario
+          await FirebaseAuth.instance.signOut();
+          isLoading.value = false;
+          return;
+        }
+
+        // 4. Convertimos la selección al string correspondiente
+        final roleString = selectedRole == UserRole.professional ? 'professional' : 'patient';
+
+        // 5. Registramos al usuario en la colección correspondiente (doctors o patients)
+        await ref.read(sessionProvider.notifier).registerWithGoogle(roleString);
+
+        // 6. Navegamos a la pantalla de inicio según el rol seleccionado
         if (context.mounted) {
-          final user = await ref.read(sessionProvider.notifier).logInWithGoogle();
-          
-          // If the user is already registered, just navigate to their page
-          if (user != null && context.mounted) {
-            final userRole = ref.read(userRoleProvider);
-            
-            // If the user already exists in one of our collections,
-            // the session listener will have set their role and we can navigate
-            if (userRole != 'guest') {
-              switch (userRole) {
-                case 'admin':
-                  GoRouter.of(context).go(RoutePaths.home);
-                  break;
-                case 'professional':
-                  GoRouter.of(context).go(RoutePaths.professionalHome);
-                  break;
-                case 'patient':
-                  GoRouter.of(context).go(RoutePaths.patientHome);
-                  break;
-                default:
-                  GoRouter.of(context).go(RoutePaths.home);
-              }
-              return;
-            }
-            
-            // If they're a new user, show role selection dialog
-            if (context.mounted) {
-              // Show role selection dialog
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (BuildContext context) {
-                  return RoleSelectionDialog(
-                    onRoleSelected: (UserRole selectedRole) async {
-                      // Close the dialog
-                      Navigator.of(context).pop();
-                      
-                      try {
-                        // Register the user with the selected role
-                        final role = selectedRole == UserRole.professional 
-                            ? 'professional' 
-                            : 'patient';
-                        
-                        await ref.read(sessionProvider.notifier)
-                            .registerWithGoogle(role);
-                        
-                        // Navigate based on selected role
-                        if (context.mounted) {
-                          if (selectedRole == UserRole.professional) {
-                            GoRouter.of(context).go(RoutePaths.professionalHome);
-                          } else {
-                            GoRouter.of(context).go(RoutePaths.patientHome);
-                          }
-                        }
-                      } catch (e) {
-                        errorMessage.value = 'Error al registrarse con Google: ${e.toString()}';
-                      }
-                    },
-                  );
-                },
-              );
-            }
+          if (roleString == 'professional') {
+            GoRouter.of(context).go(RoutePaths.professionalHome);
+          } else {
+            GoRouter.of(context).go(RoutePaths.patientHome);
           }
         }
-      } on AuthException catch (e) {
-        errorMessage.value = e.message;
       } catch (e) {
-        errorMessage.value = 'Error al iniciar sesión con Google: ${e.toString()}';
+        print('Error durante el registro con Google: $e');
+        errorMessage.value = 'Error al registrarse con Google: $e';
       } finally {
         isLoading.value = false;
       }

@@ -137,24 +137,9 @@ class AuthService {
           }
         }
         
-        // If it's a new Google user, register them as a patient by default
-        if (!exists) {
-          // Extraer nombre y apellido del displayName
-          List<String> nameParts = (user.displayName ?? '').split(' ');
-          String firstName = nameParts.isNotEmpty ? nameParts[0] : '';
-          String lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-          
-          await _firestore.collection('patients').doc(user.uid).set({
-            'firstName': firstName,
-            'lastName': lastName,
-            'email': user.email ?? '',
-            'uid': user.uid,
-            'createdAt': FieldValue.serverTimestamp(),
-            'registerMethod': 'google',
-          });
-          
-          print('Created new patient from Google login'); // Debug log
-        }
+        // Important: Do NOT create a default document here
+        // The registerWithGoogle method will handle document creation
+        // based on role selection
       }
       
       return user;

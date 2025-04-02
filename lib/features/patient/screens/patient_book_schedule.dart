@@ -300,6 +300,7 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
     return '$startFormatted - $endFormatted';
   }
 
+  // Update the build method to properly include the drawer
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<bool>(
@@ -314,12 +315,10 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
         return Scaffold(
           appBar: AppBar(
             title: Text('Solicitar Cita'),
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back),
-              onPressed: () => context.pop(),
-            ),
+            // Remove the leading property to allow the default hamburger menu
+            // The drawer will automatically add the hamburger menu
           ),
-          drawer: SharedDrawer(), // Usando drawer compartido
+          drawer: _buildNavigationDrawer(context),
           body: isLoading && doctors.isEmpty
               ? Center(
                   child: Column(
@@ -1283,5 +1282,70 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
         );
       }
     }
+  }
+
+  // Add this method to create a custom drawer that confirms before navigating
+  Widget _buildNavigationDrawer(BuildContext context) {
+    return SharedDrawer(
+      onNavigationItemSelected: (String route) {
+        // Close the drawer first
+        Navigator.of(context).pop();
+        
+        // If booking is in progress, show confirmation dialog
+        if (_isBookingInProgress()) {
+          _showNavigationConfirmationDialog(
+            context, 
+            () => context.go(route)
+          );
+        } else {
+          // No booking in progress, navigate directly
+          context.go(route);
+        }
+      },
+    );
+  }
+
+  // Add this helper method to check if booking is in progress
+  bool _isBookingInProgress() {
+    // If user has made selections, booking is in progress
+    return selectedDoctor != null || selectedDay != null || selectedTime != null;
+  }
+
+  // Add this method to show a confirmation dialog before navigation
+  void _showNavigationConfirmationDialog(BuildContext context, VoidCallback onConfirm) {
+    if (!_isBookingInProgress()) {
+      // If no booking in progress, navigate directly
+      onConfirm();
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('¿Abandonar reserva?'),
+          content: Text('Si sales ahora, perderás el progreso de tu reserva. ¿Deseas continuar?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                onConfirm(); // Perform navigation
+              },
+              child: Text('Abandonar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

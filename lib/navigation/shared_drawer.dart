@@ -10,7 +10,9 @@ import 'package:go_router/go_router.dart';
 
 /// Shared drawer component used across the application
 class SharedDrawer extends HookConsumerWidget {
-  const SharedDrawer({Key? key}) : super(key: key);
+  final Function(String route)? onNavigationItemSelected;
+  
+  const SharedDrawer({Key? key, this.onNavigationItemSelected}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

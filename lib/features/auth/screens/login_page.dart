@@ -94,12 +94,27 @@ class LoginPage extends HookConsumerWidget {
         // Log in with Google using session provider
         final user = await ref.read(sessionProvider.notifier).logInWithGoogle();
         
-        // If it's a new user with no role assigned yet, we need to show role selection
         if (user != null && context.mounted) {
           final userRole = ref.read(userRoleProvider);
           
-          if (userRole == 'guest') {
-            // Show role selection dialog
+          // Check if the user already has a role (i.e., exists in a collection)
+          if (userRole != 'guest') {
+            // User already exists, navigate based on existing role
+            switch (userRole) {
+              case 'admin':
+                context.goAdmin();
+                break;
+              case 'professional':
+                context.goProfessionalHome();
+                break;
+              case 'patient':
+                context.goPatientHome();
+                break;
+              default:
+                context.goHome();
+            }
+          } else {
+            // Only show role selection for new users (with 'guest' role)
             showDialog(
               context: context,
               barrierDismissible: false,
@@ -133,21 +148,6 @@ class LoginPage extends HookConsumerWidget {
                 );
               },
             );
-          } else {
-            // User already has a role, navigate accordingly
-            switch (userRole) {
-              case 'admin':
-                context.goAdmin();
-                break;
-              case 'professional':
-                context.goProfessionalHome();
-                break;
-              case 'patient':
-                context.goPatientHome();
-                break;
-              default:
-                context.goHome();
-            }
           }
         }
       } catch (e) {
