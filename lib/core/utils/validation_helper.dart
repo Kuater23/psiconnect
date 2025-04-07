@@ -8,7 +8,7 @@ class ValidationHelper {
   }
 
   /// Validates if the input is a valid phone number.
-  static String? validatePhoneNumber(String? value) {
+  static String? validatephoneN(String? value) {
     if (value == null || value.isEmpty) {
       return 'Por favor ingrese su número de teléfono';
     }

@@ -1,20 +1,15 @@
 class UserSession {
   final String uid;
-  final String email;
-  final String displayName;
-  final String role; // patient, professional, admin
-  final String? photoURL;
-  
+  final String? email;
+  final String role;
+  final String? displayName;
+  final bool isProfileComplete;
+
   UserSession({
     required this.uid,
-    required this.email,
-    required this.displayName,
+    this.email,
     required this.role,
-    this.photoURL,
+    this.displayName,
+    this.isProfileComplete = false,
   });
-  
-  @override
-  String toString() {
-    return 'UserSession(uid: $uid, email: $email, displayName: $displayName, role: $role)';
-  }
 }

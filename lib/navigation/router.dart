@@ -1,5 +1,6 @@
 // lib/navigation/router.dart
 
+import 'package:Psiconnect/features/auth/widgets/required_profile_completion.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -58,6 +59,7 @@ class RoutePaths {
   static const String notFound = '/404';
 
   static String get admin => '/admin';
+  static String get requiredProfileCompletion => '/required-profile-completion';
 }
 
 /// Central router configuration for the app
@@ -245,12 +247,31 @@ final routerProvider = Provider<GoRouter>((ref) {
     
     // Redirección global para "/home"
     redirect: (context, state) {
-      // Get the current path
-      final String location = state.uri.toString();
+      final session = ref.read(sessionProvider);
+      final isLoggedIn = session != null;
+      final location = state.uri.path;
       
-      // Authentication state
-      final bool isLoggedIn = ref.read(isLoggedInProvider);
+      // If user is logged in but profile is not complete, redirect to profile completion
+      if (isLoggedIn && !session.isProfileComplete && 
+          location != RoutePaths.requiredProfileCompletion) {
+        return RoutePaths.requiredProfileCompletion;
+      }
+      
+      // If on profile completion but profile is already complete, redirect to home
+      if (location == RoutePaths.requiredProfileCompletion && 
+          isLoggedIn && session.isProfileComplete) {
+        return session.role == 'professional' 
+            ? RoutePaths.professionalHome 
+            : RoutePaths.patientHome;
+      }
+      
+      // Authentication state    
       final String userRole = ref.read(userRoleProvider);
+      
+      // If user is logged in but profile is not complete, redirect to profile completion
+      if (isLoggedIn && session != null && !session.isProfileComplete) {
+        return '/required-profile-completion';
+      }
       
       // Public routes that don't require authentication
       final bool isPublicRoute = 
@@ -308,7 +329,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       final location = state.uri.toString();
       return NotFoundPage(location: location);
     },
-    routes: AppRouter._buildRoutes(ref, themeNotifier),
+    routes: [
+      ...AppRouter._buildRoutes(ref, themeNotifier),
+      
+      // Add the profile completion route
+      GoRoute(
+        path: RoutePaths.requiredProfileCompletion,
+        builder: (context, state) {
+          final session = ref.read(sessionProvider);
+          if (session == null) {
+            // If there's no session, we can't show the profile completion screen
+            return LoginPage(); // Or some other appropriate fallback
+          }
+          
+          return RequiredProfileCompletion(
+            userRole: session.role,
+          );
+        },
+      ),
+    ],
   );
 });
 

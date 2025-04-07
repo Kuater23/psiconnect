@@ -10,9 +10,10 @@ import '/core/exceptions/app_exception.dart';
 import '/core/services/error_logger.dart';
 import '/features/appointments/models/appointment.dart';
 import '/features/auth/providers/session_provider.dart';
+import 'package:Psiconnect/features/professional/models/professional_model.dart';
 
-/// Provider for professional state
-final professionalProvider = StateNotifierProvider<ProfessionalNotifier, ProfessionalState>((ref) {
+// Update the state to use ProfessionalModel
+final professionalProvider = StateNotifierProvider<ProfessionalNotifier, AsyncValue<ProfessionalModel?>>((ref) {
   return ProfessionalNotifier(WebFirestoreService());
 });
 
@@ -189,18 +190,35 @@ final professionalStatsProvider = FutureProvider.autoDispose<Map<String, dynamic
 final professionalProfileCompletionProvider = Provider.autoDispose<double>((ref) {
   final professionalState = ref.watch(professionalProvider);
   
+  // Initialize with 0 for loading or error states
+  if (professionalState is AsyncLoading) {
+    return 0.0;
+  }
+  
+  if (professionalState is AsyncError) {
+    return 0.0;
+  }
+  
+  // Get the actual professional model from the AsyncValue
+  final professional = professionalState.value;
+  
+  // If no professional data, return 0
+  if (professional == null) {
+    return 0.0;
+  }
+  
   // Calculate completion percentage based on filled fields
   int totalFields = 8; // Total number of important profile fields
   int filledFields = 0;
   
-  if (professionalState.name?.isNotEmpty ?? false) filledFields++;
-  if (professionalState.lastName?.isNotEmpty ?? false) filledFields++;
-  if (professionalState.address?.isNotEmpty ?? false) filledFields++;
-  if (professionalState.phone?.isNotEmpty ?? false) filledFields++;
-  if (professionalState.documentNumber?.isNotEmpty ?? false) filledFields++;
-  if (professionalState.licenseNumber?.isNotEmpty ?? false) filledFields++;
-  if (professionalState.selectedDays.isNotEmpty) filledFields++;
-  if (professionalState.startTime != null && professionalState.endTime != null) filledFields++;
+  if (professional.firstName.isNotEmpty) filledFields++;
+  if (professional.lastName.isNotEmpty) filledFields++;
+  if (professional.address.isNotEmpty) filledFields++;
+  if (professional.phoneN.isNotEmpty) filledFields++;
+  if (professional.dni.isNotEmpty) filledFields++;
+  if (professional.license.isNotEmpty) filledFields++;
+  if (professional.workDays.isNotEmpty) filledFields++;
+  if (professional.startTime.isNotEmpty && professional.endTime.isNotEmpty) filledFields++;
   
   return filledFields / totalFields;
 });
@@ -262,9 +280,11 @@ class ProfessionalState {
   final List<String> selectedDays;
   final String? startTime;
   final String? endTime;
+  final String? breakDuration; // Add this field
   final bool isLoading;
   final bool hasData;
   final bool isEditing;
+  final String? error;
 
   ProfessionalState({
     this.uid,
@@ -278,12 +298,14 @@ class ProfessionalState {
     this.selectedDays = const [],
     this.startTime,
     this.endTime,
-    this.isLoading = true,
+    this.breakDuration, // Add this parameter to constructor
+    this.isLoading = false,
     this.hasData = false,
     this.isEditing = false,
+    this.error, // Add this parameter
   });
 
-  // Method to create a copy of the state with specific fields updated
+  // Update the copyWith method to include the breakDuration parameter
   ProfessionalState copyWith({
     String? uid,
     String? name,
@@ -296,9 +318,11 @@ class ProfessionalState {
     List<String>? selectedDays,
     String? startTime,
     String? endTime,
+    String? breakDuration, // Add this parameter
     bool? isLoading,
     bool? hasData,
     bool? isEditing,
+    String? error, // Add this parameter
   }) {
     return ProfessionalState(
       uid: uid ?? this.uid,
@@ -306,134 +330,127 @@ class ProfessionalState {
       lastName: lastName ?? this.lastName,
       address: address ?? this.address,
       phone: phone ?? this.phone,
-      documentNumber: documentNumber ?? this.documentNumber,
+      documentNumber: documentNumber ?? this.documentNumber, 
       documentType: documentType ?? this.documentType,
       licenseNumber: licenseNumber ?? this.licenseNumber,
       selectedDays: selectedDays ?? this.selectedDays,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
+      breakDuration: breakDuration ?? this.breakDuration, // Use the parameter
       isLoading: isLoading ?? this.isLoading,
       hasData: hasData ?? this.hasData,
       isEditing: isEditing ?? this.isEditing,
+      error: error ?? this.error,
     );
   }
 }
 
 /// Notifier class for professional state
-class ProfessionalNotifier extends StateNotifier<ProfessionalState> {
+class ProfessionalNotifier extends StateNotifier<AsyncValue<ProfessionalModel?>> {
   final WebFirestoreService _firestoreService;
 
   ProfessionalNotifier(this._firestoreService)
-      : super(ProfessionalState(isLoading: true)) {
+      : super(const AsyncValue.loading()) {
     _loadUserData(); // Load professional data when initialized
   }
 
   /// Load professional data from Firestore
   Future<void> _loadUserData() async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final uid = user.uid;
-      
-      try {
-        final doc = await _firestoreService.getDocument('doctors', uid);
-        if (doc != null && doc.exists) {
-          final data = doc.data() as Map<String, dynamic>;
-          
-          // Usar los nombres de campos correctos según tu esquema
-          state = state.copyWith(
-            uid: uid,
-            name: data['firstName'] ?? '', // Cambiado de 'name' a 'firstName'
-            lastName: data['lastName'] ?? '',
-            address: data['address'] ?? '',
-            phone: data['phoneN'] ?? '', // Cambiado de 'phone' a 'phoneN'
-            documentNumber: data['dni'] ?? '', // Cambiado de 'documentNumber' a 'dni'
-            licenseNumber: data['license']?.toString() ?? '', // Cambiado de 'n_matricula' a 'license'
-            documentType: data['documentType'] ?? 'DNI',
-            
-            // Manejo correcto de disponibilidad
-            selectedDays: List<String>.from(data['workDays'] ?? []), // Cambiado de 'availability'?['days'] a 'workDays'
-            startTime: data['startTime'] ?? '09:00', // Cambiado de 'availability'?['start_time'] a 'startTime'
-            endTime: data['endTime'] ?? '17:00', // Cambiado de 'availability'?['end_time'] a 'endTime'
-            
-            isLoading: false,
-            hasData: true,
-          );
-        } else {
-          state = state.copyWith(isLoading: false, hasData: false);
-        }
-      } catch (e, stackTrace) {
-        ErrorLogger.logError('Error loading professional data', e, stackTrace);
-        state = state.copyWith(isLoading: false);
+    try {
+      state = const AsyncValue.loading();
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        state = AsyncValue.error("No user logged in", StackTrace.current);
+        return;
       }
-    } else {
-      state = state.copyWith(isLoading: false);
+
+      final doc = await _firestoreService.getDocument('doctors', user.uid);
+      
+      if (doc != null && doc.exists) {
+        // Use the factory constructor to create a model from Firestore data
+        final professional = ProfessionalModel.fromFirestore(doc);
+        state = AsyncValue.data(professional);
+      } else {
+        state = AsyncValue.data(null);
+      }
+    } catch (e, stackTrace) {
+      ErrorLogger.logError('Error loading professional data', e, stackTrace);
+      state = AsyncValue.error(e, stackTrace);
     }
   }
 
   /// Save professional data to Firestore
   Future<void> saveUserData({
-    required String name,
-    required String lastName,
-    required String address,
-    required String phone,
-    required String documentNumber,
-    required String licenseNumber,
-    required List<String> selectedDays,
-    required String startTime,
-    required String endTime,
+    String? firstName,
+    String? lastName,
+    String? address,
+    String? phoneN,
+    String? dni,
+    String? license,
+    List<String>? workDays,
+    String? startTime,
+    String? endTime,
+    int? breakDuration,
+    String? speciality,
   }) async {
-    if (state.uid == null || state.uid!.isEmpty) return;
-    
     try {
-      state = state.copyWith(isLoading: true);
+      // Create a loading state that preserves the current data
+      state = AsyncValue<ProfessionalModel?>.loading().copyWithPrevious(state);
       
-      await _firestoreService.updateDocument(
-        'doctors',
-        state.uid!,
-        {
-          'firstName': name, // Cambiado de 'name' a 'firstName'
-          'lastName': lastName,
-          'address': address,
-          'phoneN': phone, // Cambiado de 'phone' a 'phoneN'
-          'email': FirebaseAuth.instance.currentUser?.email,
-          'dni': documentNumber, // Cambiado de 'documentNumber' a 'dni'
-          'license': licenseNumber, // Cambiado de 'n_matricula' a 'license'
-          'workDays': selectedDays, // Cambiado de structure anidada a campo directo
-          'startTime': startTime, // Cambiado de estructura anidada a campo directo
-          'endTime': endTime, // Cambiado de estructura anidada a campo directo
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('No user logged in');
+      }
+      
+      // Get current model or create a minimal one
+      final currentModel = state.value ?? ProfessionalModel(
+        uid: user.uid,
+        firstName: '',
+        lastName: '',
+        email: user.email ?? '',
+        phoneN: '',
+        dni: '',
+        address: '',
+        license: '',
+        speciality: '',
+        workDays: [],
+        startTime: '09:00',
+        endTime: '17:00',
       );
       
-      state = state.copyWith(
-        name: name,
+      // Create updated model using copyWith
+      final updatedModel = currentModel.copyWith(
+        firstName: firstName,
         lastName: lastName,
         address: address,
-        phone: phone,
-        documentNumber: documentNumber,
-        licenseNumber: licenseNumber,
-        selectedDays: selectedDays,
+        phoneN: phoneN,
+        dni: dni,
+        license: license,
+        speciality: speciality,
+        workDays: workDays,
         startTime: startTime,
         endTime: endTime,
-        isLoading: false,
-        isEditing: false,
-        hasData: true,
+        breakDuration: breakDuration,
+        profileCompleted: true,
       );
+      
+      // Save to Firestore using the model's toFirestore method
+      await _firestoreService.updateDocument(
+        'doctors',
+        user.uid,
+        updatedModel.toFirestore(),
+      );
+      
+      // Update state with the new model
+      state = AsyncValue.data(updatedModel);
     } catch (e, stackTrace) {
       ErrorLogger.logError('Error saving professional data', e, stackTrace);
-      state = state.copyWith(isLoading: false);
-      throw DataException('Error updating professional profile: ${e.toString()}');
+      state = AsyncValue.error(e, stackTrace);
     }
   }
 
-  /// Toggle editing mode
-  void setEditing(bool isEditing) {
-    state = state.copyWith(isEditing: isEditing);
-  }
-  
   /// Reload professional data
   Future<void> refresh() async {
-    state = state.copyWith(isLoading: true);
     await _loadUserData();
   }
 }

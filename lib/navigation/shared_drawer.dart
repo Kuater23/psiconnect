@@ -174,7 +174,7 @@ class SharedDrawer extends HookConsumerWidget {
           // User info if logged in
           if (userSession != null) ...[
             Text(
-              userSession.email,
+              userSession.email ?? 'No email',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -254,7 +254,7 @@ class SharedDrawer extends HookConsumerWidget {
               selected: location.startsWith('/patient/appointments'),
               onTap: () {
                 Navigator.pop(context);
-                GoRouter.of(context).go('/patient/appointments');
+                GoRouter.of(context).go(RoutePaths.patientAppointments);
               },
             ),
             _buildNavigationTile(
@@ -264,7 +264,7 @@ class SharedDrawer extends HookConsumerWidget {
               selected: location.startsWith('/patient/book'),
               onTap: () {
                 Navigator.pop(context);
-                GoRouter.of(context).go('/patient/book');
+                GoRouter.of(context).go(RoutePaths.patientBook);
               },
             ),
             // Otras opciones para pacientes...
@@ -281,7 +281,7 @@ class SharedDrawer extends HookConsumerWidget {
               selected: location.startsWith('/professional/appointments'),
               onTap: () {
                 Navigator.pop(context);
-                GoRouter.of(context).go('/professional/appointments');
+                GoRouter.of(context).go(RoutePaths.professionalAppointments);
               },
             ),
             _buildNavigationTile(
@@ -308,7 +308,7 @@ class SharedDrawer extends HookConsumerWidget {
               selected: location.startsWith('/admin'),
               onTap: () {
                 Navigator.pop(context);
-                GoRouter.of(context).go('/admin');
+                GoRouter.of(context).go(RoutePaths.adminHome);
               },
             ),
             // Otras opciones para administrador...

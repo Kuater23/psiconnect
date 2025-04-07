@@ -1,3 +1,4 @@
+import 'package:Psiconnect/features/patient/models/patient_model.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -161,25 +162,23 @@ class _PatientHomeState extends State<PatientHome> {
       if (user != null) {
         String uid = user.uid;
         
-        // Create a data object with the updated values
-        Map<String, dynamic> patientData = {
-          'firstName': _firstNameController.text,
-          'lastName': _lastNameController.text,
-          'phoneN': _phoneNController.text,
-          'dni': _dniController.text,
-          'email': _email,
-          'uid': uid,
-          'updatedAt': FieldValue.serverTimestamp(),
-        };
+        // Create a PatientModel with the updated values
+        final patient = PatientModel(
+          uid: uid,
+          firstName: _firstNameController.text,
+          lastName: _lastNameController.text,
+          email: _email,
+          phoneN: _phoneNController.text,
+          dni: _dniController.text,
+          dob: _dob,
+          profileCompleted: true,
+        );
         
-        if (_dob != null) {
-          patientData['dob'] = Timestamp.fromDate(_dob!);
-        }
-        
+        // Save to Firestore using the model's toFirestore method
         await FirebaseFirestore.instance
             .collection('patients')
             .doc(uid)
-            .set(patientData, SetOptions(merge: true));
+            .set(patient.toFirestore(), SetOptions(merge: true));
             
         if (mounted) {
           setState(() {

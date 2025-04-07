@@ -1,5 +1,6 @@
 // lib/features/patient/providers/patient_providers.dart
 
+import 'package:Psiconnect/features/patient/models/patient_model.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -97,7 +98,7 @@ class PatientProfile {
 }
 
 /// Provider for patient profile data
-final patientProfileProvider = StateNotifierProvider<PatientProfileNotifier, AsyncValue<PatientProfile>>((ref) {
+final patientProfileProvider = StateNotifierProvider<PatientProfileNotifier, AsyncValue<PatientModel?>>((ref) {
   final user = ref.watch(sessionProvider);
   
   if (user == null || user.role != 'patient') {
@@ -265,12 +266,12 @@ final patientProfileCompletionProvider = Provider.autoDispose<double>((ref) {
       int totalFields = 6; // Total number of important profile fields
       int filledFields = 0;
       
-      if (profile.firstName?.isNotEmpty ?? false) filledFields++;
-      if (profile.lastName?.isNotEmpty ?? false) filledFields++;
-      if (profile.phoneN?.isNotEmpty ?? false) filledFields++;
-      if (profile.dni?.isNotEmpty ?? false) filledFields++;
-      if (profile.email?.isNotEmpty ?? false) filledFields++;
-      if (profile.dob != null) filledFields++;
+      if (profile?.firstName?.isNotEmpty ?? false) filledFields++;
+      if (profile?.lastName?.isNotEmpty ?? false) filledFields++;
+      if (profile?.phoneN?.isNotEmpty ?? false) filledFields++;
+      if (profile?.dni?.isNotEmpty ?? false) filledFields++;
+      if (profile?.email?.isNotEmpty ?? false) filledFields++;
+      if (profile?.dob != null) filledFields++;
       
       return filledFields / totalFields;
     },
@@ -280,7 +281,7 @@ final patientProfileCompletionProvider = Provider.autoDispose<double>((ref) {
 });
 
 /// Notifier for patient profile
-class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientProfile>> {
+class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientModel?>> {
   final String? _userId;
   final WebFirestoreService _firestoreService;
   
@@ -288,7 +289,7 @@ class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientProfile>> {
     if (_userId != null) {
       _loadPatientData();
     } else {
-      state = AsyncValue.data(PatientProfile());
+      state = AsyncValue.data(null);
     }
   }
   
@@ -297,52 +298,34 @@ class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientProfile>> {
     try {
       state = AsyncValue.loading();
       
-      final doc = await _firestoreService.getDocument('patients', _userId!);
-      
-      if (doc == null || !doc.exists) {
-        // Check if user exists in users collection
-        final userDoc = await _firestoreService.getDocument('users', _userId!);
-        
-        if (userDoc != null && userDoc.exists) {
-          // Create a new patient document
-          final userData = userDoc.data() as Map<String, dynamic>?;
-          
-          if (userData != null) {
-            await _firestoreService.setDocument(
-              'patients',
-              _userId!,
-              {
-                'firstName': userData['firstName'] ?? '',
-                'lastName': userData['lastName'] ?? '',
-                'email': userData['email'] ?? '',
-                'uid': _userId,
-                'createdAt': FieldValue.serverTimestamp(),
-              },
-            );
-            
-            // Reload data
-            _loadPatientData();
-            return;
-          }
-        }
-        
-        state = AsyncValue.data(PatientProfile(uid: _userId));
+      if (_userId == null) {
+        state = AsyncValue.data(null);
         return;
       }
       
-      state = AsyncValue.data(PatientProfile.fromFirestore(doc));
+      final doc = await _firestoreService.getDocument('patients', _userId!);
+      
+      if (doc == null || !doc.exists) {
+        state = AsyncValue.data(null);
+        return;
+      }
+      
+      // Use the model to create a proper PatientModel object
+      final patient = PatientModel.fromFirestore(doc);
+      state = AsyncValue.data(patient);
+      
     } catch (e, stackTrace) {
       ErrorLogger.logError('Error loading patient data', e, stackTrace);
       state = AsyncValue.error(e, stackTrace);
     }
   }
-  
+
   /// Update patient profile
   Future<void> updateProfile({
-    required String firstName,
-    required String lastName,
-    required String phoneN,
-    required String dni,
+    String? firstName,
+    String? lastName,
+    String? phoneN,
+    String? dni,
     DateTime? dob,
   }) async {
     try {
@@ -352,16 +335,17 @@ class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientProfile>> {
       final currentData = state.value;
       if (currentData == null) return;
       
-      // Update state with loading
-      state = AsyncValue.loading();
+      // Update state with loading but preserve previous data
+      state = AsyncValue<PatientModel?>.loading().copyWithPrevious(state);
       
-      // Create updated profile
+      // Create updated profile using copyWith
       final updatedProfile = currentData.copyWith(
         firstName: firstName,
         lastName: lastName,
         phoneN: phoneN,
         dni: dni,
         dob: dob,
+        profileCompleted: true
       );
       
       // Save to Firestore

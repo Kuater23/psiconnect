@@ -76,6 +76,17 @@ class RegisterPage extends HookConsumerWidget {
           license: isProfessional.value ? licenseController.text.trim() : null,
         );
         
+        // Example for standard registration
+        Map<String, dynamic> userData = {
+          'firstName': nameController.text.trim(),
+          'lastName': lastNameController.text.trim(),
+          'email': emailController.text.trim(),
+          'uid': FirebaseAuth.instance.currentUser!.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+          'registerMethod': 'email',
+          'profileCompleted': false,  // Explicitly set to false for new users
+        };
+        
         // Navegación basada en el rol
         // The router will automatically redirect to the appropriate home page
         // based on the user's role through the GoRouter redirect logic
@@ -158,6 +169,16 @@ class RegisterPage extends HookConsumerWidget {
 
         // 5. Registramos al usuario en la colección correspondiente (doctors o patients)
         await ref.read(sessionProvider.notifier).registerWithGoogle(roleString);
+
+        Map<String, dynamic> userData = {
+          'firstName': user.displayName?.split(' ').first ?? '',
+          'lastName': user.displayName?.split(' ').last ?? '',
+          'email': user.email ?? '',
+          'uid': user.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+          'registerMethod': 'google',
+          'profileCompleted': false,  // Explicitly set to false for new users
+        };
 
         // 6. Navegamos a la pantalla de inicio según el rol seleccionado
         if (context.mounted) {
@@ -347,7 +368,7 @@ class RegisterPage extends HookConsumerWidget {
                             labelText: 'Teléfono',
                             hintText: 'Ingresa tu teléfono',
                             icon: Icons.phone_rounded,
-                            validator: (value) => ValidationHelper.validatePhoneNumber(value),
+                            validator: (value) => ValidationHelper.validatephoneN(value),
                             isLoading: isLoading.value,
                             keyboardType: TextInputType.phone,
                           ),
@@ -361,9 +382,6 @@ class RegisterPage extends HookConsumerWidget {
                           ),
                           const SizedBox(height: 16),
                           
-                          // Professional specific field - License number with MN- prefix
-
-                          // Professional specific field - License number
                           if (isProfessional.value) ...[
                             _buildLicenseField(
                               controller: licenseController,

@@ -2,6 +2,8 @@
 
 import 'dart:async';
 import 'package:Psiconnect/core/constants/app_constants.dart';
+import 'package:Psiconnect/features/patient/models/patient_model.dart';
+import 'package:Psiconnect/features/professional/models/professional_model.dart';
 import 'package:Psiconnect/navigation/router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -39,19 +41,19 @@ final isLoggedInProvider = Provider<bool>((ref) {
   return ref.watch(sessionProvider) != null;
 });
 
-/// Provider to check if user has admin role
+// Provider to check if user has admin role
 final isAdminProvider = Provider<bool>((ref) {
   final session = ref.watch(sessionProvider);
   return session?.role == 'admin';
 });
 
-/// Provider to check if user is a professional
+// Provider to check if user is a professional
 final isProfessionalProvider = Provider<bool>((ref) {
   final session = ref.watch(sessionProvider);
   return session?.role == 'professional';
 });
 
-/// Provider to check if user is a patient
+// Provider to check if user is a patient
 final isPatientProvider = Provider<bool>((ref) {
   final session = ref.watch(sessionProvider);
   return session?.role == 'patient';
@@ -70,80 +72,165 @@ class SessionNotifier extends StateNotifier<UserSession?> {
 
   void _initAuthListener() {
     _authSubscription = _authService.authStateChanges.listen((User? user) async {
-      if (user == null) {
-        // Usuario desconectado
-        state = null;
-      } else {
-        try {
-          // Determinar el rol buscando al usuario en las colecciones existentes
-          String role = 'guest';
-          String displayName = user.displayName ?? '';
-          String email = user.email ?? '';
+      await _onAuthStateChanged(user);
+    });
+  }
+
+  Future<void> _onAuthStateChanged(User? user) async {
+    if (user == null) {
+      state = null;
+      return;
+    }
+    
+    try {
+      // Check collections to determine role
+      String role = 'guest';
+      String displayName = user.displayName ?? '';
+      String email = user.email ?? '';
+      String collection = '';
+      Map<String, dynamic>? userData;
+      
+      // First check if user is a professional (doctors collection)
+      final doctorDoc = await _firestore
+          .collection('doctors')
+          .doc(user.uid)
+          .get();
           
-          // Verificar si es un doctor (la colección se llama doctors)
-          final doctorDoc = await _firestore
-              .collection('doctors')
+      if (doctorDoc.exists) {
+        role = 'professional';
+        collection = 'doctors';
+        userData = doctorDoc.data() as Map<String, dynamic>;
+        displayName = '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
+        email = userData['email'] ?? email;
+      } else {
+        // Check if user is a patient
+        final patientDoc = await _firestore
+            .collection('patients')
+            .doc(user.uid)
+            .get();
+            
+        if (patientDoc.exists) {
+          role = 'patient';
+          collection = 'patients';
+          userData = patientDoc.data() as Map<String, dynamic>;
+          displayName = '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
+          email = userData['email'] ?? email;
+        } else {
+          // Check if user is an admin
+          final adminDoc = await _firestore
+              .collection('admins')
               .doc(user.uid)
               .get();
               
-          if (doctorDoc.exists) {
-            role = 'professional'; // Importante: Usa 'professional', no 'doctor'
-            final doctorData = doctorDoc.data() as Map<String, dynamic>;
-            displayName = '${doctorData['firstName'] ?? ''} ${doctorData['lastName'] ?? ''}'.trim();
-            email = doctorData['email'] ?? email;
-          } else {
-            // Verificar si es un paciente
-            final patientDoc = await _firestore
-                .collection('patients')
-                .doc(user.uid)
-                .get();
-                
-            if (patientDoc.exists) {
-              role = 'patient';
-              final patientData = patientDoc.data() as Map<String, dynamic>;
-              displayName = '${patientData['firstName'] ?? ''} ${patientData['lastName'] ?? ''}'.trim();
-              email = patientData['email'] ?? email;
-            } else {
-              // Verificar si es un administrador
-              final adminDoc = await _firestore
-                  .collection('admins')
-                  .doc(user.uid)
-                  .get();
-                  
-              if (adminDoc.exists) {
-                role = 'admin';
-              }
-            }
-          }
-          
-          // Crear la sesión de usuario con el rol determinado
-          if (mounted) {
-            state = UserSession(
-              uid: user.uid,
-              email: email,
-              displayName: displayName,
-              role: role,
-              photoURL: user.photoURL,
-            );
-            
-            print('Sesión creada con rol: $role para el usuario ${user.uid}');
-          }
-        } catch (e, stackTrace) {
-          print('Error cargando sesión de usuario: $e');
-          
-          // Sesión básica con solo datos de autenticación
-          if (mounted) {
-            state = UserSession(
-              uid: user.uid,
-              email: user.email ?? '',
-              displayName: user.displayName ?? '',
-              role: 'guest', // Por defecto es invitado
-              photoURL: user.photoURL,
-            );
+          if (adminDoc.exists) {
+            role = 'admin';
+            collection = 'admins';
+            userData = adminDoc.data() as Map<String, dynamic>;
           }
         }
       }
-    });
+      
+      // Now check if profile is complete - only if we found the user
+      bool isComplete = false;
+      if (collection.isNotEmpty && userData != null) {
+        isComplete = await _isProfileComplete(user, role, userData);
+      }
+      
+      // Create session with profile completion status
+      final session = UserSession(
+        uid: user.uid,
+        email: email,
+        role: role,
+        displayName: displayName,
+        isProfileComplete: isComplete,
+      );
+      
+      state = session;
+    } catch (e) {
+      print('Error in _onAuthStateChanged: $e');
+      // Error handling
+    }
+  }
+
+  // Replace both _isProfileComplete methods with this single implementation
+  Future<bool> _isProfileComplete(User user, String role, Map<String, dynamic> userData) async {
+    // Check if profileCompleted flag exists and is true
+    if (userData['profileCompleted'] == true) return true;
+    
+    // Model-based checking approach
+    if (role == 'professional') {
+      try {
+        // Try creating a professional model from the data to check fields
+        final professionalData = {
+          ...userData,
+          'uid': user.uid,
+        };
+        
+        // This will throw an exception if required fields are missing
+        final professional = ProfessionalModel.fromMap(professionalData);
+        
+        // Check if all required fields have values
+        return professional.firstName.isNotEmpty &&
+               professional.lastName.isNotEmpty &&
+               professional.phoneN.isNotEmpty &&
+               professional.dni.isNotEmpty &&
+               professional.address.isNotEmpty &&
+               professional.license.isNotEmpty &&
+               professional.workDays.isNotEmpty &&
+               professional.startTime.isNotEmpty &&
+               professional.endTime.isNotEmpty;
+      } catch (e) {
+        print('Professional profile incomplete: $e');
+        
+        // Fall back to manual field checking if model approach fails
+        final hasRequiredFields = userData['firstName'] != null && 
+               userData['lastName'] != null && 
+               userData['dni'] != null && 
+               userData['phoneN'] != null &&
+               userData['address'] != null &&
+               userData['license'] != null &&
+               userData['startTime'] != null &&
+               userData['endTime'] != null;
+               
+        // Check either workDays or workDays (for backward compatibility)
+        final hasWorkDays = (userData['workDays'] != null && (userData['workDays'] as List).isNotEmpty) ||
+                            (userData['workdays'] != null && (userData['workdays'] as List).isNotEmpty);
+               
+        return hasRequiredFields && hasWorkDays;
+      }
+    } else if (role == 'patient') {
+      try {
+        // Try creating a patient model from the data to check fields
+        final patientData = {
+          ...userData,
+          'uid': user.uid,
+        };
+        
+        // This will throw an exception if required fields are missing
+        final patient = PatientModel.fromMap(patientData);
+        
+        // Check if all required fields have values
+        return patient.firstName.isNotEmpty &&
+               patient.lastName.isNotEmpty &&
+               patient.phoneN.isNotEmpty &&
+               patient.dni.isNotEmpty &&
+               patient.dob != null;
+      } catch (e) {
+        print('Patient profile incomplete: $e');
+        
+        // Fall back to manual field checking
+        return userData['firstName'] != null && 
+               userData['lastName'] != null && 
+               userData['dni'] != null && 
+               userData['phoneN'] != null;
+      }
+    } else if (role == 'admin') {
+      // For admin users, we might have different requirements
+      return true;
+    }
+    
+    // Default case - if role is not recognized
+    return false;
   }
   
   // Helper to extract full name from doc data
@@ -270,6 +357,7 @@ class SessionNotifier extends StateNotifier<UserSession?> {
         'phoneN': phoneN,
         'dni': dni,
         'createdAt': FieldValue.serverTimestamp(),
+        'profileCompleted': false, // Añadir este campo explícitamente
       };
       
       // Add dob if provided
@@ -317,40 +405,49 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   
   // Add a new method for Google registration with role selection
   Future<void> registerWithGoogle(String role) async {
-    // Get the currently signed in user
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print('Error: No user logged in when trying to register with Google');
-      return;
-    }
-
-    // Determine which collection to use based on role
-    final String collection = role == 'professional' ? 'doctors' : 'patients';
-    
-    // Extract name parts from display name
-    final nameParts = user.displayName?.split(' ') ?? [''];
-    final firstName = nameParts.firstOrNull ?? '';
-    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-    
-    // Create user data map
-    Map<String, dynamic> userData = {
-      'firstName': firstName,
-      'lastName': lastName,
-      'email': user.email ?? '',
-      'uid': user.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-      'registerMethod': 'google',
-      'role': role, // Include role in the document for clarity
-    };
-    
-    // For debugging - print clear information
-    print('Creating user in collection: $collection with role: $role');
-    
-    // Create user in the appropriate collection only
-    await _firestore.collection(collection).doc(user.uid).set(userData);
-    
-    print('Successfully created Google user in collection: $collection');
+  // Get the currently signed in user
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    print('Error: No user logged in when trying to register with Google');
+    return;
   }
+
+  // First check if user already exists in any collection
+  final doctorDoc = await _firestore.collection('doctors').doc(user.uid).get();
+  final patientDoc = await _firestore.collection('patients').doc(user.uid).get();
+  
+  if (doctorDoc.exists || patientDoc.exists) {
+    print('User already exists in a collection. Not creating a new record.');
+    return;
+  }
+
+  // Determine which collection to use based on role
+  final String collection = role == 'professional' ? 'doctors' : 'patients';
+  
+  // Extract name parts from display name
+  final nameParts = user.displayName?.split(' ') ?? [''];
+  final firstName = nameParts.firstOrNull ?? '';
+  final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+  
+  // Create user data map
+  Map<String, dynamic> userData = {
+    'firstName': firstName,
+    'lastName': lastName,
+    'email': user.email ?? '',
+    'uid': user.uid,
+    'createdAt': FieldValue.serverTimestamp(),
+    'registerMethod': 'google',
+    'profileCompleted': false, // Set to false for new users
+  };
+  
+  // For debugging - print clear information
+  print('Creating user in collection: $collection with role determined by collection');
+  
+  // Create user in the appropriate collection only
+  await _firestore.collection(collection).doc(user.uid).set(userData);
+  
+  print('Successfully created Google user in collection: $collection');
+}
   
   // Log out
   // Log out - use this method instead of signOut

@@ -1,11 +1,12 @@
-
+import 'package:Psiconnect/features/professional/models/professional_model.dart';
 import 'package:flutter/material.dart';
 import 'package:Psiconnect/features/professional/providers/professional_providers.dart';
 import 'package:Psiconnect/navigation/shared_drawer.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:Psiconnect/core/utils/time_format_helper.dart';
 
-class ProfessionalHome extends ConsumerWidget {
+class ProfessionalHome extends HookConsumerWidget {
   final VoidCallback toggleTheme;
 
   ProfessionalHome({required this.toggleTheme});
@@ -25,45 +26,60 @@ class ProfessionalHome extends ConsumerWidget {
         ],
       ),
       drawer: SharedDrawer(),
-      body: professionalState.isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  professionalState.hasData && !professionalState.isEditing
-                      ? _buildProfessionalInfo(ref)
-                      : _buildForm(ref, context),
-                ],
+      body: professionalState.when(
+        loading: () => Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.red, size: 60),
+              SizedBox(height: 16),
+              Text('Error: ${error.toString()}'),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.read(professionalProvider.notifier).refresh(),
+                child: Text('Reintentar'),
               ),
-            ),
+            ],
+          ),
+        ),
+        data: (professional) {
+          if (professional == null) {
+            return _buildEmptyState(context, ref);
+          }
+          
+          return professional.profileCompleted
+              ? _buildProfessionalInfo(professional, ref, context)
+              : _buildForm(professional, ref, context);
+        },
+      ),
     );
   }
 
-  Widget _buildForm(WidgetRef ref, BuildContext context) {
-    final professionalState = ref.watch(professionalProvider);
+  Widget _buildForm(ProfessionalModel professional, WidgetRef ref, BuildContext context) {
     final professionalNotifier = ref.read(professionalProvider.notifier);
 
-    // Form keys y controladores para manejar los campos de formulario
+    // Form keys and controllers for form fields
     final _formKey = GlobalKey<FormState>();
-    final _nameController = TextEditingController(text: professionalState.name);
-    final _lastNameController =
-        TextEditingController(text: professionalState.lastName);
-    final _addressController =
-        TextEditingController(text: professionalState.address);
-    final _phoneController =
-        TextEditingController(text: professionalState.phone);
-    final _documentNumberController =
-        TextEditingController(text: professionalState.documentNumber);
-    final _licenseNumberController =
-        TextEditingController(text: professionalState.licenseNumber);
-    final List<String> _selectedDays = professionalState.selectedDays.toList();
-    TimeOfDay? _startTime = professionalState.startTime != null
-        ? TimeFormatHelper.parseTime(professionalState.startTime!)
+    final _nameController = TextEditingController(text: professional.firstName);
+    final _lastNameController = TextEditingController(text: professional.lastName);
+    final _addressController = TextEditingController(text: professional.address);
+    final _phoneController = TextEditingController(text: professional.phoneN);
+    final _documentNumberController = TextEditingController(text: professional.dni);
+    final _licenseNumberController = TextEditingController(text: professional.license);
+    
+    // Use useState for selected days to ensure reactivity
+    final selectedDays = useState<List<String>>(
+      professional.workDays.isNotEmpty 
+        ? List<String>.from(professional.workDays)
+        : []
+    );
+    
+    TimeOfDay? _startTime = professional.startTime.isNotEmpty
+        ? TimeFormatHelper.parseTime(professional.startTime)
         : null;
-    TimeOfDay? _endTime = professionalState.endTime != null
-        ? TimeFormatHelper.parseTime(professionalState.endTime!)
+    TimeOfDay? _endTime = professional.endTime.isNotEmpty
+        ? TimeFormatHelper.parseTime(professional.endTime)
         : null;
 
     return Form(
@@ -105,7 +121,7 @@ class ProfessionalHome extends ConsumerWidget {
                 value!.isEmpty ? 'Este campo es obligatorio' : null,
           ),
           SizedBox(height: 10),
-          _buildDaysSelector(ref, _selectedDays),
+          _buildDaysSelector(ref, selectedDays.value),
           _buildTimeSelector(
             context: context, // Pasa el contexto aquí
             label: 'Hora de Inicio',
@@ -125,16 +141,16 @@ class ProfessionalHome extends ConsumerWidget {
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                // Guardar los datos actualizados
+              if (_formKey.currentState!.validate() && selectedDays.value.isNotEmpty) {
+                // Save the updated data
                 professionalNotifier.saveUserData(
-                  name: _nameController.text,
+                  firstName: _nameController.text,
                   lastName: _lastNameController.text,
                   address: _addressController.text,
-                  phone: _phoneController.text,
-                  documentNumber: _documentNumberController.text,
-                  licenseNumber: _licenseNumberController.text,
-                  selectedDays: _selectedDays,
+                  phoneN: _phoneController.text,
+                  dni: _documentNumberController.text,
+                  license: _licenseNumberController.text,
+                  workDays: selectedDays.value,
                   startTime: _startTime != null
                       ? TimeFormatHelper.formatTimeIn24Hours(_startTime!)
                       : '09:00',
@@ -142,8 +158,15 @@ class ProfessionalHome extends ConsumerWidget {
                       ? TimeFormatHelper.formatTimeIn24Hours(_endTime!)
                       : '17:00',
                 );
-                professionalNotifier
-                    .setEditing(false); // Salir del modo edición
+                professionalNotifier.refresh(); // Refresh data after save
+              } else if (selectedDays.value.isEmpty) {
+                // Show an error snackbar for empty days
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Debe seleccionar al menos un día de atención'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
             child: Text('Guardar'),
@@ -168,26 +191,61 @@ class ProfessionalHome extends ConsumerWidget {
   }
 
   Widget _buildDaysSelector(WidgetRef ref, List<String> selectedDays) {
+    // State to trigger rebuilds when selections change
+    final updateCounter = useState(0);
+    
+    // Define mapping between UI display (Spanish) and storage format (English)
+    final dayMapping = {
+      'Lunes': 'Monday',
+      'Martes': 'Tuesday',
+      'Miércoles': 'Wednesday',
+      'Jueves': 'Thursday',
+      'Viernes': 'Friday',
+      'Sábado': 'Saturday',
+      'Domingo': 'Sunday',
+    };
+    
+    // For debugging - print the current selected days 
+    print('Current selected days in _buildDaysSelector: $selectedDays');
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Días Disponibles', style: TextStyle(fontWeight: FontWeight.bold)),
         Wrap(
-          children: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
-              .map((day) => CheckboxListTile(
-                    title: Text(day),
-                    value: selectedDays.contains(day),
-                    onChanged: (isSelected) {
-                      if (isSelected ?? false) {
-                        selectedDays.add(day);
-                      } else {
-                        selectedDays.remove(day);
-                      }
-                    },
-                  ))
-              .toList(),
+          children: dayMapping.entries.map((entry) {
+            final spanishDay = entry.key;
+            final englishDay = entry.value;
+            
+            // Check if the English day name exists in the selected days
+            final isSelected = selectedDays.contains(englishDay);
+            
+            return CheckboxListTile(
+              title: Text(spanishDay),
+              value: isSelected,
+              onChanged: (isSelected) {
+                if (isSelected ?? false) {
+                  if (!selectedDays.contains(englishDay)) {
+                    selectedDays.add(englishDay);
+                  }
+                } else {
+                  selectedDays.remove(englishDay);
+                }
+                // Force UI refresh
+                updateCounter.value++;
+                print('Updated selected days: $selectedDays'); // Debug log
+              },
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+            );
+          }).toList(),
         ),
         SizedBox(height: 10),
+        if (selectedDays.isEmpty)
+          Text(
+            'Debe seleccionar al menos un día',
+            style: TextStyle(color: Colors.red, fontSize: 12),
+          ),
       ],
     );
   }
@@ -228,64 +286,87 @@ class ProfessionalHome extends ConsumerWidget {
     );
   }
 
-  Widget _buildProfessionalInfo(WidgetRef ref) {
-    final professionalState = ref.watch(professionalProvider);
-    final professionalNotifier = ref.read(professionalProvider.notifier);
-
-    return Card(
-      elevation: 5,
-      margin: EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Dr. ${professionalState.name} ${professionalState.lastName}',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.blueAccent,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Especialista en Psicología Clínica',
-              style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
-            ),
-            Divider(),
-            _buildInfoRow(
-                Icons.location_on, 'Consultorio: ${professionalState.address}'),
-            _buildInfoRow(Icons.phone, 'Teléfono: ${professionalState.phone}'),
-            _buildInfoRow(Icons.badge,
-                'Número de Documento: ${professionalState.documentNumber}'),
-            _buildInfoRow(Icons.account_balance,
-                'Número de Matrícula: ${professionalState.licenseNumber}'),
-            _buildInfoRow(
-              Icons.calendar_today,
-              'Disponibilidad: ${professionalState.selectedDays.join(', ')} de ${professionalState.startTime ?? '09:00'} a ${professionalState.endTime ?? '17:00'}',
-            ),
-            SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  professionalNotifier.setEditing(true);
-                },
-                child: Text('Editar'),
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  textStyle: TextStyle(fontSize: 18),
+  Widget _buildProfessionalInfo(ProfessionalModel professional, WidgetRef ref, BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Card(
+        elevation: 5,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Dr. ${professional.fullName}',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: 10),
+              Text(
+                'Especialista en ${professional.speciality}',
+                style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
+              ),
+              Divider(),
+              _buildInfoRow(Icons.location_on, 'Consultorio: ${professional.address}'),
+              _buildInfoRow(Icons.phone, 'Teléfono: ${professional.phoneN}'),
+              _buildInfoRow(Icons.badge, 'Número de Documento: ${professional.dni}'),
+              _buildInfoRow(Icons.account_balance, 'Número de Matrícula: ${professional.license}'),
+              _buildInfoRow(
+                Icons.calendar_today,
+                'Disponibilidad: ${_formatDaysInSpanish(professional.workDays)} de ${professional.startTime} a ${professional.endTime}',
+              ),
+              SizedBox(height: 20),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => _showEditDialog(context, professional, ref),
+                  child: Text('Editar'),
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    textStyle: TextStyle(fontSize: 18),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildInfoRow(IconData icon, String text) {
+    if (text.contains('Disponibilidad:') && !text.contains('No disponible')) {
+      // Extract the days list from the text and convert to Spanish before displaying
+      final parts = text.split(':');
+      if (parts.length > 1) {
+        final daysPart = parts[1].trim();
+        final dayTimeParts = daysPart.split(' de ');
+        if (dayTimeParts.length > 0) {
+          final daysList = dayTimeParts[0].split(', ');
+          
+          // Map English day names to Spanish
+          final translatedDays = daysList.map((day) {
+            switch (day) {
+              case 'Monday': return 'Lunes';
+              case 'Tuesday': return 'Martes';
+              case 'Wednesday': return 'Miércoles';
+              case 'Thursday': return 'Jueves';
+              case 'Friday': return 'Viernes';
+              case 'Saturday': return 'Sábado';
+              case 'Sunday': return 'Domingo';
+              default: return day;
+            }
+          }).join(', ');
+          
+          // Recreate the text with translated days
+          text = 'Disponibilidad: $translatedDays de ${dayTimeParts.length > 1 ? dayTimeParts[1] : ""}';
+        }
+      }
+    }
+    
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -297,6 +378,162 @@ class ProfessionalHome extends ConsumerWidget {
               text,
               style: TextStyle(fontSize: 16),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Add this helper method to convert English day names to Spanish
+  String _formatDaysInSpanish(List<String> days) {
+    if (days.isEmpty) return 'No disponible';
+    
+    // Map English day names to Spanish
+    final dayMapping = {
+      'Monday': 'Lunes',
+      'Tuesday': 'Martes',
+      'Wednesday': 'Miércoles',
+      'Thursday': 'Jueves',
+      'Friday': 'Viernes',
+      'Saturday': 'Sábado',
+      'Sunday': 'Domingo',
+    };
+    
+    // Convert each day to its Spanish equivalent
+    final spanishDays = days.map((day) => dayMapping[day] ?? day).toList();
+    return spanishDays.join(', ');
+  }
+
+  // Add this method to your ProfessionalHome class
+  Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_outline, size: 80, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'No se encontró información profesional',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Es posible que necesites completar tu perfil',
+            style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => ref.read(professionalProvider.notifier).refresh(),
+            child: Text('Reintentar'),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Add this method to your ProfessionalHome class
+  void _showEditDialog(BuildContext context, ProfessionalModel professional, WidgetRef ref) {
+    final _nameController = TextEditingController(text: professional.firstName);
+    final _lastNameController = TextEditingController(text: professional.lastName);
+    final _addressController = TextEditingController(text: professional.address);
+    final _phoneController = TextEditingController(text: professional.phoneN);
+    final _documentNumberController = TextEditingController(text: professional.dni);
+    final _licenseNumberController = TextEditingController(text: professional.license);
+    
+    // Create a copy of work days that we can modify
+    final selectedDays = [...professional.workDays];
+    
+    // Parse times if they exist
+    TimeOfDay startTime = professional.startTime.isNotEmpty
+        ? TimeFormatHelper.parseTime(professional.startTime) ?? TimeOfDay(hour: 9, minute: 0)
+        : TimeOfDay(hour: 9, minute: 0);
+        
+    TimeOfDay endTime = professional.endTime.isNotEmpty
+        ? TimeFormatHelper.parseTime(professional.endTime) ?? TimeOfDay(hour: 17, minute: 0)
+        : TimeOfDay(hour: 17, minute: 0);
+    
+    // Show the edit dialog
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Editar Información'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(labelText: 'Nombre'),
+              ),
+              TextField(
+                controller: _lastNameController,
+                decoration: InputDecoration(labelText: 'Apellido'),
+              ),
+              TextField(
+                controller: _addressController,
+                decoration: InputDecoration(labelText: 'Dirección del consultorio'),
+              ),
+              TextField(
+                controller: _phoneController,
+                decoration: InputDecoration(labelText: 'Teléfono'),
+                keyboardType: TextInputType.phone,
+              ),
+              TextField(
+                controller: _documentNumberController,
+                decoration: InputDecoration(labelText: 'DNI'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: _licenseNumberController,
+                decoration: InputDecoration(labelText: 'Número de matrícula'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                // Save changes
+                await ref.read(professionalProvider.notifier).saveUserData(
+                  firstName: _nameController.text.trim(),
+                  lastName: _lastNameController.text.trim(),
+                  address: _addressController.text.trim(),
+                  phoneN: _phoneController.text.trim(),
+                  dni: _documentNumberController.text.trim(),
+                  license: _licenseNumberController.text.trim(),
+                  workDays: selectedDays,
+                  startTime: '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
+                  endTime: '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
+                );
+                
+                // Close the dialog
+                Navigator.pop(dialogContext);
+                
+                // Show success message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Cambios guardados correctamente')),
+                );
+              } catch (e) {
+                // Show error message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error al guardar los cambios: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: Text('Guardar'),
           ),
         ],
       ),
