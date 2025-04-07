@@ -7,6 +7,7 @@ import 'package:Psiconnect/features/professional/models/professional_model.dart'
 import 'package:Psiconnect/navigation/router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '/core/exceptions/app_exception.dart';
@@ -67,7 +68,14 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   late final StreamSubscription<User?> _authSubscription;
 
   SessionNotifier(this._authService, this._firestore) : super(null) {
-    _initAuthListener();
+    // Brief delay to ensure Firebase is properly initialized
+    if (kIsWeb) {
+      Future.delayed(Duration(milliseconds: 500), () {
+        _initAuthListener();
+      });
+    } else {
+      _initAuthListener();
+    }
   }
 
   void _initAuthListener() {

@@ -29,6 +29,11 @@ Future<void> main() async {
       options: FirebaseOptionsWeb.current,
     );
 
+    // Clear any existing auth state on app start for fresh deployment
+    if (kIsWeb) {
+      await FirebaseAuth.instance.signOut();
+    }
+
     // Connect to emulators if enabled (development only)
     if (useEmulators) {
       await _connectToEmulators();
