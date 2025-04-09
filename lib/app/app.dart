@@ -1,8 +1,8 @@
 // lib/app/app.dart
 
+import 'package:Psiconnect/core/theme/themes.dart' as AppTheme;
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '/core/theme/themes.dart';
 import '/core/theme/theme_provider.dart';
 import '/navigation/router.dart';
 import 'package:flutter/services.dart';
@@ -27,8 +27,8 @@ class PsiconnectApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       
       // Configuración de temas
-      theme: lightTheme,
-      darkTheme: darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       
       // Configuración de enrutador usando el provider

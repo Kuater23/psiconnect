@@ -112,89 +112,82 @@ class RegisterPage extends HookConsumerWidget {
 
     
     // Google sign-in function
-    Future<void> handleGoogleSignIn() async {
-      try {
-        isLoading.value = true;
-        errorMessage.value = null;
+    // Modificar en register_page.dart - función handleGoogleSignIn()
 
-        final googleSignIn = GoogleSignIn(
-          clientId: '953533544770-j5flo9m30pi1lnri9csb9pannkkhapj4.apps.googleusercontent.com',
-        );
+Future<void> handleGoogleSignIn() async {
+  try {
+    isLoading.value = true;
+    errorMessage.value = null;
 
-        final googleUser = await googleSignIn.signIn();
-        if (googleUser == null) {
-          print('Google Sign-In cancelado por el usuario.');
-          isLoading.value = false;
-          return;
-        }
+    final googleSignIn = GoogleSignIn(
+      clientId: '953533544770-j5flo9m30pi1lnri9csb9pannkkhapj4.apps.googleusercontent.com',
+    );
 
-        final googleAuth = await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) {
+      print('Google Sign-In cancelado por el usuario.');
+      isLoading.value = false;
+      return;
+    }
 
-        // 2. Autenticamos con Firebase usando las credenciales de Google
-        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-        final user = userCredential.user;
-        if (user == null) {
-          print('Error: No se obtuvo el usuario tras el sign-in.');
-          isLoading.value = false;
-          return;
-        }
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
 
-        // 3. Ahora mostramos el diálogo de selección de rol
-        final selectedRole = await showDialog<UserRole>(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext dialogContext) {
-            return RoleSelectionDialog(
-              onRoleSelected: (UserRole role) {
-                Navigator.of(dialogContext).pop(role);
-              },
-            );
+    // Autenticamos con Firebase usando las credenciales de Google
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final user = userCredential.user;
+    if (user == null) {
+      print('Error: No se obtuvo el usuario tras el sign-in.');
+      isLoading.value = false;
+      return;
+    }
+
+    // Mostramos el diálogo de selección de rol
+    final selectedRole = await showDialog<UserRole>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return RoleSelectionDialog(
+          onRoleSelected: (UserRole role) {
+            Navigator.of(dialogContext).pop(role);
           },
         );
+      },
+    );
 
-        if (selectedRole == null) {
-          print('El usuario canceló la selección de rol. Se cerrará sesión.');
-          // Cerramos sesión ya que no sabemos qué rol quiere el usuario
-          await FirebaseAuth.instance.signOut();
-          isLoading.value = false;
-          return;
-        }
+    if (selectedRole == null) {
+      print('El usuario canceló la selección de rol. Se cerrará sesión.');
+      // Cerramos sesión ya que no sabemos qué rol quiere el usuario
+      await FirebaseAuth.instance.signOut();
+      isLoading.value = false;
+      return;
+    }
 
-        // 4. Convertimos la selección al string correspondiente
-        final roleString = selectedRole == UserRole.professional ? 'professional' : 'patient';
+    // Convertimos la selección al string correspondiente
+    final roleString = selectedRole == UserRole.professional ? 'professional' : 'patient';
 
-        // 5. Registramos al usuario en la colección correspondiente (doctors o patients)
-        await ref.read(sessionProvider.notifier).registerWithGoogle(roleString);
+    // Registramos al usuario en la colección correspondiente (doctors o patients)
+    await ref.read(sessionProvider.notifier).registerWithGoogle(roleString);
 
-        Map<String, dynamic> userData = {
-          'firstName': user.displayName?.split(' ').first ?? '',
-          'lastName': user.displayName?.split(' ').last ?? '',
-          'email': user.email ?? '',
-          'uid': user.uid,
-          'createdAt': FieldValue.serverTimestamp(),
-          'registerMethod': 'google',
-          'profileCompleted': false,  // Explicitly set to false for new users
-        };
-
-        // 6. Navegamos a la pantalla de inicio según el rol seleccionado
-        if (context.mounted) {
-          if (roleString == 'professional') {
-            GoRouter.of(context).go(RoutePaths.professionalHome);
-          } else {
-            GoRouter.of(context).go(RoutePaths.patientHome);
-          }
-        }
-      } catch (e) {
-        print('Error durante el registro con Google: $e');
-        errorMessage.value = 'Error al registrarse con Google: $e';
-      } finally {
-        isLoading.value = false;
+    // Navegamos a la pantalla de inicio según el rol seleccionado
+    // Usando pushReplacement para reemplazar la página actual en la pila
+    if (context.mounted) {
+      if (roleString == 'professional') {
+        GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
+      } else {
+        GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
       }
     }
+  } catch (e) {
+    print('Error durante el registro con Google: $e');
+    errorMessage.value = 'Error al registrarse con Google: $e';
+  } finally {
+    isLoading.value = false;
+  }
+}
 
     return Scaffold(
       backgroundColor: Color.fromRGBO(2, 60, 67, 1),

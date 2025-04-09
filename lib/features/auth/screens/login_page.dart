@@ -43,23 +43,23 @@ class LoginPage extends HookConsumerWidget {
           passwordController.text,
         );
         
-        // After successful login, check the user's role and navigate accordingly
+        // After successful login, navigate accordingly with replacement
         if (context.mounted) {
           final userRole = ref.read(userRoleProvider);
           
-          // Use context extension for cleaner navigation based on user role
+          // Usar goNamed con REPLACEMENT para limpiar la pila de navegación
           switch (userRole) {
             case 'admin':
-              context.goAdmin();
+              GoRouter.of(context).pushReplacement(RoutePaths.adminHome);
               break;
             case 'professional':
-              context.goProfessionalHome();
+              GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
               break;
             case 'patient':
-              context.goPatientHome();
+              GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
               break;
             default:
-              context.goHome();
+              GoRouter.of(context).pushReplacement(RoutePaths.home);
           }
         }
       } catch (e) {
@@ -85,97 +85,99 @@ class LoginPage extends HookConsumerWidget {
     }
     
     // Google sign-in logic
-    Future<void> handleGoogleSignIn() async {
-      errorMessage.value = null;
-      
-      try {
-        isLoading.value = true;
-        
-        // Log in with Google using session provider
-        final user = await ref.read(sessionProvider.notifier).logInWithGoogle();
-        
-        if (user != null && context.mounted) {
-          final userRole = ref.read(userRoleProvider);
-          
-          // Check if the user already has a role (i.e., exists in a collection)
-          if (userRole != 'guest') {
-            // User already exists, navigate based on existing role
-            switch (userRole) {
-              case 'admin':
-                context.goAdmin();
-                break;
-              case 'professional':
-                context.goProfessionalHome();
-                break;
-              case 'patient':
-                context.goPatientHome();
-                break;
-              default:
-                context.goHome();
-            }
-          } else {
-            // Only show role selection for new users (with 'guest' role)
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (BuildContext context) {
-                return RoleSelectionDialog(
-                  onRoleSelected: (UserRole selectedRole) async {
-                    // Close the dialog
-                    Navigator.of(context).pop();
-                    
-                    try {
-                      // Register the user with the selected role
-                      final role = selectedRole == UserRole.professional 
-                          ? 'professional' 
-                          : 'patient';
-                      
-                      await ref.read(sessionProvider.notifier)
-                          .registerWithGoogle(role);
-                      
-                      // Navigate based on selected role
-                      if (context.mounted) {
-                        if (selectedRole == UserRole.professional) {
-                          context.goProfessionalHome();
-                        } else {
-                          context.goPatientHome();
-                        }
-                      }
-                    } catch (e) {
-                      errorMessage.value = 'Error al registrarse con Google: ${e.toString()}';
-                    }
-                  },
-                );
-              },
-            );
-          }
-        }
-      } catch (e) {
-        // Handle Google sign-in errors
-        if (e is AuthException) {
-          errorMessage.value = e.message;
-        } else if (e is AppException) {
-          errorMessage.value = e.message;
-        } else if (e is FirebaseAuthException) {
-          errorMessage.value = e.message ?? 'Error de autenticación con Google';
-        } else {
-          errorMessage.value = 'Error al iniciar sesión con Google: ${e.toString()}';
-        }
-        
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage.value ?? 'Error al iniciar sesión con Google'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 4),
-            ),
+    // Modificar en login_page.dart - función handleGoogleSignIn()
+
+Future<void> handleGoogleSignIn() async {
+  errorMessage.value = null;
+  
+  try {
+    isLoading.value = true;
+    
+    // Log in with Google using session provider
+    final user = await ref.read(sessionProvider.notifier).logInWithGoogle();
+    
+    if (user != null && context.mounted) {
+      // Solo mostrar selección de rol para usuarios nuevos
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return RoleSelectionDialog(
+            onRoleSelected: (UserRole selectedRole) async {
+              // Cerrar el diálogo
+              Navigator.of(context).pop();
+              
+              try {
+                // Registrar el usuario con el rol seleccionado
+                final role = selectedRole == UserRole.professional 
+                    ? 'professional' 
+                    : 'patient';
+                
+                await ref.read(sessionProvider.notifier)
+                    .registerWithGoogle(role);
+                
+                // Navegar según el rol seleccionado usando pushReplacement
+                if (context.mounted) {
+                  if (selectedRole == UserRole.professional) {
+                    GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
+                  } else {
+                    GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
+                  }
+                }
+              } catch (e) {
+                errorMessage.value = 'Error al registrarse con Google: ${e.toString()}';
+              }
+            },
           );
-        }
-      } finally {
-        isLoading.value = false;
+        },
+      );
+    } else if (context.mounted) {
+      // Si user es null, es un usuario existente
+      // Esperar a que la sesión se actualice y luego navegar según el rol
+      final userRole = ref.read(userRoleProvider);
+      
+      // Usar pushReplacement para reemplazar la página actual en la pila
+      switch (userRole) {
+        case 'admin':
+          GoRouter.of(context).pushReplacement(RoutePaths.adminHome);
+          break;
+        case 'professional':
+          GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
+          break;
+        case 'patient':
+          GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
+          break;
+        default:
+          // En caso de que no tengamos un rol definido, volver a home
+          GoRouter.of(context).pushReplacement(RoutePaths.home);
       }
     }
+  } catch (e) {
+    // Handle Google sign-in errors
+    if (e is AuthException) {
+      errorMessage.value = e.message;
+    } else if (e is AppException) {
+      errorMessage.value = e.message;
+    } else if (e is FirebaseAuthException) {
+      errorMessage.value = e.message ?? 'Error de autenticación con Google';
+    } else {
+      errorMessage.value = 'Error al iniciar sesión con Google: ${e.toString()}';
+    }
+    
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage.value ?? 'Error al iniciar sesión con Google'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  } finally {
+    isLoading.value = false;
+  }
+}
     
     // Show forgot password dialog
     void showForgotPasswordDialog() {

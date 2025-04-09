@@ -112,37 +112,11 @@ class AuthService {
 
       final user = userCredential.user;
       if (user != null) {
-        // Check if this Google user already exists in our collections
-        bool exists = false;
-        
-        // Check doctors collection
-        final doctorDoc = await _firestore.collection('doctors').doc(user.uid).get();
-        if (doctorDoc.exists) {
-          exists = true;
-        }
-        
-        // Check patients collection if not found in doctors
-        if (!exists) {
-          final patientDoc = await _firestore.collection('patients').doc(user.uid).get();
-          if (patientDoc.exists) {
-            exists = true;
-          }
-        }
-        
-        // Check admins collection if not found yet
-        if (!exists) {
-          final adminDoc = await _firestore.collection('admins').doc(user.uid).get();
-          if (adminDoc.exists) {
-            exists = true;
-          }
-        }
-        
-        // Important: Do NOT create a default document here
-        // The registerWithGoogle method will handle document creation
-        // based on role selection
+        // Simplemente devuelve el usuario, la verificación de existencia
+        // se hará en el SessionProvider
+        return user;
       }
-      
-      return user;
+      return null;
     } catch (e) {
       print('Error signing in with Google: $e');
       rethrow;

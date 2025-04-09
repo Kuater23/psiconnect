@@ -319,11 +319,26 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   Future<User?> logInWithGoogle() async {
     try {
       final user = await _authService.signInWithGoogle();
-      // State will be updated by the auth listener
-      return user;
+      
+      if (user != null) {
+        // Verificar si el usuario ya existe en alguna colección
+        final doctorDoc = await _firestore.collection('doctors').doc(user.uid).get();
+        final patientDoc = await _firestore.collection('patients').doc(user.uid).get();
+        
+        if (!doctorDoc.exists && !patientDoc.exists) {
+          // Es un usuario nuevo, devuelve el usuario para que la UI muestre el diálogo de rol
+          print('Nuevo usuario de Google detectado, requiere selección de rol');
+          return user;
+        } else {
+          // Es un usuario existente, el listener de autenticación se encargará de redireccionar
+          print('Usuario existente de Google encontrado en las colecciones');
+          return null;
+        }
+      }
+      return null;
     } catch (e) {
-      print('Error durante el login con Google: $e'); // Debug log
-      rethrow; // Let the UI handle the error
+      print('Error durante el login con Google: $e');
+      rethrow;
     }
   }
   
@@ -493,6 +508,32 @@ Future<void> logOut([BuildContext? context]) async {
     rethrow;
   }
 }
+
+  /// Reload the current user session to reflect any changes in profile completion
+  Future<void> reloadSession() async {
+    try {
+      // Get current Firebase user
+      final user = FirebaseAuth.instance.currentUser;
+      
+      if (user == null) {
+        print('No hay usuario autenticado para recargar la sesión');
+        return;
+      }
+      
+      // Force reload of Firebase user to get latest token claims
+      await user.reload();
+      
+      // Re-run the auth state changed handler with the current user
+      // This will check collections again and update isProfileComplete
+      await _onAuthStateChanged(user);
+      
+      print('Sesión recargada exitosamente para: ${user.email}');
+    } catch (e) {
+      print('Error al recargar la sesión: $e');
+      ErrorLogger.logError('Error reloading session', e, StackTrace.current);
+      throw AppException('No se pudo recargar la sesión: $e');
+    }
+  }
 
   @override
   void dispose() {

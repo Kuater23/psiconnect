@@ -1,5 +1,7 @@
 // lib/app/main.dart
 
+import 'package:Psiconnect/core/theme/themes.dart' as AppTheme;
+import 'package:Psiconnect/navigation/router.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:url_strategy/url_strategy.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '/core/theme/theme_provider.dart';
 
 import 'app.dart';
 import '/core/config/firebase_options.dart';

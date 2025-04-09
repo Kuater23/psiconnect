@@ -1,5 +1,6 @@
 // file: lib/features/auth/screens/required_profile_completion.dart
 
+import 'package:Psiconnect/features/auth/providers/session_provider.dart';
 import 'package:Psiconnect/features/patient/models/patient_model.dart';
 import 'package:Psiconnect/features/patient/providers/patient_providers.dart';
 import 'package:Psiconnect/features/professional/models/professional_model.dart';
@@ -605,30 +606,54 @@ class RequiredProfileCompletion extends HookConsumerWidget {
               .update(patient.toFirestore());
         }
         
-        // Navigate to appropriate screen
+        // Mostrar mensaje de éxito
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Perfil actualizado correctamente')),
+            const SnackBar(
+              content: Text('Perfil actualizado correctamente'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
           );
+        }
+        
+        // PASO CRÍTICO: Recargar sesión para actualizar el flag isProfileComplete
+        await ref.read(sessionProvider.notifier).reloadSession();
+        
+        // Esperar un breve momento para asegurar que la sesión se haya actualizado
+        await Future.delayed(Duration(milliseconds: 300));
+        
+        // Actualizar estado del proveedor según el rol
+        if (userRole == 'professional') {
+          await ref.read(professionalProvider.notifier).refresh();
+        } else {
+          await ref.read(patientProfileProvider.notifier).refresh();
+        }
+        
+        // Ahora navegar a la pantalla correspondiente usando un método que exista en GoRouter
+        if (context.mounted) {
+          final router = GoRouter.of(context);
           
-          Future.delayed(Duration(milliseconds: 500), () {
-            if (context.mounted) {
-              if (userRole == 'professional') {
-                // Refresh the provider before navigating
-                ref.read(professionalProvider.notifier).refresh().then((_) {
-                  GoRouter.of(context).go(RoutePaths.professionalHome);
-                });
-              } else {
-                // For patient, refresh patient provider
-                ref.read(patientProfileProvider.notifier).refresh().then((_) {
-                  GoRouter.of(context).go(RoutePaths.patientHome);
-                });
-              }
-            }
-          });
+          if (userRole == 'professional') {
+            // Usar pushReplacement en lugar de replaceAll
+            router.pushReplacement(RoutePaths.professionalHome);
+          } else {
+            // Usar pushReplacement en lugar de replaceAll
+            router.pushReplacement(RoutePaths.patientHome);
+          }
         }
       } catch (e) {
         errorMessage.value = 'Error al actualizar el perfil: ${e.toString()}';
+        
+        // También mostrar error en SnackBar
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       } finally {
         isLoading.value = false;
       }
