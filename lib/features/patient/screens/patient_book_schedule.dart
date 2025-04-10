@@ -520,10 +520,7 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                                             ? primaryColor.withOpacity(0.3)
                                             : isDarkMode 
                                                 ? Colors.grey.shade800 
-                                                : Colors.grey.withOpacity(0.2),
-                                        backgroundImage: doctor['photoUrl'] != null
-                                            ? NetworkImage(doctor['photoUrl'])
-                                            : null,
+                                                : Colors.grey.withOpacity(0.2),                                        
                                         child: doctor['photoUrl'] == null
                                             ? Text(
                                                 doctor['name'].isNotEmpty
