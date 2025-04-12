@@ -1,6 +1,7 @@
 // lib/features/auth/screens/login_page.dart
 
 import 'package:Psiconnect/core/exceptions/exception_handler.dart';
+import 'package:Psiconnect/core/widgets/storage_image.dart';
 import 'package:Psiconnect/features/auth/widgets/role_selection_dialog.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -297,8 +298,8 @@ Future<void> handleGoogleSignIn() async {
                           // Logo and title
                           Column(
                             children: [
-                              Image.asset(
-                                'assets/images/logo.png',
+                              StorageImage(
+                                imagePath:'images/logo.png',
                                 height: 100,
                               ),
                               SizedBox(height: 10),
@@ -545,8 +546,8 @@ Future<void> handleGoogleSignIn() async {
                               icon: SizedBox(
                                 height: 20,
                                 width: 20,
-                                child: Image.asset(
-                                  'assets/images/google_logo.png',
+                                child: StorageImage(
+                                  imagePath:'images/google_logo.png',
                                   fit: BoxFit.contain,
                                   errorBuilder: (context, error, stackTrace) {
                                     return const Icon(

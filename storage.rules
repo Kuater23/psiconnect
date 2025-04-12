@@ -1,15 +1,26 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Default rule - deny all
+    // Regla predeterminada - denegar todo
     match /{allPaths=**} {
       allow read, write: if false;
     }
     
-    // Patient documents - allow ONLY professionals to upload, delete and view
+    // Permitir acceso a documentos de pacientes solo a doctores autenticados
     match /patient_documents/{patientId}/{documentName} {
       allow read, write: if request.auth != null && 
         exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
     } 
+    
+    // Permitir lectura pública de todas las imágenes
+    match /images/{imageId} {
+      allow read: if true;  // Cualquiera puede ver las imágenes
+      allow write: if request.auth != null;  // Solo usuarios autenticados pueden subir
+    }
+    
+    // Permitir lectura pública para todas las subcarpetas de imágenes
+    match /images/{folder}/{imageId} {
+      allow read: if true;
+    }
   }
 }

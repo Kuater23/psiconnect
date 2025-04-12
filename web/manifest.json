@@ -34,14 +34,14 @@
   ],
   "screenshots": [
     {
-      "src": "assets/images/screenshots/screen1.png",
+      "src": "images/screenshots/screen1.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "platform": "wide",
       "label": "Pantalla de inicio de Psiconnect"
     },
     {
-      "src": "assets/images/screenshots/screen2.png",
+      "src": "images/screenshots/screen2.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "platform": "wide",

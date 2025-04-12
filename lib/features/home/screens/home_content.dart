@@ -1,4 +1,5 @@
 import 'package:Psiconnect/core/widgets/responsive_widget.dart';
+import 'package:Psiconnect/core/widgets/storage_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
@@ -31,7 +32,7 @@ class DesktopHomeContent extends StatelessWidget {
             flex: 1, // Proporciona espacio para la imagen
             child: Align(
               alignment: Alignment.bottomRight,
-              child: Image.asset('assets/images/app_screen.png',
+              child: StorageImage(imagePath:'images/app_screen.png',
                   fit: BoxFit.contain),
             ),
           ),
@@ -60,8 +61,8 @@ class DesktopHomeContent extends StatelessWidget {
                   children: [
                     GestureDetector(
                       onTap: () => launchUrlString(googlePlayURL),
-                      child: Image.asset(
-                        'assets/images/google_play_badge.png',
+                      child: StorageImage(
+                        imagePath:'images/google_play_badge.png',
                         height: 60,
                         width: 200,
                       ),
@@ -69,8 +70,8 @@ class DesktopHomeContent extends StatelessWidget {
                     SizedBox(width: 24),
                     GestureDetector(
                       onTap: () => launchUrlString(appStoreURL),
-                      child: Image.asset(
-                        'assets/images/app_store_badge.png',
+                      child: StorageImage(
+                        imagePath:'images/app_store_badge.png',
                         height: 60,
                         width: 200,
                       ),
@@ -110,8 +111,8 @@ class MobileHomeContent extends StatelessWidget {
           SizedBox(height: 24),
           GestureDetector(
             onTap: () => launchUrlString(googlePlayURL),
-            child: Image.asset(
-              'assets/images/google_play_badge.png',
+            child: StorageImage(
+              imagePath:'images/google_play_badge.png',
               height: 60,
               width: 200,
             ),
@@ -119,15 +120,15 @@ class MobileHomeContent extends StatelessWidget {
           SizedBox(height: 24),
           GestureDetector(
             onTap: () => launchUrlString(appStoreURL),
-            child: Image.asset(
-              'assets/images/app_store_badge.png',
+            child: StorageImage(
+              imagePath:'images/app_store_badge.png',
               height: 60,
               width: 200,
             ),
           ),
           SizedBox(height: 48),
-          Image.asset(
-            'assets/images/app_screen.png',
+          StorageImage(
+            imagePath:'images/app_screen.png',
             height: 350,
           ),
         ],

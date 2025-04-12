@@ -1,4 +1,5 @@
 import 'package:Psiconnect/core/widgets/responsive_widget.dart';
+import 'package:Psiconnect/core/widgets/storage_image.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -63,8 +64,8 @@ class FeaturesContentResponsive extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/images/ventajas/rayo_ventajas.png',
+                        StorageImage(
+                          imagePath:'images/ventajas/rayo_ventajas.png',
                           height: 50, // Ajusta la altura de la imagen
                         ),
                         SizedBox(
@@ -106,8 +107,8 @@ class FeaturesContentResponsive extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/images/ventajas/reloj_ventajas.png',
+                        StorageImage(
+                          imagePath:'images/ventajas/reloj_ventajas.png',
                           height: 50, // Ajusta la altura de la imagen
                         ),
                         SizedBox(
@@ -149,8 +150,8 @@ class FeaturesContentResponsive extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/images/ventajas/red_ventajas.png',
+                        StorageImage(
+                          imagePath:'images/ventajas/red_ventajas.png',
                           height: 50, // Ajusta la altura de la imagen
                         ),
                         SizedBox(
@@ -246,8 +247,8 @@ class FeaturesContentResponsive extends StatelessWidget {
                     child: Container(
                       width: 200, // Ajusta el ancho de la imagen
                       height: 500, // Ajusta la altura de la imagen
-                      child: Image.asset(
-                        'assets/images/ventajas/pq_psiconnect_ventajas.png', // Ruta de la imagen
+                      child: StorageImage(
+                        imagePath:'images/ventajas/pq_psiconnect_ventajas.png', // Ruta de la imagen
                         fit: BoxFit
                             .cover, // Ajusta la imagen para cubrir el espacio disponible
                       ),

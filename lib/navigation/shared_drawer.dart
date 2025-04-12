@@ -1,5 +1,6 @@
 // lib/navigation/shared_drawer.dart
 
+import 'package:Psiconnect/core/widgets/storage_image.dart';
 import 'package:Psiconnect/features/auth/models/user_session.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -166,8 +167,8 @@ class SharedDrawer extends HookConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Logo
-          Image.asset(
-            'assets/images/logo.png',
+          StorageImage(
+            imagePath:'images/logo.png',
             height: 60,
           ),
           const SizedBox(height: 16),

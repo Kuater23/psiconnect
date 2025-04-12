@@ -1,6 +1,6 @@
 // lib/app/app.dart
 
-import 'package:Psiconnect/core/theme/themes.dart' as AppTheme;
+import '../core/theme/themes.dart' as AppTheme;
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '/core/theme/theme_provider.dart';

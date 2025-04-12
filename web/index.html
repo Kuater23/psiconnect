@@ -13,7 +13,7 @@
   <!-- Open Graph tags for social sharing -->
   <meta property="og:title" content="Psiconnect - Conectando pacientes y profesionales">
   <meta property="og:description" content="Plataforma web para conectar pacientes con profesionales de la salud mental.">
-  <meta property="og:image" content="/assets/images/logo.png">
+  <meta property="og:image" content="/images/logo.png">
   <meta property="og:url" content="https://psiconnect-eb98a.web.app/">
   <meta property="og:type" content="website">
   
@@ -27,8 +27,8 @@
   
   <!-- Preload critical resources -->
   <link rel="preload" href="main.dart.js" as="script">
-  <link rel="preload" href="assets/images/logo.png" as="image">
-  <link rel="preload" href="assets/fonts/MaterialIcons-Regular.otf" as="font" type="font/otf" crossorigin>
+  <link rel="preload" href="images/logo.png" as="image">
+  <link rel="preload" href="fonts/MaterialIcons-Regular.otf" as="font" type="font/otf" crossorigin>
   
   <!-- Favicon and icons -->
   <link rel="icon" type="image/png" href="favicon.png">
@@ -38,10 +38,32 @@
   <title>Psiconnect - Conectando pacientes y profesionales</title>
   
   <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    import { getStorage } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
+    
+    // Tu configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyATXxqOAOH-ViKl8UlLgoeeSRoFRakeK_U",
+      appId: "1:953533544770:web:2a3e104a25b63a807870db",
+      messagingSenderId: "953533544770",
+      projectId: "psiconnect-eb98a",
+      authDomain: "psiconnect-eb98a.firebaseapp.com",
+      databaseURL: "https://psiconnect-eb98a-default-rtdb.firebaseio.com",
+      storageBucket: 'psiconnect-eb98a.firebasestorage.app',
+    };
+    
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const storage = getStorage(app);
+    
+    // Hacer disponible para el resto de la aplicación
+    window.firebaseApp = app;
+  </script>
   
   <!-- Optimized loading styles -->
   <style>
@@ -113,7 +135,7 @@
   <!-- Optimized loading screen -->
   <div id="loading" class="loading-container">
     <div class="loading-content">
-      <img src="assets/images/logo.png" alt="Logo de Psiconnect" class="loading-logo">
+      <img src="images/logo.png" alt="Logo de Psiconnect" class="loading-logo">
       <div class="loading-spinner"></div>
       <p>Iniciando Psiconnect...</p>
     </div>
@@ -281,5 +303,7 @@
       </div>
     </div>
   </noscript>
+
+  <img src="/images/logo.png" />
 </body>
 </html>

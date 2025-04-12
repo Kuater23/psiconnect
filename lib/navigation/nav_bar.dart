@@ -1,5 +1,6 @@
 // lib/navigation/nav_bar.dart
 
+import 'package:Psiconnect/core/widgets/storage_image.dart';
 import 'package:Psiconnect/features/home/screens/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -41,8 +42,8 @@ class DesktopNavBar extends HookConsumerWidget {
               // Logo
               GestureDetector(
                 onTap: () => GoRouter.of(context).go(RoutePaths.home),
-                child: Image.asset(
-                  'assets/images/logo.png',
+                child: StorageImage(
+                  imagePath:'images/logo.png',
                   height: 80,
                 ),
               ),
@@ -151,8 +152,8 @@ class MobileNavBar extends HookConsumerWidget {
             // Logo
             GestureDetector(
               onTap: () => GoRouter.of(context).go(RoutePaths.home),
-              child: Image.asset(
-                'assets/images/logo.png',
+              child: StorageImage(
+                imagePath:'images/logo.png',
                 height: 40,
               ),
             ),

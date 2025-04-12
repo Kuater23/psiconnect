@@ -1,4 +1,5 @@
 import 'package:Psiconnect/core/widgets/responsive_widget.dart';
+import 'package:Psiconnect/core/widgets/storage_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -34,8 +35,8 @@ class ScreenshotsContentResponsive extends StatelessWidget {
         children: [
           // Imagen de fondo
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/screenshots/fondo.png',
+            child: StorageImage(
+              imagePath:'images/screenshots/fondo.png',
               fit: BoxFit.cover,
             ),
           ),
@@ -95,8 +96,8 @@ class ScreenshotsContentResponsive extends StatelessWidget {
                     children: [
                       GestureDetector(
                         onTap: () => _launchURL(googlePlayURL),
-                        child: Image.asset(
-                          'assets/images/google_play_badge.png',
+                        child: StorageImage(
+                          imagePath:'images/google_play_badge.png',
                           height: 60,
                           width: 200,
                         ),
@@ -104,8 +105,8 @@ class ScreenshotsContentResponsive extends StatelessWidget {
                       SizedBox(width: 24),
                       GestureDetector(
                         onTap: () => _launchURL(appStoreURL),
-                        child: Image.asset(
-                          'assets/images/app_store_badge.png',
+                        child: StorageImage(
+                          imagePath:'images/app_store_badge.png',
                           height: 60,
                           width: 200,
                         ),
