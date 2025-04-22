@@ -33,8 +33,10 @@ service cloud.firestore {
       // Anyone can create their account (controlled by application logic)
       allow create: if isSignedIn() && request.auth.uid == userId;
       
-      // Only the user or admin can read/update user data
-      allow read: if isOwner(userId) || isAdmin();
+      // All authenticated users can read doctor data
+      allow read: if isSignedIn();
+      
+      // Only the user or admin can update user data
       allow update: if isOwner(userId) || isAdmin();
       
       // Only admins can delete users
