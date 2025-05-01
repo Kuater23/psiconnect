@@ -1783,4 +1783,20 @@ class _PatientMedicalRecordsState extends State<PatientMedicalRecords> with Sing
         return 'application/octet-stream';
     }
   }
+
+  /// Verify doctor-patient relation
+  Future<bool> _verifyDoctorPatientRelation() async {
+    try {
+      final relationId = '${widget.doctorId}_${widget.patientId}';
+      final doc = await FirebaseFirestore.instance
+          .collection('doctor_patients')
+          .doc(relationId)
+          .get();
+          
+      return doc.exists;
+    } catch (e) {
+      print('Error verificando relación doctor-paciente: $e');
+      return false;
+    }
+  }
 }

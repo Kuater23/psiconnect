@@ -3,6 +3,7 @@
 import 'package:Psiconnect/core/widgets/storage_image.dart';
 import 'package:Psiconnect/features/auth/widgets/role_selection_dialog.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -113,82 +114,85 @@ class RegisterPage extends HookConsumerWidget {
 
     
     // Google sign-in function
-    // Modificar en register_page.dart - función handleGoogleSignIn()
+    Future<void> handleGoogleSignIn() async {
+      try {
+        isLoading.value = true;
+        errorMessage.value = null;
 
-Future<void> handleGoogleSignIn() async {
-  try {
-    isLoading.value = true;
-    errorMessage.value = null;
+        // Cambia la forma de inicializar GoogleSignIn
+        final googleSignIn = GoogleSignIn(
+          clientId: kIsWeb ? '953533544770-j5flo9m30pi1lnri9csb9pannkkhapj4.apps.googleusercontent.com' : null,
+          signInOption: SignInOption.standard,
+          scopes: ['email', 'profile'],
+        );
+        // Para depurar - imprime la URL base actual
+        print('URL base actual: ${Uri.base.toString()}');
 
-    final googleSignIn = GoogleSignIn(
-      clientId: '953533544770-j5flo9m30pi1lnri9csb9pannkkhapj4.apps.googleusercontent.com',
-    );
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          print('Google Sign-In cancelado por el usuario.');
+          isLoading.value = false;
+          return;
+        }
 
-    final googleUser = await googleSignIn.signIn();
-    if (googleUser == null) {
-      print('Google Sign-In cancelado por el usuario.');
-      isLoading.value = false;
-      return;
-    }
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
 
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+        // Autenticamos con Firebase usando las credenciales de Google
+        final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        final user = userCredential.user;
+        if (user == null) {
+          print('Error: No se obtuvo el usuario tras el sign-in.');
+          isLoading.value = false;
+          return;
+        }
 
-    // Autenticamos con Firebase usando las credenciales de Google
-    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-    final user = userCredential.user;
-    if (user == null) {
-      print('Error: No se obtuvo el usuario tras el sign-in.');
-      isLoading.value = false;
-      return;
-    }
-
-    // Mostramos el diálogo de selección de rol
-    final selectedRole = await showDialog<UserRole>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return RoleSelectionDialog(
-          onRoleSelected: (UserRole role) {
-            Navigator.of(dialogContext).pop(role);
+        // Mostramos el diálogo de selección de rol
+        final selectedRole = await showDialog<UserRole>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) {
+            return RoleSelectionDialog(
+              onRoleSelected: (UserRole role) {
+                Navigator.of(dialogContext).pop(role);
+              },
+            );
           },
         );
-      },
-    );
 
-    if (selectedRole == null) {
-      print('El usuario canceló la selección de rol. Se cerrará sesión.');
-      // Cerramos sesión ya que no sabemos qué rol quiere el usuario
-      await FirebaseAuth.instance.signOut();
-      isLoading.value = false;
-      return;
-    }
+        if (selectedRole == null) {
+          print('El usuario canceló la selección de rol. Se cerrará sesión.');
+          // Cerramos sesión ya que no sabemos qué rol quiere el usuario
+          await FirebaseAuth.instance.signOut();
+          isLoading.value = false;
+          return;
+        }
 
-    // Convertimos la selección al string correspondiente
-    final roleString = selectedRole == UserRole.professional ? 'professional' : 'patient';
+        // Convertimos la selección al string correspondiente
+        final roleString = selectedRole == UserRole.professional ? 'professional' : 'patient';
 
-    // Registramos al usuario en la colección correspondiente (doctors o patients)
-    await ref.read(sessionProvider.notifier).registerWithGoogle(roleString);
+        // Registramos al usuario en la colección correspondiente (doctors o patients)
+        await ref.read(sessionProvider.notifier).registerWithGoogle(roleString);
 
-    // Navegamos a la pantalla de inicio según el rol seleccionado
-    // Usando pushReplacement para reemplazar la página actual en la pila
-    if (context.mounted) {
-      if (roleString == 'professional') {
-        GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
-      } else {
-        GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
+        // Navegamos a la pantalla de inicio según el rol seleccionado
+        // Usando pushReplacement para reemplazar la página actual en la pila
+        if (context.mounted) {
+          if (roleString == 'professional') {
+            GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
+          } else {
+            GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
+          }
+        }
+      } catch (e) {
+        print('Error durante el registro con Google: $e');
+        errorMessage.value = 'Error al registrarse con Google: $e';
+      } finally {
+        isLoading.value = false;
       }
     }
-  } catch (e) {
-    print('Error durante el registro con Google: $e');
-    errorMessage.value = 'Error al registrarse con Google: $e';
-  } finally {
-    isLoading.value = false;
-  }
-}
 
     return Scaffold(
       backgroundColor: Color.fromRGBO(2, 60, 67, 1),

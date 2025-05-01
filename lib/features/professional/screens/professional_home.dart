@@ -460,82 +460,436 @@ class ProfessionalHome extends HookConsumerWidget {
     // Show the edit dialog
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Editar Información'),
-        content: SingleChildScrollView(
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 8,
+        child: Container(
+          constraints: BoxConstraints(maxWidth: 500), // Limitar el ancho máximo
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'Nombre'),
+              // Header
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    'Editar Información',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-              TextField(
-                controller: _lastNameController,
-                decoration: InputDecoration(labelText: 'Apellido'),
+              
+              // Content
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Información personal - Section header
+                      Text(
+                        'Información Personal',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      
+                      // Nombre y apellido en la misma fila
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildEditField(
+                              context: context,
+                              controller: _nameController,
+                              label: 'Nombre',
+                              icon: Icons.person_outline,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: _buildEditField(
+                              context: context,
+                              controller: _lastNameController,
+                              label: 'Apellido',
+                              icon: Icons.person_outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                      
+                      // DNI y teléfono en la misma fila
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildEditField(
+                              context: context,
+                              controller: _documentNumberController,
+                              label: 'DNI',
+                              icon: Icons.badge_outlined,
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: _buildEditField(
+                              context: context,
+                              controller: _phoneController,
+                              label: 'Teléfono',
+                              icon: Icons.phone_outlined,
+                              keyboardType: TextInputType.phone,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 24),
+                      
+                      // Información profesional - Section header
+                      Text(
+                        'Información Profesional',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      
+                      _buildEditField(
+                        context: context,
+                        controller: _addressController,
+                        label: 'Dirección del Consultorio',
+                        icon: Icons.location_on_outlined,
+                      ),
+                      SizedBox(height: 16),
+                      
+                      _buildEditField(
+                        context: context,
+                        controller: _licenseNumberController,
+                        label: 'Número de Matrícula',
+                        icon: Icons.card_membership_outlined,
+                      ),
+                      SizedBox(height: 24),
+                      
+                      // Días de trabajo - Section header
+                      Text(
+                        'Días de Trabajo',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      
+                      // Selección de días con chips interactivos
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildDayChip(dialogContext, selectedDays, 'Monday', 'Lunes'),
+                          _buildDayChip(dialogContext, selectedDays, 'Tuesday', 'Martes'),
+                          _buildDayChip(dialogContext, selectedDays, 'Wednesday', 'Miércoles'),
+                          _buildDayChip(dialogContext, selectedDays, 'Thursday', 'Jueves'),
+                          _buildDayChip(dialogContext, selectedDays, 'Friday', 'Viernes'),
+                          _buildDayChip(dialogContext, selectedDays, 'Saturday', 'Sábado'),
+                          _buildDayChip(dialogContext, selectedDays, 'Sunday', 'Domingo'),
+                        ],
+                      ),
+                      SizedBox(height: 24),
+                      
+                      // Horarios de trabajo - Section header
+                      Text(
+                        'Horarios de Atención',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      
+                      // Horarios en la misma fila
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTimeSelectorDialog(
+                              context: dialogContext,
+                              label: 'Hora de inicio',
+                              initialTime: startTime,
+                              onTimeSelected: (time) {
+                                startTime = time;
+                              },
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: _buildTimeSelectorDialog(
+                              context: dialogContext,
+                              label: 'Hora de fin',
+                              initialTime: endTime,
+                              onTimeSelected: (time) {
+                                endTime = time;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              TextField(
-                controller: _addressController,
-                decoration: InputDecoration(labelText: 'Dirección del consultorio'),
-              ),
-              TextField(
-                controller: _phoneController,
-                decoration: InputDecoration(labelText: 'Teléfono'),
-                keyboardType: TextInputType.phone,
-              ),
-              TextField(
-                controller: _documentNumberController,
-                decoration: InputDecoration(labelText: 'DNI'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: _licenseNumberController,
-                decoration: InputDecoration(labelText: 'Número de matrícula'),
+              
+              // Footer con botones
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text('Cancelar'),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () async {
+                        try {
+                          // Verificar si hay al menos un día seleccionado
+                          if (selectedDays.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Debe seleccionar al menos un día de trabajo'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          
+                          // Save changes
+                          await ref.read(professionalProvider.notifier).saveUserData(
+                            firstName: _nameController.text.trim(),
+                            lastName: _lastNameController.text.trim(),
+                            address: _addressController.text.trim(),
+                            phoneN: _phoneController.text.trim(),
+                            dni: _documentNumberController.text.trim(),
+                            license: _licenseNumberController.text.trim(),
+                            workDays: selectedDays,
+                            startTime: '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
+                            endTime: '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
+                          );
+                          
+                          // Close the dialog
+                          Navigator.pop(dialogContext);
+                          
+                          // Show success message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Cambios guardados correctamente'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } catch (e) {
+                          // Show error message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error al guardar los cambios: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                      child: Text('Guardar'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        elevation: 0,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                // Save changes
-                await ref.read(professionalProvider.notifier).saveUserData(
-                  firstName: _nameController.text.trim(),
-                  lastName: _lastNameController.text.trim(),
-                  address: _addressController.text.trim(),
-                  phoneN: _phoneController.text.trim(),
-                  dni: _documentNumberController.text.trim(),
-                  license: _licenseNumberController.text.trim(),
-                  workDays: selectedDays,
-                  startTime: '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
-                  endTime: '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
-                );
-                
-                // Close the dialog
-                Navigator.pop(dialogContext);
-                
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Cambios guardados correctamente')),
-                );
-              } catch (e) {
-                // Show error message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error al guardar los cambios: $e'),
-                    backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  // Widget helper para construir campos de edición consistentes
+  Widget _buildEditField({
+    required BuildContext context,
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      keyboardType: keyboardType,
+      style: TextStyle(fontSize: 16),
+    );
+  }
+
+  // Widget para seleccionar horarios con mejor UI
+  Widget _buildTimeSelectorDialog({
+    required BuildContext context,
+    required String label,
+    required TimeOfDay initialTime,
+    required Function(TimeOfDay) onTimeSelected,
+  }) {
+    return InkWell(
+      onTap: () async {
+        final TimeOfDay? picked = await showTimePicker(
+          context: context,
+          initialTime: initialTime,
+          builder: (BuildContext context, Widget? child) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) {
+          onTimeSelected(picked);
+        }
+      },
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(10),
+          color: Colors.white,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.access_time,
+              color: Theme.of(context).colorScheme.primary,
+              size: 20,
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
-                );
-              }
-            },
-            child: Text('Guardar'),
+                  SizedBox(height: 4),
+                  Text(
+                    '${initialTime.hour.toString().padLeft(2, '0')}:${initialTime.minute.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_drop_down,
+              color: Colors.grey.shade600,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget para chips de selección de días
+  Widget _buildDayChip(
+    BuildContext context,
+    List<String> selectedDays,
+    String dayValue,
+    String displayText,
+  ) {
+    final isSelected = selectedDays.contains(dayValue);
+    
+    return StatefulBuilder(
+      builder: (context, setState) => FilterChip(
+        label: Text(displayText),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) {
+            if (!selectedDays.contains(dayValue)) {
+              selectedDays.add(dayValue);
+            }
+          } else {
+            selectedDays.remove(dayValue);
+          }
+          setState(() {}); // Actualizar UI del chip
+        },
+        selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+        checkmarkColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Colors.white,
+        labelStyle: TextStyle(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.black87,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.shade300,
+            width: isSelected ? 1.5 : 1,
           ),
-        ],
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       ),
     );
   }

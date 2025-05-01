@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '/core/exceptions/app_exception.dart';
 import '/core/services/error_logger.dart';
+import 'doctor_patient_service.dart';
 
 final appointmentServiceProvider = Provider<AppointmentService>((ref) {
   return AppointmentService();
@@ -12,6 +13,7 @@ final appointmentServiceProvider = Provider<AppointmentService>((ref) {
 
 class AppointmentService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final DoctorPatientService _doctorPatientService = DoctorPatientService();
 
   // Optimized cache settings for web
   AppointmentService() {
@@ -77,6 +79,8 @@ class AppointmentService {
     bool isVirtual = false,
   }) async {
     try {
+      print('🔄 Creando cita: doctorId=$doctorId, patientId=$patientId');
+      
       final appointmentData = {
         'patientId': patientId,
         'doctorId': doctorId,
@@ -95,20 +99,22 @@ class AppointmentService {
         appointmentData['meetingLink'] = meetingLink;
       }
       
+      // Crear la cita
       final docRef = await _firestore.collection('appointments').add(appointmentData);
-      return docRef.id;
-    } catch (e, stackTrace) {
-      ErrorLogger.logError(
-        'Error creating appointment', 
-        e, 
-        stackTrace,
-        additionalData: {
-          'patientId': patientId,
-          'doctorId': doctorId,
-          'date': date.toString()
-        }
+      
+      print('✅ Cita creada con ID: ${docRef.id}');
+      
+      // IMPORTANTE: Crear relación doctor-paciente después de crear la cita
+      await _doctorPatientService.createOrUpdateRelation(
+        doctorId: doctorId,
+        patientId: patientId,
+        source: 'appointment_service',
       );
-      throw DataException('Error al crear la cita: ${e.toString()}');
+      
+      return docRef.id;
+    } catch (e) {
+      print('❌ Error creando cita: $e');
+      throw Exception('Error al crear la cita: ${e.toString()}');
     }
   }
 

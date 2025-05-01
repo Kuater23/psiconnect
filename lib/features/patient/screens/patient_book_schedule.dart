@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:Psiconnect/navigation/shared_drawer.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'dart:async';
+import 'package:Psiconnect/features/appointments/services/doctor_patient_service.dart';
 
 class PatientBookSchedule extends StatefulWidget {
   @override
@@ -27,14 +28,26 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
   String? get currentPatientId => FirebaseAuth.instance.currentUser?.uid;
 
   // Mapa para convertir abreviaturas de días a números de día de la semana
-  final Map<String, int> dayToWeekday = {
-    'Lun': DateTime.monday,
-    'Mar': DateTime.tuesday,
-    'Mié': DateTime.wednesday,
-    'Jue': DateTime.thursday,
-    'Vie': DateTime.friday,
-    'Sáb': DateTime.saturday,
-    'Dom': DateTime.sunday,
+  final Map<String, int> dayToWeekday = {    
+    // Nombres completos en inglés (tal como están en Firebase)
+    'Monday': DateTime.monday,
+    'Tuesday': DateTime.tuesday,
+    'Wednesday': DateTime.wednesday,
+    'Thursday': DateTime.thursday,
+    'Friday': DateTime.friday,
+    'Saturday': DateTime.saturday,
+    'Sunday': DateTime.sunday
+  };
+
+  // Mapa para traducir días de inglés a español
+  final Map<String, String> englishToSpanishDays = {
+    'Monday': 'Lunes',
+    'Tuesday': 'Martes',
+    'Wednesday': 'Miércoles',
+    'Thursday': 'Jueves',
+    'Friday': 'Viernes',
+    'Saturday': 'Sábado',
+    'Sunday': 'Domingo'
   };
 
   @override
@@ -65,10 +78,12 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
       
       if (mounted) {
         setState(() {
-          doctors = snapshot.docs.map((doc) {
+          List<Map<String, dynamic>> tempDoctors = [];
+          
+          for (var doc in snapshot.docs) {
             final data = doc.data() as Map<String, dynamic>;
             
-            // Obtener días de trabajo como lista de strings (Lun, Mar, etc.)
+            // Obtener días de trabajo como lista de strings
             List<String> workDaysList = [];
             if (data['workDays'] != null) {
               if (data['workDays'] is List) {
@@ -76,11 +91,15 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
               }
             }
             
-            // Handle startTime and endTime as strings or convert from int
+            // Si el doctor no tiene días de trabajo configurados, omitirlo
+            if (workDaysList.isEmpty) {
+              continue;
+            }
+            
+            // Procesar startTime y endTime
             var startTime = data['startTime'];
             var endTime = data['endTime'];
             
-            // Convert to integers if they're strings in HH:MM format
             int startHour = startTime is String ? 
                 int.tryParse(startTime.split(':')[0]) ?? 9 : 
                 (startTime is int ? startTime : 9);
@@ -89,17 +108,19 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
                 int.tryParse(endTime.split(':')[0]) ?? 17 : 
                 (endTime is int ? endTime : 17);
             
-            return {
+            tempDoctors.add({
               'id': doc.id,
               'name': '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}',
-              'speciality': data['speciality'] ?? 'Sin especialidad', // Fix: changed 'speciality' to 'speciality' to match Firestore field
+              'speciality': data['speciality'] ?? 'Sin especialidad',
               'photoUrl': data['photoUrl'],
-              'workDays': workDaysList, // Lista de strings como "Lun", "Mar", etc.
-              'startTime': startHour, // Now consistently stored as integer
-              'endTime': endHour,    // Now consistently stored as integer
+              'workDays': workDaysList,
+              'startTime': startHour,
+              'endTime': endHour,
               'breakDuration': data['breakDuration'] ?? 60,
-            };
-          }).toList();
+            });
+          }
+          
+          doctors = tempDoctors;
           isLoading = false;
         });
       }
@@ -191,8 +212,8 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
 
   // Confirmar y guardar la cita
   Future<void> _confirmAppointment() async {
-    // Get the current user ID once at the start of the function and store it
     final String? patientId = FirebaseAuth.instance.currentUser?.uid;
+    final DoctorPatientService doctorPatientService = DoctorPatientService();
     
     if (selectedDoctor == null || selectedDay == null || selectedTime == null || patientId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -206,10 +227,10 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
     });
     
     try {
-      // Obtain patient information
+      // Obtener información del paciente
       DocumentSnapshot patientDoc = await FirebaseFirestore.instance
           .collection('patients')
-          .doc(patientId) // Use the stored patientId
+          .doc(patientId)
           .get();
       
       String patientName = '';
@@ -218,7 +239,7 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
         patientName = '${patientData['firstName'] ?? ''} ${patientData['lastName'] ?? ''}';
       }
       
-      // Create date time with the selected day and time
+      // Crear date time completo
       DateTime appointmentDateTime = DateTime(
         selectedDay!.year,
         selectedDay!.month,
@@ -227,16 +248,14 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
         selectedTime!.minute,
       );
       
-      // Format time as HH:MM for Firestore
+      // Formato de tiempo HH:MM para Firestore
       String formattedTime = _formatTime(selectedTime!);
       
-      // Create a document reference first to get the ID before writing
-      DocumentReference docRef = FirebaseFirestore.instance.collection('appointments').doc();
+      // Crear la cita
+      final firestore = FirebaseFirestore.instance;
       
-      // Now add the data including the document ID as appointmentId
-      await docRef.set({
-        'appointmentId': docRef.id,
-        'patientId': patientId, // Use the stored patientId
+      final docRef = await firestore.collection('appointments').add({
+        'patientId': patientId,
         'patientName': patientName,
         'doctorId': selectedDoctor!['id'],
         'doctorName': selectedDoctor!['name'],
@@ -244,16 +263,27 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
         'appointmentDateTime': Timestamp.fromDate(appointmentDateTime),
         'appointmentTime': formattedTime,
         'appointmentDate': DateFormat('yyyy-MM-dd').format(selectedDay!),
+        'date': appointmentDateTime.toIso8601String(),
         'status': 'scheduled',
         'createdAt': FieldValue.serverTimestamp(),
       });
+      
+      print('✅ Cita creada con ID: ${docRef.id}');
+      
+      // PASO CRÍTICO: Crear la relación doctor-paciente DESPUÉS de crear la cita
+      // Usamos un servicio dedicado para garantizar consistencia
+      await doctorPatientService.createOrUpdateRelation(
+        doctorId: selectedDoctor!['id'],
+        patientId: patientId,
+        source: 'patient_booking',
+      );
       
       if (mounted) {
         setState(() {
           isLoading = false;
         });
         
-        // Add to the stream to show success screen
+        // Mostrar éxito y añadir al stream
         _appointmentCompletedController.add(true);
       }
     } catch (e) {
@@ -262,9 +292,9 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
           isLoading = false;
         });
         
-        print('Error confirming appointment: $e');
+        print('❌ Error confirmando cita: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al confirmar la cita. Intente nuevamente.'))
+          SnackBar(content: Text('Error al confirmar la cita: ${e.toString()}')),
         );
       }
     }
@@ -289,7 +319,11 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
   String formatWorkDays(List<String> workDays) {
     if (workDays.isEmpty) return 'No especificado';
     
-    return workDays.join(', ');
+    // Traducir cada día al español
+    List<String> spanishDays = workDays.map((day) => 
+      englishToSpanishDays[day] ?? day).toList();
+    
+    return spanishDays.join(', ');
   }
   
   // Formatear horario de trabajo

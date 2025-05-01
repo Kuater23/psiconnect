@@ -274,30 +274,33 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   // New method to check for existing DNI in a specific role collection
   Future<bool> checkDniExists({required String dni, required String role}) async {
     try {
-      // Determine which collection to check based on role
-      String collection;
-      if (role == 'professional') {
-        collection = FirestoreCollections.doctors;
-      } else if (role == 'patient') {
-        collection = FirestoreCollections.patients;
-      } else {
-        // For other roles, consider what makes sense in your application
+      // Skip the check if DNI is empty (common for Google sign-ins)
+      if (dni.isEmpty) {
         return false;
       }
       
-      // Query Firestore to see if there's a user with this DNI in the specified collection
+      String collection;
+      if (role == 'professional') {
+        collection = 'doctors';  // Use string directly instead of FirestoreCollections
+      } else if (role == 'patient') {
+        collection = 'patients';
+      } else {
+        return false;
+      }
+      
+      print('Checking for DNI: $dni in collection: $collection');
       final querySnapshot = await _firestore
           .collection(collection)
           .where('dni', isEqualTo: dni)
           .get();
       
-      // If we found any documents, the DNI already exists for this role
+      // Debug information
+      print('Found ${querySnapshot.docs.length} documents with this DNI');
       return querySnapshot.docs.isNotEmpty;
     } catch (e) {
-      debugPrint('Error checking DNI existence: $e');
-      // If there's an error, it's safer to assume the DNI might exist
-      // to prevent duplicate registrations
-      return true;
+      print('Error checking DNI existence: $e');
+      // Return false on error instead of true to avoid false positives
+      return false;
     }
   }
   
