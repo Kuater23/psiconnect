@@ -3,7 +3,11 @@
     "node": "20"
   },
   "dependencies": {
+<<<<<<< HEAD
+    "firebase-admin": "^13.1.0",
+=======
     "firebase-admin": "^12.0.0",
+>>>>>>> origin/luca
     "firebase-functions": "^6.3.2",
     "firebaseui": "^6.1.0"
   }

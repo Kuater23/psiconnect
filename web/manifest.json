@@ -1,13 +1,13 @@
 {
-  "name": "Psiconnect",
-  "short_name": "Psiconnect",
-  "description": "Conecta pacientes con profesionales de la salud mental.",
-  "lang": "es",
-  "start_url": "/",
+  "name": "psiconnect",
+  "short_name": "psiconnect",
+  "start_url": ".",
   "display": "standalone",
-  "background_color": "#01282D",
-  "theme_color": "#01282D",
-  "orientation": "any",
+  "background_color": "#0175C2",
+  "theme_color": "#0175C2",
+  "description": "psiconnect",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icons/Icon-192.png",
@@ -34,14 +34,14 @@
   ],
   "screenshots": [
     {
-      "src": "images/screenshots/screen1.png",
+      "src": "assets/images/screenshots/screen1.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "platform": "wide",
       "label": "Pantalla de inicio de Psiconnect"
     },
     {
-      "src": "images/screenshots/screen2.png",
+      "src": "assets/images/screenshots/screen2.png",
       "sizes": "1080x1920",
       "type": "image/png",
       "platform": "wide",

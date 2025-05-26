@@ -9,10 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  path: ^1.8.3
-  url_launcher: ^6.2.4
-  provider: ^6.1.1
-  intl: ^0.20.2 
+  path_provider: ^2.0.11
+  provider: ^6.0.0
+  intl: ^0.20.2
   url_strategy: ^0.3.0
   hooks_riverpod: ^2.4.9
   webview_flutter_web: ^0.2.2+4
@@ -25,11 +24,11 @@ dependencies:
   table_calendar: ^3.0.9 
   http: ^1.1.2
   flutter_signin_button: ^2.0.0
-  shared_preferences: ^2.2.2
-  go_router: ^14.8.1  
-  cached_network_image: ^3.3.1  
-  firebase_storage: ^12.4.5 
-  file_picker: ^10.1.0
+  shared_preferences: ^2.3.2
+  go_router: ^14.8.1
+  cached_network_image: ^3.4.1
+  firebase_storage: ^12.4.4
+  file_picker: ^9.0.2
   universal_html: ^2.2.4
 
 dev_dependencies:

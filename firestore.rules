@@ -1,6 +1,5 @@
-// firestore.rules
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
     // Common functions
@@ -28,21 +27,13 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/patients/$(request.auth.uid));
     }
     
-    // Función para verificar relación médico-paciente - CORREGIDA
-    function hasRelation(doctorId, patientId) {
-      let relationId = doctorId + '_' + patientId;
-      return exists(/databases/$(database)/documents/doctor_patients/$(relationId));
-    }
-    
     // Users collection - replace with the actual collections
     match /doctors/{userId} {
       // Anyone can create their account (controlled by application logic)
       allow create: if isSignedIn() && request.auth.uid == userId;
       
-      // All authenticated users can read doctor data
-      allow read: if isSignedIn();
-      
-      // Only the user or admin can update user data
+      // Only the user or admin can read/update user data
+      allow read: if isOwner(userId) || isAdmin();
       allow update: if isOwner(userId) || isAdmin();
       
       // Only admins can delete users
@@ -97,104 +88,61 @@ service cloud.firestore {
       );
     }
     
-    // Doctor-patients relationship collection
-    match /doctor_patients/{relationId} {
-      // Validate that the document ID follows the expected pattern doctorId_patientId
-      function isValidRelationId() {
-        return relationId.matches('^[^_]+_[^_]+$');
-      }
-      
-      // Extract doctor and patient IDs from the relation ID
-      function getDoctorId() {
-        return isValidRelationId() ? relationId.split('_')[0] : null;
-      }
-      
-      function getPatientId() {
-        return isValidRelationId() ? relationId.split('_')[1] : null;
-      }
-      
-      // Reglas para la colección doctor_patients
-      allow create: if isProfessional() && 
-                     isValidRelationId() && 
-                     getDoctorId() == request.auth.uid;
-                     
-      allow read: if isSignedIn() && (
-                   isAdmin() || 
-                   (isProfessional() && getDoctorId() == request.auth.uid) ||
-                   (isPatient() && getPatientId() == request.auth.uid)
-                 );
-                 
-      allow update: if (isProfessional() && 
-                     getDoctorId() == request.auth.uid) || 
-                     isAdmin();
-                     
-      allow delete: if (isProfessional() && 
-                     getDoctorId() == request.auth.uid) || 
-                     isAdmin();
-    }
-    
-    // Colecciones de Documentos de Pacientes - MEJORADA
-    
     // Patient documents collection
     match /patient_documents/{documentId} {
-      // Professionals can create documents for any patient with whom they have a relationship
-      allow create: if isSignedIn() && (
-        (isProfessional() && hasRelation(request.auth.uid, request.resource.data.patientId)) ||
-        isAdmin()
-      );
+      // Professionals can create documents
+      allow create: if isProfessional() || isAdmin();
       
       // Patients can read their own documents
-      // Professionals can read documents of their patients
+      // Professionals can read documents they created
       allow read: if isSignedIn() && (
         (isPatient() && resource.data.patientId == request.auth.uid) ||
-        (isProfessional() && hasRelation(request.auth.uid, resource.data.patientId)) ||
+        (isProfessional() && resource.data.doctorId == request.auth.uid) ||
         isAdmin()
       );
       
-      // Professionals can update documents of their patients
+      // Professionals can update documents they created
       allow update: if isSignedIn() && (
-        (isProfessional() && hasRelation(request.auth.uid, resource.data.patientId)) ||
+        (isProfessional() && resource.data.doctorId == request.auth.uid) ||
         isAdmin()
       );
       
-      // Professionals can delete documents of their patients
+      // Professionals can delete documents they created
       allow delete: if isSignedIn() && (
-        (isProfessional() && hasRelation(request.auth.uid, resource.data.patientId)) ||
+        (isProfessional() && resource.data.doctorId == request.auth.uid) ||
         isAdmin()
       );
     }
     
-    // Medical history collection - MEJORADA
+    // Medical history collection
     match /medical_history/{entryId} {
-      // Professionals can create entries for patients with relationship
-      allow create: if isSignedIn() && (
-        (isProfessional() && hasRelation(request.auth.uid, request.resource.data.patientId)) ||
-        isAdmin()
-      );
+      // Professionals can create entries
+      allow create: if isProfessional() || isAdmin();
       
-      // Access rules for reading medical history
+      // Patients can read their own medical history
+      // Professionals can read entries they created
       allow read: if isSignedIn() && (
         (isPatient() && resource.data.patientId == request.auth.uid) ||
-        (isProfessional() && hasRelation(request.auth.uid, resource.data.patientId)) ||
+        (isProfessional() && resource.data.createdBy == request.auth.uid) ||
         isAdmin()
       );
       
-      // Professionals can update entries of their patients
+      // Professionals can update entries they created
       allow update: if isSignedIn() && (
-        (isProfessional() && hasRelation(request.auth.uid, resource.data.patientId)) ||
+        (isProfessional() && resource.data.createdBy == request.auth.uid) ||
         isAdmin()
       );
       
-      // Professionals can delete entries of their patients
+      // Professionals can delete entries they created
       allow delete: if isSignedIn() && (
-        (isProfessional() && hasRelation(request.auth.uid, resource.data.patientId)) ||
+        (isProfessional() && resource.data.createdBy == request.auth.uid) ||
         isAdmin()
       );
     }
     
     // Default: deny all access
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if request.time < timestamp.date(2024, 12, 25);
     }
   }
 }

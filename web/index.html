@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-  <base href="/">
+  <!-- Adjusted base href for dynamic environment setup -->
+  <base href="/psi-connect/">
+
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   
@@ -13,22 +15,24 @@
   <!-- Open Graph tags for social sharing -->
   <meta property="og:title" content="Psiconnect - Conectando pacientes y profesionales">
   <meta property="og:description" content="Plataforma web para conectar pacientes con profesionales de la salud mental.">
-  <meta property="og:image" content="/images/logo.png">
+  <meta property="og:image" content="/assets/images/logo.png">
   <meta property="og:url" content="https://psiconnect-eb98a.web.app/">
   <meta property="og:type" content="website">
   
   <!-- Viewport configuration -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- PWA settings -->
+  <!-- SEO and accessibility improvements -->
+  <meta name="keywords" content="Psiconnect, psicología, salud mental, citas online">
+  <meta name="author" content="Equipo Psiconnect">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Psiconnect">
   
   <!-- Preload critical resources -->
   <link rel="preload" href="main.dart.js" as="script">
-  <link rel="preload" href="images/logo.png" as="image">
-  <link rel="preload" href="fonts/MaterialIcons-Regular.otf" as="font" type="font/otf" crossorigin>
+  <link rel="preload" href="assets/images/logo.png" as="image">
+  <link rel="preload" href="assets/fonts/MaterialIcons-Regular.otf" as="font" type="font/otf" crossorigin>
   
   <!-- Favicon and icons -->
   <link rel="icon" type="image/png" href="favicon.png">
@@ -38,32 +42,10 @@
   <title>Psiconnect - Conectando pacientes y profesionales</title>
   
   <!-- Firebase SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
-    import { getStorage } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
-    
-    // Tu configuración de Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyATXxqOAOH-ViKl8UlLgoeeSRoFRakeK_U",
-      appId: "1:953533544770:web:2a3e104a25b63a807870db",
-      messagingSenderId: "953533544770",
-      projectId: "psiconnect-eb98a",
-      authDomain: "psiconnect-eb98a.firebaseapp.com",
-      databaseURL: "https://psiconnect-eb98a-default-rtdb.firebaseio.com",
-      storageBucket: 'psiconnect-eb98a.firebasestorage.app',
-    };
-    
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const storage = getStorage(app);
-    
-    // Hacer disponible para el resto de la aplicación
-    window.firebaseApp = app;
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js"></script>
   
   <!-- Optimized loading styles -->
   <style>
@@ -135,7 +117,7 @@
   <!-- Optimized loading screen -->
   <div id="loading" class="loading-container">
     <div class="loading-content">
-      <img src="images/logo.png" alt="Logo de Psiconnect" class="loading-logo">
+      <img src="assets/images/logo.png" alt="Logo de Psiconnect" class="loading-logo">
       <div class="loading-spinner"></div>
       <p>Iniciando Psiconnect...</p>
     </div>
@@ -143,154 +125,60 @@
 
   <!-- Improved initialization script -->
   <script>
-    // Service worker version for cache busting
-    var serviceWorkerVersion = '"2942373481"';
-    
-    // Control variables
+    var serviceWorkerVersion = '{{flutter_service_worker_version}}';
     var scriptLoaded = false;
-    var loadStartTime = Date.now();
-    var loadTimeout;
-    
-    // Function to load main script
+
     function loadMainDartJs() {
-      if (scriptLoaded) return;
+      if (scriptLoaded) {
+        return;
+      }
       scriptLoaded = true;
-      
-      console.log('Loading main.dart.js...');
-      
       var scriptTag = document.createElement('script');
       scriptTag.src = 'main.dart.js';
       scriptTag.type = 'application/javascript';
-      
-      // Load success event
-      scriptTag.addEventListener('load', function() {
-        var loadTime = Date.now() - loadStartTime;
-        console.log('Script loaded successfully in ' + loadTime + 'ms');
-        
-        // Smooth transition to hide loading screen
-        var loadingElement = document.getElementById('loading');
-        loadingElement.style.opacity = '0';
-        setTimeout(function() {
-          loadingElement.style.display = 'none';
-        }, 300);
-        
-        // Clear safety timeout
-        clearTimeout(loadTimeout);
-      });
-      
-      // Error handling
-      scriptTag.addEventListener('error', function(error) {
-        console.error('Error loading main.dart.js:', error);
-        
-        // Show error message to user
-        document.getElementById('loading').innerHTML = 
-          '<div class="loading-content">' +
-          '<p>No se pudo cargar la aplicación.</p>' +
-          '<button onclick="location.reload()" ' +
-          'style="padding: 10px 20px; background: #0BBFCD; border: none; ' +
-          'color: white; border-radius: 4px; cursor: pointer;">' +
-          'Reintentar</button>' +
-          '</div>';
-      });
-      
-      document.body.appendChild(scriptTag);
+      document.body.append(scriptTag);
+      document.getElementById('loading').style.display = 'none';
     }
 
-    // Service Worker registration for PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         var serviceWorkerUrl = 'flutter_service_worker.js?v=' + serviceWorkerVersion;
-        
+
         navigator.serviceWorker.register(serviceWorkerUrl)
           .then((reg) => {
             function waitForActivation(serviceWorker) {
               serviceWorker.addEventListener('statechange', () => {
                 if (serviceWorker.state === 'activated') {
-                  console.log('Service worker activated successfully');
+                  console.log('Nuevo service worker activado.');
                   loadMainDartJs();
                 }
               });
             }
-            
+
             if (!reg.active && (reg.installing || reg.waiting)) {
-              // If there's a new SW installing, wait for it to activate
               waitForActivation(reg.installing || reg.waiting);
             } else if (!reg.active.scriptURL.endsWith(serviceWorkerVersion)) {
-              // If there's a new version, update it
-              console.log('Updating to new SW version');
+              console.log('Actualizando service worker.');
               reg.update();
               waitForActivation(reg.installing);
             } else {
-              // Use existing active SW
-              console.log('Using existing service worker');
+              console.log('Cargando la aplicación desde el service worker existente.');
               loadMainDartJs();
             }
-          })
-          .catch((error) => {
-            console.warn('Service worker registration error:', error);
-            // Load app anyway
+          }).catch(error => {
+            console.error('Error registrando el Service Worker:', error);
             loadMainDartJs();
           });
-          
-        // Safety timeout: if after 6 seconds it hasn't loaded, try loading directly
-        loadTimeout = setTimeout(() => {
+
+        setTimeout(() => {
           if (!scriptLoaded) {
-            console.warn('Service worker timeout, loading directly');
+            console.warn('Fallo al cargar desde el service worker. Cargando con <script> simple.');
             loadMainDartJs();
           }
-        }, 6000);
+        }, 4000);
       });
     } else {
-      // If service workers aren't supported, load directly
       loadMainDartJs();
-    }
-    
-    // Performance measurement
-    if (typeof performance !== 'undefined' && performance.mark) {
-      performance.mark('app-init-start');
-      
-      // Measure time until app is interactive
-      window.addEventListener('flutter-first-frame', function() {
-        performance.mark('app-init-end');
-        performance.measure('app-initialization', 'app-init-start', 'app-init-end');
-        
-        // Log performance metrics
-        const perfEntries = performance.getEntriesByType('measure');
-        perfEntries.forEach((entry) => {
-          console.log(`${entry.name}: ${Math.round(entry.duration)}ms`);
-        });
-        
-        // Send metrics to analytics if available
-        if (window.gtag) {
-          gtag('event', 'performance', {
-            'app_load_time': Math.round(performance.getEntriesByName('app-initialization')[0].duration)
-          });
-        }
-      });
-      
-      // Track resource loading performance
-      window.addEventListener('load', function() {
-        // Get resource timing data
-        const resources = performance.getEntriesByType('resource');
-        
-        // Analyze critical resources
-        const jsResources = resources.filter(r => r.name.endsWith('.js'));
-        const cssResources = resources.filter(r => r.name.endsWith('.css'));
-        const imageResources = resources.filter(r => 
-          r.name.endsWith('.png') || r.name.endsWith('.jpg') || 
-          r.name.endsWith('.jpeg') || r.name.endsWith('.webp'));
-        
-        // Log average load times
-        if (jsResources.length) {
-          const avgJsTime = jsResources.reduce((sum, r) => sum + r.duration, 0) / jsResources.length;
-          console.log(`Average JS resource load time: ${Math.round(avgJsTime)}ms`);
-        }
-        
-        if (imageResources.length) {
-          const avgImgTime = imageResources.reduce((sum, r) => sum + r.duration, 0) / imageResources.length;
-          console.log(`Average image resource load time: ${Math.round(avgImgTime)}ms`);
-        }
-      });
     }
   </script>
 
@@ -303,7 +191,5 @@
       </div>
     </div>
   </noscript>
-
-  <img src="/images/logo.png" />
 </body>
 </html>
