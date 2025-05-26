@@ -1,14 +1,7 @@
 {
   "flutter": {
     "platforms": {
-      "dart": {
-        "lib/firebase_options.dart": {
-          "projectId": "psiconnect-eb98a",
-          "configurations": {
-            "web": "1:953533544770:web:2a3e104a25b63a807870db"
-          }
-        }
-      }
+      "dart": {}
     }
   },
   "emulators": {
@@ -18,8 +11,15 @@
     "database": {
       "port": 9000
     },
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
     "ui": {
-      "enabled": true
+      "enabled": true,
+      "port": 4000
     },
     "singleProjectMode": true
   },
@@ -33,20 +33,7 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "*.local"
-      ],
-      "predeploy": []
+      ]
     }
-  ],
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "hosting": {
-    "public": "build/web",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  }
+  ]
 }

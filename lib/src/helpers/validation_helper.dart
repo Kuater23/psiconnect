@@ -9,7 +9,7 @@ class ValidationHelper {
 
   /// Validates if the input is a valid phone number.
   static String? validatePhoneNumber(String? value) {
-    if (value == null || value.trim().isEmpty) {
+    if (value == null || value.isEmpty) {
       return 'Por favor ingrese su número de teléfono';
     }
     // Basic regex to validate phone number format

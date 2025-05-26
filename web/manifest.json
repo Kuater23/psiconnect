@@ -31,5 +31,40 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "assets/images/screenshots/screen1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Pantalla de inicio de Psiconnect"
+    },
+    {
+      "src": "assets/images/screenshots/screen2.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Listado de profesionales"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mis Citas",
+      "short_name": "Citas",
+      "description": "Ver mis citas programadas",
+      "url": "/patient/appointments",
+      "icons": [{ "src": "icons/appointments.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Programar Cita",
+      "short_name": "Programar",
+      "description": "Programar una nueva cita",
+      "url": "/patient/bookSchedule",
+      "icons": [{ "src": "icons/book.png", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "categories": ["health", "medical", "productivity", "social"]
 }

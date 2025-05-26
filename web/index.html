@@ -6,7 +6,20 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Psiconnect: Conecta pacientes con profesionales de la salud mental.">
+  
+  <!-- Improved SEO metadata -->
+  <meta name="description" content="Psiconnect - Plataforma web para conectar pacientes con profesionales de la salud mental. Agenda citas, gestiona historiales médicos y más.">
+  <meta name="keywords" content="Psiconnect, psicología, salud mental, citas online, psicólogos, terapia">
+  <meta name="author" content="Equipo Psiconnect">
+  
+  <!-- Open Graph tags for social sharing -->
+  <meta property="og:title" content="Psiconnect - Conectando pacientes y profesionales">
+  <meta property="og:description" content="Plataforma web para conectar pacientes con profesionales de la salud mental.">
+  <meta property="og:image" content="/assets/images/logo.png">
+  <meta property="og:url" content="https://psiconnect-eb98a.web.app/">
+  <meta property="og:type" content="website">
+  
+  <!-- Viewport configuration -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- SEO and accessibility improvements -->
@@ -15,20 +28,102 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Psiconnect">
-
-  <!-- Icons for PWA -->
+  
+  <!-- Preload critical resources -->
+  <link rel="preload" href="main.dart.js" as="script">
+  <link rel="preload" href="assets/images/logo.png" as="image">
+  <link rel="preload" href="assets/fonts/MaterialIcons-Regular.otf" as="font" type="font/otf" crossorigin>
+  
+  <!-- Favicon and icons -->
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
   <link rel="manifest" href="manifest.json">
-
-  <title>Psiconnect - Inicio</title>
-
-  <!-- Preloading critical resources -->
-  <link rel="preload" href="main.dart.js" as="script">
-  <link rel="preload" href="icons/Icon-192.png" as="image">
+  
+  <title>Psiconnect - Conectando pacientes y profesionales</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js"></script>
+  
+  <!-- Optimized loading styles -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      overscroll-behavior: none; /* Prevents overscroll in browsers */
+    }
+    
+    .loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      position: fixed;
+      background: #01282D; /* Psiconnect main color */
+      z-index: 9999;
+      transition: opacity 0.3s ease-out;
+    }
+    
+    .loading-content {
+      text-align: center;
+      color: white;
+    }
+    
+    .loading-logo {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 20px;
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #0BBFCD; /* Psiconnect secondary color */
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.6; transform: scale(0.98); }
+      50% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0.6; transform: scale(0.98); }
+    }
+    
+    /* Accessibility improvements */
+    *:focus {
+      outline: 2px solid #0BBFCD !important;
+      outline-offset: 2px !important;
+    }
+    
+    /* Performance improvements */
+    img {
+      content-visibility: auto;
+    }
+  </style>
 </head>
 <body>
-  <div id="loading">Cargando la aplicación...</div>
+  <!-- Optimized loading screen -->
+  <div id="loading" class="loading-container">
+    <div class="loading-content">
+      <img src="assets/images/logo.png" alt="Logo de Psiconnect" class="loading-logo">
+      <div class="loading-spinner"></div>
+      <p>Iniciando Psiconnect...</p>
+    </div>
+  </div>
 
+  <!-- Improved initialization script -->
   <script>
     var serviceWorkerVersion = '{{flutter_service_worker_version}}';
     var scriptLoaded = false;
@@ -86,5 +181,15 @@
       loadMainDartJs();
     }
   </script>
+
+  <!-- Fallback for browsers with JavaScript disabled -->
+  <noscript>
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; padding: 20px; color: #333;">
+      <div>
+        <h2>JavaScript Requerido</h2>
+        <p>Para usar Psiconnect, por favor habilita JavaScript en tu navegador.</p>
+      </div>
+    </div>
+  </noscript>
 </body>
 </html>
