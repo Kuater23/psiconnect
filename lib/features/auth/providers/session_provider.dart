@@ -8,16 +8,19 @@ import 'package:Psiconnect/navigation/router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '/core/exceptions/app_exception.dart';
 import '/features/auth/models/user_session.dart';
 import '/features/auth/services/auth_service.dart';
 import '/core/services/error_logger.dart';
+import '../../../core/services/user_role_service.dart';
+import '../../../core/providers/base_provider.dart';
 
 /// Provider for the AuthService
 final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService(FirebaseAuth.instance);
+  return AuthService();
 });
 
 // User session provider
@@ -79,7 +82,7 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   }
 
   void _initAuthListener() {
-    _authSubscription = _authService.authStateChanges.listen((User? user) async {
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((User? user) async {
       await _onAuthStateChanged(user);
     });
   }
@@ -154,90 +157,97 @@ class SessionNotifier extends StateNotifier<UserSession?> {
       );
       
       state = session;
-    } catch (e) {
-      print('Error in _onAuthStateChanged: $e');
-      // Error handling
+    } catch (e, st) {
+      ErrorLogger.logError('Error in _onAuthStateChanged', e, st);
     }
   }
 
-  // Replace both _isProfileComplete methods with this single implementation
+  // ✅ MÉTODO CORREGIDO - Usa fromFirestore en lugar de fromMap
   Future<bool> _isProfileComplete(User user, String role, Map<String, dynamic> userData) async {
-    // Check if profileCompleted flag exists and is true
-    if (userData['profileCompleted'] == true) return true;
+    // ✅ Primera verificación: flag profileCompleted
+    if (userData['profileCompleted'] == true) {
+      return true;
+    }
     
-    // Model-based checking approach
+    // ✅ Segunda verificación: validación basada en modelo
     if (role == 'professional') {
       try {
-        // Try creating a professional model from the data to check fields
-        final professionalData = {
-          ...userData,
-          'uid': user.uid,
-        };
+        final docRef = _firestore.collection('doctors').doc(user.uid);
+        final snapshot = await docRef.get();
         
-        // This will throw an exception if required fields are missing
-        final professional = ProfessionalModel.fromMap(professionalData);
+        if (!snapshot.exists) {
+          return false;
+        }
         
-        // Check if all required fields have values
-        return professional.firstName.isNotEmpty &&
-               professional.lastName.isNotEmpty &&
-               professional.phoneN.isNotEmpty &&
-               professional.dni.isNotEmpty &&
-               professional.address.isNotEmpty &&
-               professional.license.isNotEmpty &&
-               professional.workDays.isNotEmpty &&
-               professional.startTime.isNotEmpty &&
-               professional.endTime.isNotEmpty;
-      } catch (e) {
-        print('Professional profile incomplete: $e');
+        final professional = ProfessionalModel.fromFirestore(
+          snapshot as DocumentSnapshot<Map<String, dynamic>>
+        );
         
-        // Fall back to manual field checking if model approach fails
+        // ✅ Usar el helper del modelo
+        final isComplete = professional.isProfileComplete;
+        
+        // Si está completo pero no está marcado, actualizarlo
+        if (isComplete && !professional.profileCompleted) {
+          await _firestore.collection('doctors').doc(user.uid).update({
+            'profileCompleted': true,
+          });
+        }
+        
+        return isComplete;
+      } catch (e, st) {
+        ErrorLogger.logError('Professional profile incomplete', e, st);
+        
+        // Fall back to manual field checking
         final hasRequiredFields = userData['firstName'] != null && 
                userData['lastName'] != null && 
                userData['dni'] != null && 
                userData['phoneN'] != null &&
-               userData['address'] != null &&
-               userData['license'] != null &&
-               userData['startTime'] != null &&
-               userData['endTime'] != null;
+               userData['consultingAddress'] != null &&
+               userData['licenseNumber'] != null;
                
-        // Check either workDays or workDays (for backward compatibility)
-        final hasWorkDays = (userData['workDays'] != null && (userData['workDays'] as List).isNotEmpty) ||
-                            (userData['workdays'] != null && (userData['workdays'] as List).isNotEmpty);
+        final hasAvailability = userData['availability'] != null && 
+                                (userData['availability'] as Map).isNotEmpty;
                
-        return hasRequiredFields && hasWorkDays;
+        return hasRequiredFields && hasAvailability;
       }
     } else if (role == 'patient') {
       try {
-        // Try creating a patient model from the data to check fields
-        final patientData = {
-          ...userData,
-          'uid': user.uid,
-        };
+        final docRef = _firestore.collection('patients').doc(user.uid);
+        final snapshot = await docRef.get();
         
-        // This will throw an exception if required fields are missing
-        final patient = PatientModel.fromMap(patientData);
+        if (!snapshot.exists) {
+          return false;
+        }
         
-        // Check if all required fields have values
-        return patient.firstName.isNotEmpty &&
-               patient.lastName.isNotEmpty &&
-               patient.phoneN.isNotEmpty &&
-               patient.dni.isNotEmpty &&
-               patient.dob != null;
-      } catch (e) {
-        print('Patient profile incomplete: $e');
+        final patient = PatientModel.fromFirestore(
+          snapshot as DocumentSnapshot<Map<String, dynamic>>
+        );
+        
+        // ✅ Usar el helper del modelo
+        final isComplete = patient.isProfileComplete;
+        
+        // Si está completo pero no está marcado, actualizarlo
+        if (isComplete && !patient.profileCompleted) {
+          await _firestore.collection('patients').doc(user.uid).update({
+            'profileCompleted': true,
+          });
+        }
+        
+        return isComplete;
+      } catch (e, st) {
+        ErrorLogger.logError('Patient profile incomplete', e, st);
         
         // Fall back to manual field checking
         return userData['firstName'] != null && 
                userData['lastName'] != null && 
                userData['dni'] != null && 
-               userData['phoneN'] != null;
+               userData['phoneN'] != null &&
+               userData['birthDate'] != null;
       }
     } else if (role == 'admin') {
-      // For admin users, we might have different requirements
       return true;
     }
     
-    // Default case - if role is not recognized
     return false;
   }
   
@@ -265,9 +275,9 @@ class SessionNotifier extends StateNotifier<UserSession?> {
         'registerMethod': 'auto',
       });
       
-      print('Created default patient record for new user'); // Debug log
-    } catch (e) {
-      print('Error creating default patient record: $e'); // Debug log
+      ErrorLogger.info('Created default patient record for new user');
+    } catch (e, st) {
+      ErrorLogger.logError('Error creating default patient record', e, st);
     }
   }
   
@@ -281,25 +291,23 @@ class SessionNotifier extends StateNotifier<UserSession?> {
       
       String collection;
       if (role == 'professional') {
-        collection = 'doctors';  // Use string directly instead of FirestoreCollections
+        collection = 'doctors';
       } else if (role == 'patient') {
         collection = 'patients';
       } else {
         return false;
       }
       
-      print('Checking for DNI: $dni in collection: $collection');
+      ErrorLogger.info('Checking for DNI: $dni in collection: $collection');
       final querySnapshot = await _firestore
           .collection(collection)
           .where('dni', isEqualTo: dni)
           .get();
       
-      // Debug information
-      print('Found ${querySnapshot.docs.length} documents with this DNI');
+      ErrorLogger.info('Found ${querySnapshot.docs.length} documents with this DNI');
       return querySnapshot.docs.isNotEmpty;
-    } catch (e) {
-      print('Error checking DNI existence: $e');
-      // Return false on error instead of true to avoid false positives
+    } catch (e, st) {
+      ErrorLogger.logError('Error checking DNI existence', e, st);
       return false;
     }
   }
@@ -307,40 +315,52 @@ class SessionNotifier extends StateNotifier<UserSession?> {
   // Método login
   Future<void> logIn(String email, String password) async {
     try {
-      // Solo llama al método de inicio de sesión, el resto se maneja en el listener
-      final user = await _authService.signInWithEmail(email, password);
-      // No tienes que configurar el state aquí - se hará automáticamente por el listener
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final user = userCredential.user;
       
-      print('Login exitoso para $email');
-    } catch (e) {
-      print('Error durante el login: $e');
-      rethrow; // Deja que la UI maneje el error
+      ErrorLogger.info('Login exitoso para ${user?.email ?? email}');
+    } catch (e, st) {
+      ErrorLogger.logError('Error durante el login', e, st);
+      rethrow;
     }
   }
   
   // Login with Google
   Future<User?> logInWithGoogle() async {
     try {
-      final user = await _authService.signInWithGoogle();
-      
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        ErrorLogger.info('Google sign-in aborted by user');
+        return null;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final user = userCredential.user;
+
       if (user != null) {
-        // Verificar si el usuario ya existe en alguna colección
         final doctorDoc = await _firestore.collection('doctors').doc(user.uid).get();
         final patientDoc = await _firestore.collection('patients').doc(user.uid).get();
         
         if (!doctorDoc.exists && !patientDoc.exists) {
-          // Es un usuario nuevo, devuelve el usuario para que la UI muestre el diálogo de rol
-          print('Nuevo usuario de Google detectado, requiere selección de rol');
+          ErrorLogger.info('Nuevo usuario de Google detectado, requiere selección de rol');
           return user;
         } else {
-          // Es un usuario existente, el listener de autenticación se encargará de redireccionar
-          print('Usuario existente de Google encontrado en las colecciones');
+          ErrorLogger.info('Usuario existente de Google encontrado en las colecciones');
           return null;
         }
       }
       return null;
-    } catch (e) {
-      print('Error durante el login con Google: $e');
+    } catch (e, st) {
+      ErrorLogger.logError('Error durante el login con Google', e, st);
       rethrow;
     }
   }
@@ -355,20 +375,16 @@ class SessionNotifier extends StateNotifier<UserSession?> {
     String phoneN = '',
     String dni = '',
     DateTime? dob,
-    // Campos específicos para doctores
     String? license,
     String? speciality,
-    String? startTime,
-    String? endTime,
-    List<String>? workDays,
-    String? breakDuration,
+    Map<String, dynamic>? availability,
   }) async {
     try {
-      // Create authentication user
-      final user = await _authService.registerWithEmail(
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      final user = userCredential.user;
       
       if (user == null) {
         throw AuthException('Error al crear usuario');
@@ -383,157 +399,126 @@ class SessionNotifier extends StateNotifier<UserSession?> {
         'phoneN': phoneN,
         'dni': dni,
         'createdAt': FieldValue.serverTimestamp(),
-        'profileCompleted': false, // Añadir este campo explícitamente
+        'updatedAt': FieldValue.serverTimestamp(),
+        'profileCompleted': false,
       };
       
-      // Add dob if provided
+      // Add birthDate if provided
       if (dob != null) {
-        userData['dob'] = Timestamp.fromDate(dob);
+        userData['birthDate'] = Timestamp.fromDate(dob);
       }
       
-      // Determinar en qué colección guardar basado en el rol
       String collection;
       
       if (role == 'professional') {
         collection = 'doctors';
         
-        // Add doctor-specific fields
-        if (license != null) userData['license'] = license;
+        if (license != null) userData['licenseNumber'] = license;
         if (speciality != null) userData['speciality'] = speciality;
-        if (startTime != null) userData['startTime'] = startTime;
-        if (endTime != null) userData['endTime'] = endTime;
-        if (breakDuration != null) userData['breakDuration'] = breakDuration;
-        
-        if (workDays != null && workDays.isNotEmpty) {
-          userData['workDays'] = workDays;
-        }
+        if (availability != null) userData['availability'] = availability;
       } else if (role == 'admin') {
         collection = 'admins';
       } else {
-        // Default to patient
         collection = 'patients';
       }
       
-      // Crear documento en la colección correspondiente
       await _firestore.collection(collection).doc(user.uid).set(userData);
-      
-      // Also update user profile in Firebase Auth
       await user.updateDisplayName('$firstName $lastName'.trim());
       
-      print('Created new user in collection: $collection'); // Debug log
-      
-      // Estado se actualizará a través del auth listener
-    } catch (e) {
-      print('Error during registration: $e'); // Debug log
-      rethrow; // Let the UI handle the error
+      ErrorLogger.info('Created new user in collection: $collection');
+    } catch (e, st) {
+      ErrorLogger.logError('Error during registration', e, st);
+      rethrow;
     }
   }
   
   // Add a new method for Google registration with role selection
   Future<void> registerWithGoogle(String role) async {
-  // Get the currently signed in user
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    print('Error: No user logged in when trying to register with Google');
-    return;
-  }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ErrorLogger.warning('No user logged in when trying to register with Google');
+      return;
+    }
 
-  // First check if user already exists in any collection
-  final doctorDoc = await _firestore.collection('doctors').doc(user.uid).get();
-  final patientDoc = await _firestore.collection('patients').doc(user.uid).get();
-  
-  if (doctorDoc.exists || patientDoc.exists) {
-    print('User already exists in a collection. Not creating a new record.');
-    return;
-  }
+    final doctorDoc = await _firestore.collection('doctors').doc(user.uid).get();
+    final patientDoc = await _firestore.collection('patients').doc(user.uid).get();
+    
+    if (doctorDoc.exists || patientDoc.exists) {
+      ErrorLogger.warning('User already exists in a collection');
+      return;
+    }
 
-  // Determine which collection to use based on role
-  final String collection = role == 'professional' ? 'doctors' : 'patients';
-  
-  // Extract name parts from display name
-  final nameParts = user.displayName?.split(' ') ?? [''];
-  final firstName = nameParts.firstOrNull ?? '';
-  final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-  
-  // Create user data map
-  Map<String, dynamic> userData = {
-    'firstName': firstName,
-    'lastName': lastName,
-    'email': user.email ?? '',
-    'uid': user.uid,
-    'createdAt': FieldValue.serverTimestamp(),
-    'registerMethod': 'google',
-    'profileCompleted': false, // Set to false for new users
-  };
-  
-  // For debugging - print clear information
-  print('Creating user in collection: $collection with role determined by collection');
-  
-  // Create user in the appropriate collection only
-  await _firestore.collection(collection).doc(user.uid).set(userData);
-  
-  print('Successfully created Google user in collection: $collection');
-}
+    final String collection = role == 'professional' ? 'doctors' : 'patients';
+    
+    final nameParts = user.displayName?.split(' ') ?? [''];
+    final firstName = nameParts.firstOrNull ?? '';
+    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+    
+    Map<String, dynamic> userData = {
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': user.email ?? '',
+      'uid': user.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'registerMethod': 'google',
+      'profileCompleted': false,
+    };
+    
+    await _firestore.collection(collection).doc(user.uid).set(userData);
+    
+    ErrorLogger.info('Successfully created Google user in collection: $collection');
+  }
   
   // Log out
-  // Log out - use this method instead of signOut
-Future<void> logOut([BuildContext? context]) async {
-  try {
-    // Sign out directly from Firebase Auth
-    await FirebaseAuth.instance.signOut();
-    
-    // Show success message if context is provided
-    if (context != null && context.mounted) {
-      context.go(RoutePaths.home);
+  Future<void> logOut([BuildContext? context]) async {
+    try {
+      await FirebaseAuth.instance.signOut();
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Has cerrado sesión correctamente'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (context != null && context.mounted) {
+        context.go(RoutePaths.home);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Has cerrado sesión correctamente'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e, st) {
+      ErrorLogger.logError('Error during logout', e, st);
+      
+      if (context != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al cerrar sesión'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      
+      rethrow;
     }
-  } catch (e) {
-    print('Error during logout: $e');
-    
-    // Show error message if context is provided
-    if (context != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error al cerrar sesión'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-    
-    rethrow;
   }
-}
 
   /// Reload the current user session to reflect any changes in profile completion
   Future<void> reloadSession() async {
     try {
-      // Get current Firebase user
       final user = FirebaseAuth.instance.currentUser;
       
       if (user == null) {
-        print('No hay usuario autenticado para recargar la sesión');
+        ErrorLogger.warning('No hay usuario autenticado para recargar la sesión');
         return;
       }
       
-      // Force reload of Firebase user to get latest token claims
       await user.reload();
-      
-      // Re-run the auth state changed handler with the current user
-      // This will check collections again and update isProfileComplete
       await _onAuthStateChanged(user);
       
-      print('Sesión recargada exitosamente para: ${user.email}');
-    } catch (e) {
-      print('Error al recargar la sesión: $e');
-      ErrorLogger.logError('Error reloading session', e, StackTrace.current);
+      ErrorLogger.info('Sesión recargada exitosamente para: ${user.email}');
+    } catch (e, st) {
+      ErrorLogger.logError('Error reloading session', e, st);
       throw AppException('No se pudo recargar la sesión: $e');
     }
   }
@@ -542,5 +527,54 @@ Future<void> logOut([BuildContext? context]) async {
   void dispose() {
     _authSubscription.cancel();
     super.dispose();
+  }
+}
+
+class SessionProvider extends BaseProvider {
+  final _auth = FirebaseAuth.instance;
+  final _roleService = UserRoleService();
+
+  User? _user;
+  AppUserRole? _role;
+
+  User? get user => _user;
+  AppUserRole? get role => _role;
+  bool get isAuthenticated => _user != null;
+  bool get isProfessional => _role == AppUserRole.professional;
+  bool get isPatient => _role == AppUserRole.patient;
+  bool get isAdmin => _role == AppUserRole.admin;
+
+  SessionProvider() {
+    _auth.authStateChanges().listen(_onAuthStateChanged);
+  }
+
+  Future<void> _onAuthStateChanged(User? user) async {
+    _user = user;
+    
+    if (user != null) {
+      await executeAsync(
+        () => _loadUserRole(user.uid),
+        errorMessage: 'Error cargando rol de usuario',
+      );
+    } else {
+      _role = null;
+      setLoaded();
+    }
+  }
+
+  Future<void> _loadUserRole(String uid) async {
+    _role = await _roleService.getUserRole(uid);
+  }
+
+  Future<void> refreshUserRole() async {
+    if (_user == null) return;
+    
+    await executeAsync(
+      () async {
+        _roleService.clearCache(_user!.uid);
+        await _loadUserRole(_user!.uid);
+      },
+      errorMessage: 'Error refrescando rol de usuario',
+    );
   }
 }

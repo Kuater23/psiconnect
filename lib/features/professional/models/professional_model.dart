@@ -1,156 +1,169 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/models/base_model.dart';
 
-class ProfessionalModel {
-  final String uid;
-  final String firstName;
-  final String lastName;
-  final String email;
-  final String phoneN;
-  final String dni;
-  final String address;
-  final String license;
-  final String speciality;
-  final DateTime? dob;
-  final List<String> workDays;
-  final String startTime;
-  final String endTime;
-  final int breakDuration;
-  final bool profileCompleted;
-  
+class ProfessionalModel extends BaseModel {
+  final String? email;
+  final String? displayName;
+  final String? photoURL;
+  final String? firstName;
+  final String? lastName;
+  final String? phoneN;
+  final String? dni;
+  final DateTime? birthDate;
+  final String? speciality;
+  final String? licenseNumber;
+  final String? bio;
+  final List<String>? certifications;
+  final String? consultingAddress;
+  final Map<String, dynamic>? availability;
+  final double? consultationFee;
+  final String? status;
+  final bool profileCompleted;  // ✅ RESTAURADO
+
   ProfessionalModel({
-    required this.uid,
-    required this.firstName,
-    required this.lastName,
-    required this.email,
-    required this.phoneN,
-    required this.dni,
-    required this.address,
-    required this.license,
-    required this.speciality,
-    this.dob,
-    required this.workDays,
-    required this.startTime,
-    required this.endTime,
-    this.breakDuration = 15,
-    this.profileCompleted = false,
+    super.id,
+    super.createdAt,
+    super.updatedAt,
+    this.email,
+    this.displayName,
+    this.photoURL,
+    this.firstName,
+    this.lastName,
+    this.phoneN,
+    this.dni,
+    this.birthDate,
+    this.speciality,
+    this.licenseNumber,
+    this.bio,
+    this.certifications,
+    this.consultingAddress,
+    this.availability,
+    this.consultationFee,
+    this.status,
+    this.profileCompleted = false,  // ✅ Default false
   });
-  
-  // Create a model from Firestore data
-  factory ProfessionalModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    
-    // Handle workDays field that might be named differently
-    List<String> workDays = [];
-    if (data['workDays'] != null) {
-      workDays = List<String>.from(data['workDays']);
+
+  factory ProfessionalModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
+    if (data == null) {
+      throw Exception('Documento sin datos');
     }
-    
+
     return ProfessionalModel(
-      uid: doc.id,
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      email: data['email'] ?? '',
-      phoneN: data['phoneN'] ?? '',
-      dni: data['dni'] ?? '',
-      address: data['address'] ?? '',
-      license: data['license'] ?? '',
-      speciality: data['speciality'] ?? '',
-      dob: data['dob'] != null ? (data['dob'] as Timestamp).toDate() : null,
-      workDays: workDays,
-      startTime: data['startTime'] ?? '09:00',
-      endTime: data['endTime'] ?? '17:00',
-      breakDuration: data['breakDuration'] ?? 15,
-      profileCompleted: data['profileCompleted'] ?? false,
+      id: doc.id,
+      createdAt: BaseModel.timestampToDateTime(data['createdAt']),
+      updatedAt: BaseModel.timestampToDateTime(data['updatedAt']),
+      email: BaseModel.safeString(data['email']),
+      displayName: BaseModel.safeString(data['displayName']),
+      photoURL: BaseModel.safeString(data['photoURL']),
+      firstName: BaseModel.safeString(data['firstName']),
+      lastName: BaseModel.safeString(data['lastName']),
+      phoneN: BaseModel.safeString(data['phoneN']),
+      dni: BaseModel.safeString(data['dni']),
+      birthDate: BaseModel.timestampToDateTime(data['birthDate']),
+      speciality: BaseModel.safeString(data['speciality']),
+      licenseNumber: BaseModel.safeString(data['licenseNumber']),
+      bio: BaseModel.safeString(data['bio']),
+      certifications: BaseModel.safeList<String>(data['certifications']),
+      consultingAddress: BaseModel.safeString(data['consultingAddress']),
+      availability: BaseModel.safeMap(data['availability']),
+      consultationFee: BaseModel.safeDouble(data['consultationFee']),
+      status: BaseModel.safeString(data['status']) ?? 'active',
+      profileCompleted: data['profileCompleted'] ?? false,  // ✅ RESTAURADO
     );
   }
-  
-  // Add this constructor to create a model from a plain Map
-  factory ProfessionalModel.fromMap(Map<String, dynamic> data) {
-    // Handle workDays field that might be named differently
-    List<String> workDays = [];
-    if (data['workDays'] != null) {
-      workDays = List<String>.from(data['workDays']);
-    }
-    
-    return ProfessionalModel(
-      uid: data['uid'] ?? '',
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      email: data['email'] ?? '',
-      phoneN: data['phoneN'] ?? '',
-      dni: data['dni'] ?? '',
-      address: data['address'] ?? '',
-      license: data['license'] ?? '',
-      speciality: data['speciality'] ?? '',
-      dob: data['dob'] != null ? 
-          (data['dob'] is Timestamp ? 
-              (data['dob'] as Timestamp).toDate() : 
-              data['dob'] as DateTime) : 
-          null,
-      workDays: workDays,
-      startTime: data['startTime'] ?? '09:00',
-      endTime: data['endTime'] ?? '17:00',
-      breakDuration: data['breakDuration'] ?? 15,
-      profileCompleted: data['profileCompleted'] ?? false,
-    );
-  }
-  
-  // Convert model to a map for Firestore
-  Map<String, dynamic> toFirestore() {
+
+  @override
+  Map<String, dynamic> toMap() {
     return {
-      'firstName': firstName,
-      'lastName': lastName,
-      'email': email,
-      'phoneN': phoneN,
-      'dni': dni,
-      'address': address,
-      'license': license,
-      'speciality': speciality,
-      'dob': dob != null ? Timestamp.fromDate(dob!) : null,
-      'workDays': workDays,
-      'startTime': startTime,
-      'endTime': endTime,
-      'breakDuration': breakDuration,
-      'profileCompleted': profileCompleted,
+      ...baseMap,
+      if (email != null) 'email': email,
+      if (displayName != null) 'displayName': displayName,
+      if (photoURL != null) 'photoURL': photoURL,
+      if (firstName != null) 'firstName': firstName,
+      if (lastName != null) 'lastName': lastName,
+      if (phoneN != null) 'phoneN': phoneN,
+      if (dni != null) 'dni': dni,
+      if (birthDate != null) 'birthDate': Timestamp.fromDate(birthDate!),
+      if (speciality != null) 'speciality': speciality,
+      if (licenseNumber != null) 'licenseNumber': licenseNumber,
+      if (bio != null) 'bio': bio,
+      if (certifications != null) 'certifications': certifications,
+      if (consultingAddress != null) 'consultingAddress': consultingAddress,
+      if (availability != null) 'availability': availability,
+      if (consultationFee != null) 'consultationFee': consultationFee,
+      'status': status ?? 'active',
+      'profileCompleted': profileCompleted,  // ✅ RESTAURADO
     };
   }
-  
-  // Create a copy with updated fields
+
   ProfessionalModel copyWith({
+    String? id,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? email,
+    String? displayName,
+    String? photoURL,
     String? firstName,
     String? lastName,
-    String? email,
     String? phoneN,
     String? dni,
-    String? address,
-    String? license,
+    DateTime? birthDate,
     String? speciality,
-    DateTime? dob,
-    List<String>? workDays,
-    String? startTime,
-    String? endTime,
-    int? breakDuration,
-    bool? profileCompleted,
+    String? licenseNumber,
+    String? bio,
+    List<String>? certifications,
+    String? consultingAddress,
+    Map<String, dynamic>? availability,
+    double? consultationFee,
+    String? status,
+    bool? profileCompleted,  // ✅ RESTAURADO
   }) {
     return ProfessionalModel(
-      uid: this.uid,
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      photoURL: photoURL ?? this.photoURL,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
-      email: email ?? this.email,
       phoneN: phoneN ?? this.phoneN,
       dni: dni ?? this.dni,
-      address: address ?? this.address,
-      license: license ?? this.license,
+      birthDate: birthDate ?? this.birthDate,
       speciality: speciality ?? this.speciality,
-      dob: dob ?? this.dob,
-      workDays: workDays ?? this.workDays,
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
-      breakDuration: breakDuration ?? this.breakDuration,
-      profileCompleted: profileCompleted ?? this.profileCompleted,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      bio: bio ?? this.bio,
+      certifications: certifications ?? this.certifications,
+      consultingAddress: consultingAddress ?? this.consultingAddress,
+      availability: availability ?? this.availability,
+      consultationFee: consultationFee ?? this.consultationFee,
+      status: status ?? this.status,
+      profileCompleted: profileCompleted ?? this.profileCompleted,  // ✅ RESTAURADO
     );
   }
+
+  String get fullName => '${firstName ?? ''} ${lastName ?? ''}'.trim();
   
-  // Helper to get full name
-  String get fullName => '$firstName $lastName'.trim();
+  int? get age {
+    if (birthDate == null) return null;
+    final now = DateTime.now();
+    int age = now.year - birthDate!.year;
+    if (now.month < birthDate!.month || 
+        (now.month == birthDate!.month && now.day < birthDate!.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  // ✅ NUEVO: Helper para verificar si el perfil está completo
+  bool get isProfileComplete {
+    return (firstName?.isNotEmpty ?? false) &&
+           (lastName?.isNotEmpty ?? false) &&
+           (phoneN?.isNotEmpty ?? false) &&
+           (dni?.isNotEmpty ?? false) &&
+           (consultingAddress?.isNotEmpty ?? false) &&
+           (licenseNumber?.isNotEmpty ?? false) &&
+           (availability != null && availability!.isNotEmpty);
+  }
 }

@@ -13,7 +13,7 @@ class ProfessionalHome extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final professionalState = ref.watch(professionalProvider);
+    final professionalState = ref.watch(professionalProvider); 
 
     return Scaffold(
       appBar: AppBar(
@@ -63,115 +63,148 @@ class ProfessionalHome extends HookConsumerWidget {
     final _formKey = GlobalKey<FormState>();
     final _nameController = TextEditingController(text: professional.firstName);
     final _lastNameController = TextEditingController(text: professional.lastName);
-    final _addressController = TextEditingController(text: professional.address);
-    final _phoneController = TextEditingController(text: professional.phoneN);
+    final _addressController = TextEditingController(text: professional.consultingAddress);  // ✅ consultingAddress
+    final _phoneController = TextEditingController(text: professional.phoneN);  // ✅ phoneN
     final _documentNumberController = TextEditingController(text: professional.dni);
-    final _licenseNumberController = TextEditingController(text: professional.license);
+    final _licenseNumberController = TextEditingController(text: professional.licenseNumber);  // ✅ licenseNumber
+    
+    // ✅ Extraer workDays del availability map
+    final availabilityData = professional.availability ?? {};
+    final workDays = List<String>.from(availabilityData['workDays'] ?? []);
+    final startTimeStr = availabilityData['startTime'] as String? ?? '09:00';
+    final endTimeStr = availabilityData['endTime'] as String? ?? '17:00';
     
     // Use useState for selected days to ensure reactivity
     final selectedDays = useState<List<String>>(
-      professional.workDays.isNotEmpty 
-        ? List<String>.from(professional.workDays)
-        : []
+      workDays.isNotEmpty ? List<String>.from(workDays) : []
     );
     
-    TimeOfDay? _startTime = professional.startTime.isNotEmpty
-        ? TimeFormatHelper.parseTime(professional.startTime)
-        : null;
-    TimeOfDay? _endTime = professional.endTime.isNotEmpty
-        ? TimeFormatHelper.parseTime(professional.endTime)
-        : null;
+    TimeOfDay? _startTime = TimeFormatHelper.parseTime(startTimeStr);
+    TimeOfDay? _endTime = TimeFormatHelper.parseTime(endTimeStr);
 
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Complete la siguiente información',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 20),
-          _buildTextField(
-            labelText: 'Nombre',
-            controller: _nameController,
-            validator: (value) =>
-                value!.isEmpty ? 'Este campo es obligatorio' : null,
-          ),
-          SizedBox(height: 10),
-          _buildTextField(
-            labelText: 'Apellido',
-            controller: _lastNameController,
-            validator: (value) =>
-                value!.isEmpty ? 'Este campo es obligatorio' : null,
-          ),
-          SizedBox(height: 10),
-          _buildTextField(
-            labelText: 'Dirección del consultorio',
-            controller: _addressController,
-            validator: (value) =>
-                value!.isEmpty ? 'Este campo es obligatorio' : null,
-          ),
-          SizedBox(height: 10),
-          _buildTextField(
-            labelText: 'Teléfono',
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            validator: (value) =>
-                value!.isEmpty ? 'Este campo es obligatorio' : null,
-          ),
-          SizedBox(height: 10),
-          _buildDaysSelector(ref, selectedDays.value),
-          _buildTimeSelector(
-            context: context, // Pasa el contexto aquí
-            label: 'Hora de Inicio',
-            initialTime: _startTime ?? TimeOfDay(hour: 9, minute: 0),
-            onTimePicked: (pickedTime) {
-              _startTime = pickedTime;
-            },
-          ),
-          _buildTimeSelector(
-            context: context, // Pasa el contexto aquí
-            label: 'Hora de Fin',
-            initialTime: _endTime ?? TimeOfDay(hour: 17, minute: 0),
-            onTimePicked: (pickedTime) {
-              _endTime = pickedTime;
-            },
-          ),
-          SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              if (_formKey.currentState!.validate() && selectedDays.value.isNotEmpty) {
-                // Save the updated data
-                professionalNotifier.saveUserData(
-                  firstName: _nameController.text,
-                  lastName: _lastNameController.text,
-                  address: _addressController.text,
-                  phoneN: _phoneController.text,
-                  dni: _documentNumberController.text,
-                  license: _licenseNumberController.text,
-                  workDays: selectedDays.value,
-                  startTime: _startTime != null
-                      ? TimeFormatHelper.formatTimeIn24Hours(_startTime!)
-                      : '09:00',
-                  endTime: _endTime != null
-                      ? TimeFormatHelper.formatTimeIn24Hours(_endTime!)
-                      : '17:00',
-                );
-                professionalNotifier.refresh(); // Refresh data after save
-              } else if (selectedDays.value.isEmpty) {
-                // Show an error snackbar for empty days
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Debe seleccionar al menos un día de atención'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: Text('Guardar'),
-          ),
-        ],
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Complete la siguiente información',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 20),
+            _buildTextField(
+              labelText: 'Nombre',
+              controller: _nameController,
+              validator: (value) =>
+                  value!.isEmpty ? 'Este campo es obligatorio' : null,
+            ),
+            SizedBox(height: 10),
+            _buildTextField(
+              labelText: 'Apellido',
+              controller: _lastNameController,
+              validator: (value) =>
+                  value!.isEmpty ? 'Este campo es obligatorio' : null,
+            ),
+            SizedBox(height: 10),
+            _buildTextField(
+              labelText: 'Dirección del consultorio',
+              controller: _addressController,
+              validator: (value) =>
+                  value!.isEmpty ? 'Este campo es obligatorio' : null,
+            ),
+            SizedBox(height: 10),
+            _buildTextField(
+              labelText: 'Teléfono',
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              validator: (value) =>
+                  value!.isEmpty ? 'Este campo es obligatorio' : null,
+            ),
+            SizedBox(height: 10),
+            _buildTextField(
+              labelText: 'Número de Matrícula',
+              controller: _licenseNumberController,
+              validator: (value) =>
+                  value!.isEmpty ? 'Este campo es obligatorio' : null,
+            ),
+            SizedBox(height: 10),
+            _buildDaysSelector(ref, selectedDays),
+            _buildTimeSelector(
+              context: context,
+              label: 'Hora de Inicio',
+              initialTime: _startTime ?? TimeOfDay(hour: 9, minute: 0),
+              onTimePicked: (pickedTime) {
+                _startTime = pickedTime;
+              },
+            ),
+            _buildTimeSelector(
+              context: context,
+              label: 'Hora de Fin',
+              initialTime: _endTime ?? TimeOfDay(hour: 17, minute: 0),
+              onTimePicked: (pickedTime) {
+                _endTime = pickedTime;
+              },
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                if (_formKey.currentState!.validate() && selectedDays.value.isNotEmpty) {
+                  // ✅ Crear availability map
+                  final availability = {
+                    'workDays': selectedDays.value,
+                    'startTime': _startTime != null
+                        ? TimeFormatHelper.formatTimeIn24Hours(_startTime!)
+                        : '09:00',
+                    'endTime': _endTime != null
+                        ? TimeFormatHelper.formatTimeIn24Hours(_endTime!)
+                        : '17:00',
+                    'breakDuration': 30,
+                  };
+
+                  // ✅ Save using updateProfile method
+                  try {
+                    await professionalNotifier.updateProfile(
+                      firstName: _nameController.text,
+                      lastName: _lastNameController.text,
+                      consultingAddress: _addressController.text,
+                      phoneN: _phoneController.text,
+                      dni: _documentNumberController.text,
+                      licenseNumber: _licenseNumberController.text,
+                      availability: availability,
+                    );
+                    
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Perfil guardado correctamente'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error al guardar: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } else if (selectedDays.value.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Debe seleccionar al menos un día de atención'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: Text('Guardar'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(double.infinity, 50),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -184,13 +217,20 @@ class ProfessionalHome extends HookConsumerWidget {
   }) {
     return TextFormField(
       controller: controller,
-      decoration: InputDecoration(labelText: labelText),
+      decoration: InputDecoration(
+        labelText: labelText,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+      ),
       keyboardType: keyboardType,
       validator: validator,
     );
   }
 
-  Widget _buildDaysSelector(WidgetRef ref, List<String> selectedDays) {
+  Widget _buildDaysSelector(WidgetRef ref, ValueNotifier<List<String>> selectedDays) {
     // State to trigger rebuilds when selections change
     final updateCounter = useState(0);
     
@@ -205,43 +245,47 @@ class ProfessionalHome extends HookConsumerWidget {
       'Domingo': 'Sunday',
     };
     
-    // For debugging - print the current selected days 
-    print('Current selected days in _buildDaysSelector: $selectedDays');
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Días Disponibles', style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 8),
         Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: dayMapping.entries.map((entry) {
             final spanishDay = entry.key;
             final englishDay = entry.value;
             
             // Check if the English day name exists in the selected days
-            final isSelected = selectedDays.contains(englishDay);
+            final isSelected = selectedDays.value.contains(englishDay);
             
-            return CheckboxListTile(
-              title: Text(spanishDay),
-              value: isSelected,
-              onChanged: (isSelected) {
-                if (isSelected ?? false) {
-                  if (!selectedDays.contains(englishDay)) {
-                    selectedDays.add(englishDay);
+            return FilterChip(
+              label: Text(spanishDay),
+              selected: isSelected,
+              onSelected: (bool selected) {
+                if (selected) {
+                  if (!selectedDays.value.contains(englishDay)) {
+                    selectedDays.value = [...selectedDays.value, englishDay];
                   }
                 } else {
-                  selectedDays.remove(englishDay);
+                  selectedDays.value = selectedDays.value.where((day) => day != englishDay).toList();
                 }
                 // Force UI refresh
                 updateCounter.value++;
-                print('Updated selected days: $selectedDays'); // Debug log
               },
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
+              selectedColor: Colors.blue.withOpacity(0.15),
+              checkmarkColor: Colors.blue,
+              backgroundColor: Colors.white,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.blue : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
             );
           }).toList(),
         ),
         SizedBox(height: 10),
-        if (selectedDays.isEmpty)
+        if (selectedDays.value.isEmpty)
           Text(
             'Debe seleccionar al menos un día',
             style: TextStyle(color: Colors.red, fontSize: 12),
@@ -259,12 +303,19 @@ class ProfessionalHome extends HookConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        SizedBox(height: 10),
         Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+        SizedBox(height: 5),
         ListTile(
+          tileColor: Colors.grey[100],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           title: Text(
             TimeFormatHelper.formatTimeIn24Hours(initialTime),
+            style: TextStyle(fontSize: 16),
           ),
-          trailing: Icon(Icons.access_time),
+          trailing: Icon(Icons.access_time, color: Colors.blue),
           onTap: () async {
             TimeOfDay? picked = await showTimePicker(
               context: context,
@@ -281,12 +332,18 @@ class ProfessionalHome extends HookConsumerWidget {
               onTimePicked(picked);
             }
           },
-        )
+        ),
       ],
     );
   }
 
   Widget _buildProfessionalInfo(ProfessionalModel professional, WidgetRef ref, BuildContext context) {
+    // ✅ Extraer datos del availability map
+    final availabilityData = professional.availability ?? {};
+    final workDays = List<String>.from(availabilityData['workDays'] ?? []);
+    final startTime = availabilityData['startTime'] as String? ?? '09:00';
+    final endTime = availabilityData['endTime'] as String? ?? '17:00';
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Card(
@@ -307,17 +364,17 @@ class ProfessionalHome extends HookConsumerWidget {
               ),
               SizedBox(height: 10),
               Text(
-                'Especialista en ${professional.speciality}',
+                'Especialista en ${professional.speciality ?? "Psicología"}',  // ✅ speciality con null-safety
                 style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic),
               ),
               Divider(),
-              _buildInfoRow(Icons.location_on, 'Consultorio: ${professional.address}'),
-              _buildInfoRow(Icons.phone, 'Teléfono: ${professional.phoneN}'),
-              _buildInfoRow(Icons.badge, 'Número de Documento: ${professional.dni}'),
-              _buildInfoRow(Icons.account_balance, 'Número de Matrícula: ${professional.license}'),
+              _buildInfoRow(Icons.location_on, 'Consultorio: ${professional.consultingAddress ?? "No especificado"}'),  // ✅ consultingAddress
+              _buildInfoRow(Icons.phone, 'Teléfono: ${professional.phoneN ?? "No especificado"}'),  // ✅ phoneN
+              _buildInfoRow(Icons.badge, 'Número de Documento: ${professional.dni ?? "No especificado"}'),
+              _buildInfoRow(Icons.account_balance, 'Número de Matrícula: ${professional.licenseNumber ?? "No especificado"}'),  // ✅ licenseNumber
               _buildInfoRow(
                 Icons.calendar_today,
-                'Disponibilidad: ${_formatDaysInSpanish(professional.workDays)} de ${professional.startTime} a ${professional.endTime}',
+                'Disponibilidad: ${_formatDaysInSpanish(workDays)} de $startTime a $endTime',  // ✅ Usar datos de availability
               ),
               SizedBox(height: 20),
               Center(
@@ -384,7 +441,6 @@ class ProfessionalHome extends HookConsumerWidget {
     );
   }
 
-  // Add this helper method to convert English day names to Spanish
   String _formatDaysInSpanish(List<String> days) {
     if (days.isEmpty) return 'No disponible';
     
@@ -404,7 +460,6 @@ class ProfessionalHome extends HookConsumerWidget {
     return spanishDays.join(', ');
   }
 
-  // Add this method to your ProfessionalHome class
   Widget _buildEmptyState(BuildContext context, WidgetRef ref) {
     return Center(
       child: Column(
@@ -436,26 +491,26 @@ class ProfessionalHome extends HookConsumerWidget {
     );
   }
 
-  // Add this method to your ProfessionalHome class
   void _showEditDialog(BuildContext context, ProfessionalModel professional, WidgetRef ref) {
     final _nameController = TextEditingController(text: professional.firstName);
     final _lastNameController = TextEditingController(text: professional.lastName);
-    final _addressController = TextEditingController(text: professional.address);
-    final _phoneController = TextEditingController(text: professional.phoneN);
+    final _addressController = TextEditingController(text: professional.consultingAddress);  // ✅ consultingAddress
+    final _phoneController = TextEditingController(text: professional.phoneN);  // ✅ phoneN
     final _documentNumberController = TextEditingController(text: professional.dni);
-    final _licenseNumberController = TextEditingController(text: professional.license);
+    final _licenseNumberController = TextEditingController(text: professional.licenseNumber);  // ✅ licenseNumber
+    
+    // ✅ Extraer workDays del availability map
+    final availabilityData = professional.availability ?? {};
+    final workDays = List<String>.from(availabilityData['workDays'] ?? []);
+    final startTimeStr = availabilityData['startTime'] as String? ?? '09:00';
+    final endTimeStr = availabilityData['endTime'] as String? ?? '17:00';
     
     // Create a copy of work days that we can modify
-    final selectedDays = [...professional.workDays];
+    final selectedDays = [...workDays];
     
     // Parse times if they exist
-    TimeOfDay startTime = professional.startTime.isNotEmpty
-        ? TimeFormatHelper.parseTime(professional.startTime) ?? TimeOfDay(hour: 9, minute: 0)
-        : TimeOfDay(hour: 9, minute: 0);
-        
-    TimeOfDay endTime = professional.endTime.isNotEmpty
-        ? TimeFormatHelper.parseTime(professional.endTime) ?? TimeOfDay(hour: 17, minute: 0)
-        : TimeOfDay(hour: 17, minute: 0);
+    TimeOfDay startTime = TimeFormatHelper.parseTime(startTimeStr) ?? TimeOfDay(hour: 9, minute: 0);
+    TimeOfDay endTime = TimeFormatHelper.parseTime(endTimeStr) ?? TimeOfDay(hour: 17, minute: 0);
     
     // Show the edit dialog
     showDialog(
@@ -466,7 +521,7 @@ class ProfessionalHome extends HookConsumerWidget {
         ),
         elevation: 8,
         child: Container(
-          constraints: BoxConstraints(maxWidth: 500), // Limitar el ancho máximo
+          constraints: BoxConstraints(maxWidth: 500),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -499,7 +554,7 @@ class ProfessionalHome extends HookConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Información personal - Section header
+                      // Información personal
                       Text(
                         'Información Personal',
                         style: TextStyle(
@@ -510,7 +565,6 @@ class ProfessionalHome extends HookConsumerWidget {
                       ),
                       SizedBox(height: 16),
                       
-                      // Nombre y apellido en la misma fila
                       Row(
                         children: [
                           Expanded(
@@ -534,7 +588,6 @@ class ProfessionalHome extends HookConsumerWidget {
                       ),
                       SizedBox(height: 16),
                       
-                      // DNI y teléfono en la misma fila
                       Row(
                         children: [
                           Expanded(
@@ -560,7 +613,7 @@ class ProfessionalHome extends HookConsumerWidget {
                       ),
                       SizedBox(height: 24),
                       
-                      // Información profesional - Section header
+                      // Información profesional
                       Text(
                         'Información Profesional',
                         style: TextStyle(
@@ -587,7 +640,7 @@ class ProfessionalHome extends HookConsumerWidget {
                       ),
                       SizedBox(height: 24),
                       
-                      // Días de trabajo - Section header
+                      // Días de trabajo
                       Text(
                         'Días de Trabajo',
                         style: TextStyle(
@@ -598,7 +651,6 @@ class ProfessionalHome extends HookConsumerWidget {
                       ),
                       SizedBox(height: 12),
                       
-                      // Selección de días con chips interactivos
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -614,7 +666,7 @@ class ProfessionalHome extends HookConsumerWidget {
                       ),
                       SizedBox(height: 24),
                       
-                      // Horarios de trabajo - Section header
+                      // Horarios
                       Text(
                         'Horarios de Atención',
                         style: TextStyle(
@@ -625,7 +677,6 @@ class ProfessionalHome extends HookConsumerWidget {
                       ),
                       SizedBox(height: 16),
                       
-                      // Horarios en la misma fila
                       Row(
                         children: [
                           Expanded(
@@ -656,7 +707,7 @@ class ProfessionalHome extends HookConsumerWidget {
                 ),
               ),
               
-              // Footer con botones
+              // Footer
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
@@ -680,7 +731,6 @@ class ProfessionalHome extends HookConsumerWidget {
                     ElevatedButton(
                       onPressed: () async {
                         try {
-                          // Verificar si hay al menos un día seleccionado
                           if (selectedDays.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -691,23 +741,27 @@ class ProfessionalHome extends HookConsumerWidget {
                             return;
                           }
                           
-                          // Save changes
-                          await ref.read(professionalProvider.notifier).saveUserData(
+                          // ✅ Crear availability map
+                          final availability = {
+                            'workDays': selectedDays,
+                            'startTime': '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
+                            'endTime': '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
+                            'breakDuration': 30,
+                          };
+
+                          // ✅ Save using updateProfile
+                          await ref.read(professionalProvider.notifier).updateProfile(
                             firstName: _nameController.text.trim(),
                             lastName: _lastNameController.text.trim(),
-                            address: _addressController.text.trim(),
+                            consultingAddress: _addressController.text.trim(),
                             phoneN: _phoneController.text.trim(),
                             dni: _documentNumberController.text.trim(),
-                            license: _licenseNumberController.text.trim(),
-                            workDays: selectedDays,
-                            startTime: '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
-                            endTime: '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
+                            licenseNumber: _licenseNumberController.text.trim(),
+                            availability: availability,
                           );
                           
-                          // Close the dialog
                           Navigator.pop(dialogContext);
                           
-                          // Show success message
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Cambios guardados correctamente'),
@@ -715,7 +769,6 @@ class ProfessionalHome extends HookConsumerWidget {
                             ),
                           );
                         } catch (e) {
-                          // Show error message
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Error al guardar los cambios: $e'),
@@ -742,7 +795,6 @@ class ProfessionalHome extends HookConsumerWidget {
     );
   }
 
-  // Widget helper para construir campos de edición consistentes
   Widget _buildEditField({
     required BuildContext context,
     required TextEditingController controller,
@@ -776,7 +828,6 @@ class ProfessionalHome extends HookConsumerWidget {
     );
   }
 
-  // Widget para seleccionar horarios con mejor UI
   Widget _buildTimeSelectorDialog({
     required BuildContext context,
     required String label,
@@ -848,7 +899,6 @@ class ProfessionalHome extends HookConsumerWidget {
     );
   }
 
-  // Widget para chips de selección de días
   Widget _buildDayChip(
     BuildContext context,
     List<String> selectedDays,
@@ -869,7 +919,7 @@ class ProfessionalHome extends HookConsumerWidget {
           } else {
             selectedDays.remove(dayValue);
           }
-          setState(() {}); // Actualizar UI del chip
+          setState(() {});
         },
         selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
         checkmarkColor: Theme.of(context).colorScheme.primary,

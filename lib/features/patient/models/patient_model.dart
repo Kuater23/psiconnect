@@ -1,95 +1,161 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/models/base_model.dart';
 
-class PatientModel {
-  final String uid;
-  final String firstName;
-  final String lastName;
-  final String email;
-  final String phoneN;
-  final String dni;
-  final DateTime? dob;
-  final bool profileCompleted;
-  
+class PatientModel extends BaseModel {
+  final String? email;
+  final String? displayName;
+  final String? photoURL;
+  final String? firstName;
+  final String? lastName;
+  final String? phoneN;
+  final String? dni;
+  final DateTime? birthDate;
+  final String? address;
+  final String? emergencyContact;
+  final String? emergencyPhone;
+  final String? bloodType;
+  final List<String>? allergies;
+  final List<String>? medications;
+  final String? status;
+  final bool profileCompleted;  // ✅ RESTAURADO
+
   PatientModel({
-    required this.uid,
-    required this.firstName,
-    required this.lastName,
-    required this.email,
-    required this.phoneN,
-    required this.dni,
-    this.dob,
-    this.profileCompleted = false,
+    super.id,
+    super.createdAt,
+    super.updatedAt,
+    this.email,
+    this.displayName,
+    this.photoURL,
+    this.firstName,
+    this.lastName,
+    this.phoneN,
+    this.dni,
+    this.birthDate,
+    this.address,
+    this.emergencyContact,
+    this.emergencyPhone,
+    this.bloodType,
+    this.allergies,
+    this.medications,
+    this.status,
+    this.profileCompleted = false,  // ✅ Default false
   });
-  
-  // Create a model from Firestore data
-  factory PatientModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    
+
+  factory PatientModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
+    if (data == null) {
+      throw Exception('Documento sin datos');
+    }
+
     return PatientModel(
-      uid: doc.id,
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      email: data['email'] ?? '',
-      phoneN: data['phoneN'] ?? '',
-      dni: data['dni'] ?? '',
-      dob: data['dob'] != null ? (data['dob'] as Timestamp).toDate() : null,
-      profileCompleted: data['profileCompleted'] ?? false,
+      id: doc.id,
+      createdAt: BaseModel.timestampToDateTime(data['createdAt']),
+      updatedAt: BaseModel.timestampToDateTime(data['updatedAt']),
+      email: BaseModel.safeString(data['email']),
+      displayName: BaseModel.safeString(data['displayName']),
+      photoURL: BaseModel.safeString(data['photoURL']),
+      firstName: BaseModel.safeString(data['firstName']),
+      lastName: BaseModel.safeString(data['lastName']),
+      phoneN: BaseModel.safeString(data['phoneN']),
+      dni: BaseModel.safeString(data['dni']),
+      birthDate: BaseModel.timestampToDateTime(data['birthDate']),
+      address: BaseModel.safeString(data['address']),
+      emergencyContact: BaseModel.safeString(data['emergencyContact']),
+      emergencyPhone: BaseModel.safeString(data['emergencyPhone']),
+      bloodType: BaseModel.safeString(data['bloodType']),
+      allergies: BaseModel.safeList<String>(data['allergies']),
+      medications: BaseModel.safeList<String>(data['medications']),
+      status: BaseModel.safeString(data['status']) ?? 'active',
+      profileCompleted: data['profileCompleted'] ?? false,  // ✅ RESTAURADO
     );
   }
-  
-  // Add a method to create a model from a regular Map
-  factory PatientModel.fromMap(Map<String, dynamic> data) {
-    return PatientModel(
-      uid: data['uid'] ?? '',
-      firstName: data['firstName'] ?? '',
-      lastName: data['lastName'] ?? '',
-      email: data['email'] ?? '',
-      phoneN: data['phoneN'] ?? '',
-      dni: data['dni'] ?? '',
-      dob: data['dob'] != null ? 
-          (data['dob'] is Timestamp ? 
-              (data['dob'] as Timestamp).toDate() : 
-              data['dob'] as DateTime) : 
-          null,
-      profileCompleted: data['profileCompleted'] ?? false,
-    );
-  }
-  
-  // Convert model to a map for Firestore
-  Map<String, dynamic> toFirestore() {
+
+  @override
+  Map<String, dynamic> toMap() {
     return {
-      'firstName': firstName,
-      'lastName': lastName,
-      'email': email,
-      'phoneN': phoneN,
-      'dni': dni,
-      'dob': dob != null ? Timestamp.fromDate(dob!) : null,
-      'profileCompleted': profileCompleted,
+      ...baseMap,
+      if (email != null) 'email': email,
+      if (displayName != null) 'displayName': displayName,
+      if (photoURL != null) 'photoURL': photoURL,
+      if (firstName != null) 'firstName': firstName,
+      if (lastName != null) 'lastName': lastName,
+      if (phoneN != null) 'phoneN': phoneN,
+      if (dni != null) 'dni': dni,
+      if (birthDate != null) 'birthDate': Timestamp.fromDate(birthDate!),
+      if (address != null) 'address': address,
+      if (emergencyContact != null) 'emergencyContact': emergencyContact,
+      if (emergencyPhone != null) 'emergencyPhone': emergencyPhone,
+      if (bloodType != null) 'bloodType': bloodType,
+      if (allergies != null) 'allergies': allergies,
+      if (medications != null) 'medications': medications,
+      'status': status ?? 'active',
+      'profileCompleted': profileCompleted,  // ✅ RESTAURADO
     };
   }
-  
-  // Create a copy with updated fields
+
   PatientModel copyWith({
+    String? id,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? email,
+    String? displayName,
+    String? photoURL,
     String? firstName,
     String? lastName,
-    String? email,
     String? phoneN,
     String? dni,
-    DateTime? dob,
-    bool? profileCompleted,
+    DateTime? birthDate,
+    String? address,
+    String? emergencyContact,
+    String? emergencyPhone,
+    String? bloodType,
+    List<String>? allergies,
+    List<String>? medications,
+    String? status,
+    bool? profileCompleted,  // ✅ RESTAURADO
   }) {
     return PatientModel(
-      uid: this.uid,
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      photoURL: photoURL ?? this.photoURL,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
-      email: email ?? this.email,
       phoneN: phoneN ?? this.phoneN,
       dni: dni ?? this.dni,
-      dob: dob ?? this.dob,
-      profileCompleted: profileCompleted ?? this.profileCompleted,
+      birthDate: birthDate ?? this.birthDate,
+      address: address ?? this.address,
+      emergencyContact: emergencyContact ?? this.emergencyContact,
+      emergencyPhone: emergencyPhone ?? this.emergencyPhone,
+      bloodType: bloodType ?? this.bloodType,
+      allergies: allergies ?? this.allergies,
+      medications: medications ?? this.medications,
+      status: status ?? this.status,
+      profileCompleted: profileCompleted ?? this.profileCompleted,  // ✅ RESTAURADO
     );
   }
+
+  String get fullName => '${firstName ?? ''} ${lastName ?? ''}'.trim();
   
-  // Helper to get full name
-  String get fullName => '$firstName $lastName'.trim();
+  int? get age {
+    if (birthDate == null) return null;
+    final now = DateTime.now();
+    int age = now.year - birthDate!.year;
+    if (now.month < birthDate!.month || 
+        (now.month == birthDate!.month && now.day < birthDate!.day)) {
+      age--;
+    }
+    return age;
+  }
+
+  // ✅ NUEVO: Helper para verificar si el perfil está completo
+  bool get isProfileComplete {
+    return (firstName?.isNotEmpty ?? false) &&
+           (lastName?.isNotEmpty ?? false) &&
+           (phoneN?.isNotEmpty ?? false) &&
+           (dni?.isNotEmpty ?? false) &&
+           birthDate != null;
+  }
 }

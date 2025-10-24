@@ -3,17 +3,20 @@
 import 'package:Psiconnect/features/auth/providers/session_provider.dart';
 import 'package:Psiconnect/features/patient/models/patient_model.dart';
 import 'package:Psiconnect/features/patient/providers/patient_providers.dart';
+import 'package:Psiconnect/features/patient/services/patient_service.dart';
 import 'package:Psiconnect/features/professional/models/professional_model.dart';
+import 'package:Psiconnect/features/professional/services/professional_service.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:Psiconnect/core/constants/app_constants.dart';
-import 'package:go_router/go_router.dart';
 import '/navigation/router.dart';
 import 'package:Psiconnect/features/professional/providers/professional_providers.dart';
+import '../../../core/services/navigation_service.dart';
+import '../../../core/services/error_logger.dart';
+import '../../../core/utils/validation_helper.dart';
 
 class RequiredProfileCompletion extends HookConsumerWidget {
   final String userRole;
@@ -25,11 +28,16 @@ class RequiredProfileCompletion extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final _formKey = useState(GlobalKey<FormState>());
+    final formKey = useState(GlobalKey<FormState>());
     final isLoading = useState(false);
     final errorMessage = useState<String?>(null);
     final user = FirebaseAuth.instance.currentUser;
     final currentStep = useState(0);
+    final navigationService = NavigationService();
+    
+    // Services
+    final patientService = PatientService();
+    final professionalService = ProfessionalService();
     
     // Form controllers
     final firstNameController = useTextEditingController();
@@ -47,105 +55,89 @@ class RequiredProfileCompletion extends HookConsumerWidget {
     final endTimeController = useTextEditingController(text: '17:00');
     
     // Professional-only state
-    final workDays = useState<List<String>>(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
-    final selectedSpeciality = useState<String>(specialityController.text.isNotEmpty 
-      ? specialityController.text 
-      : SpecialityConstants.psychologyTypes.first);
+    final workDays = useState<List<String>>([
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday'
+    ]);
+    final selectedSpeciality = useState<String>(
+      specialityController.text.isNotEmpty
+          ? specialityController.text
+          : SpecialityConstants.psychologyTypes.first
+    );
     
     // Define steps based on role
-    final List<String> steps = userRole == 'professional' 
+    final List<String> steps = userRole == 'professional'
         ? ['Información personal', 'Información profesional', 'Horarios de trabajo']
         : ['Información personal'];
     
-    // Helper method to load data from a document
-    void _loadDataFromDoc(DocumentSnapshot doc, String role) {
-      final data = doc.data() as Map<String, dynamic>;
-      
-      firstNameController.text = data['firstName'] ?? '';
-      lastNameController.text = data['lastName'] ?? '';
-      dniController.text = data['dni'] ?? '';
-      phoneController.text = data['phoneN'] ?? '';
-      
-      if (data['dob'] != null) {
-        final dob = (data['dob'] as Timestamp).toDate();
-        dobController.text = DateFormat('yyyy-MM-dd').format(dob);
-      }
-      
-      if (role == 'professional') {
-        addressController.text = data['address'] ?? '';
-        licenseController.text = data['license'] ?? 'MN-';
-        specialityController.text = data['speciality'] ?? '';
-        selectedSpeciality.value = data['speciality'] ?? SpecialityConstants.psychologyTypes.first;
-        breakDurationController.text = data['breakDuration']?.toString() ?? '15';
-        startTimeController.text = data['startTime'] ?? '09:00';
-        endTimeController.text = data['endTime'] ?? '17:00';
-        
-        // Update to check both field names for backward compatibility
-        if (data['workDays'] != null) {
-          workDays.value = List<String>.from(data['workDays']);
-        } else if (data['workDays'] != null) {
-          workDays.value = List<String>.from(data['workDays']);
-        }
-      }
-    }
-    
     // Load user data
-    Future<void> _loadUserData() async {
+    Future<void> loadUserData() async {
       if (user == null) return;
       
       try {
         isLoading.value = true;
-        
-        // Determine collection based on role
-        String collection;
+        errorMessage.value = null;
+
         if (userRole == 'professional') {
-          collection = 'doctors';
-        } else if (userRole == 'patient') {
-          collection = 'patients';
-        } else if (userRole == 'admin') {
-          collection = 'admins';
-        } else {
-          // If role is invalid, let's check both collections to find the user
-          final doctorDoc = await FirebaseFirestore.instance
-              .collection('doctors')
-              .doc(user.uid)
-              .get();
-              
-          if (doctorDoc.exists) {
-            _loadDataFromDoc(doctorDoc, 'professional');
-            return;
-          }
+          final professional = await professionalService.getProfessional(user.uid);
           
-          final patientDoc = await FirebaseFirestore.instance
-              .collection('patients')
-              .doc(user.uid)
-              .get();
+          if (professional != null) {
+            firstNameController.text = professional.firstName ?? '';
+            lastNameController.text = professional.lastName ?? '';
+            dniController.text = professional.dni ?? '';
+            phoneController.text = professional.phoneN ?? '';
+            
+            if (professional.birthDate != null) {
+              dobController.text = DateFormat('yyyy-MM-dd').format(professional.birthDate!);
+            }
+            
+            addressController.text = professional.consultingAddress ?? '';
+            licenseController.text = professional.licenseNumber ?? 'MN-';
+            specialityController.text = professional.speciality ?? '';
+            selectedSpeciality.value = professional.speciality ?? SpecialityConstants.psychologyTypes.first;
+            
+            // Cargar disponibilidad si existe
+            if (professional.availability != null) {
+              final availability = professional.availability!;
               
-          if (patientDoc.exists) {
-            _loadDataFromDoc(patientDoc, 'patient');
-            return;
+              // Extraer días de trabajo
+              if (availability.containsKey('workDays')) {
+                workDays.value = List<String>.from(availability['workDays']);
+              }
+              
+              // Extraer horarios
+              if (availability.containsKey('startTime')) {
+                startTimeController.text = availability['startTime'] ?? '09:00';
+              }
+              if (availability.containsKey('endTime')) {
+                endTimeController.text = availability['endTime'] ?? '17:00';
+              }
+              if (availability.containsKey('breakDuration')) {
+                breakDurationController.text = availability['breakDuration'].toString();
+              }
+            }
           }
-          
-          // User not found in any collection
-          errorMessage.value = 'User data not found';
-          return;
-        }
-        
-        print('Loading user data for uid: ${user.uid} from collection: $collection');
-        
-        final doc = await FirebaseFirestore.instance
-            .collection(collection)
-            .doc(user.uid)
-            .get();
-        
-        if (doc.exists) {
-          _loadDataFromDoc(doc, userRole);
         } else {
-          errorMessage.value = 'User data not found in $collection collection';
+          final patient = await patientService.getPatient(user.uid);
+          
+          if (patient != null) {
+            firstNameController.text = patient.firstName ?? '';
+            lastNameController.text = patient.lastName ?? '';
+            dniController.text = patient.dni ?? '';
+            phoneController.text = patient.phoneN ?? '';
+            
+            if (patient.birthDate != null) {
+              dobController.text = DateFormat('yyyy-MM-dd').format(patient.birthDate!);
+            }
+          }
         }
-      } catch (e) {
-        print('Error loading user data: $e');
-        errorMessage.value = 'Error loading user data: $e';
+      } catch (e, st) {
+        ErrorLogger.logError('Error cargando datos del usuario', e, st);
+        errorMessage.value = 'Error al cargar los datos: ${e.toString()}';
+        navigationService.showError('Error al cargar los datos');
       } finally {
         isLoading.value = false;
       }
@@ -153,19 +145,19 @@ class RequiredProfileCompletion extends HookConsumerWidget {
     
     // Load data on init
     useEffect(() {
-      _loadUserData();
+      loadUserData();
       return null;
     }, []);
     
     // Build personal information step
-    Widget _buildPersonalInfoStep() {
+    Widget buildPersonalInfoStep() {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Información Personal',
             style: TextStyle(
-              fontSize: 20, 
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Color(0xFF01303A),
             ),
@@ -189,9 +181,10 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                       prefixIcon: Icon(Icons.person),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => value?.isEmpty ?? true 
-                        ? 'El nombre es obligatorio' 
-                        : null,
+                    validator: (value) => ValidationHelper.validateRequired(
+                      value,
+                      fieldName: 'El nombre',
+                    ),
                   ),
                   const SizedBox(height: 16),
                   
@@ -203,9 +196,10 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                       prefixIcon: Icon(Icons.person),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => value?.isEmpty ?? true 
-                        ? 'El apellido es obligatorio' 
-                        : null,
+                    validator: (value) => ValidationHelper.validateRequired(
+                      value,
+                      fieldName: 'El apellido',
+                    ),
                   ),
                   const SizedBox(height: 16),
                   
@@ -217,9 +211,7 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                       prefixIcon: Icon(Icons.badge),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => value?.isEmpty ?? true 
-                        ? 'El DNI es obligatorio' 
-                        : null,
+                    validator: ValidationHelper.validateDNI,
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 16),
@@ -232,9 +224,7 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                       prefixIcon: Icon(Icons.phone),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => value?.isEmpty ?? true 
-                        ? 'El teléfono es obligatorio' 
-                        : null,
+                    validator: ValidationHelper.validatePhone,
                     keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: 16),
@@ -248,15 +238,16 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                       border: OutlineInputBorder(),
                       hintText: 'YYYY-MM-DD',
                     ),
-                    validator: (value) => value?.isEmpty ?? true 
-                        ? 'La fecha de nacimiento es obligatoria' 
-                        : null,
+                    validator: (value) => ValidationHelper.validateDate(
+                      value,
+                      fieldName: 'La fecha de nacimiento',
+                    ),
                     readOnly: true,
                     onTap: () async {
-                      final initialDate = dobController.text.isNotEmpty 
+                      final initialDate = dobController.text.isNotEmpty
                           ? DateTime.parse(dobController.text)
                           : DateTime(2000);
-                          
+                      
                       final pickedDate = await showDatePicker(
                         context: context,
                         initialDate: initialDate,
@@ -278,14 +269,14 @@ class RequiredProfileCompletion extends HookConsumerWidget {
     }
 
     // Build professional information step
-    Widget _buildProfessionalInfoStep() {
+    Widget buildProfessionalInfoStep() {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Información Profesional',
             style: TextStyle(
-              fontSize: 20, 
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Color(0xFF01303A),
             ),
@@ -309,9 +300,10 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                       prefixIcon: Icon(Icons.location_on),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => userRole == 'professional' && (value?.isEmpty ?? true) 
-                        ? 'La dirección es obligatoria para profesionales' 
-                        : null,
+                    validator: (value) => ValidationHelper.validateRequired(
+                      value,
+                      fieldName: 'La dirección',
+                    ),
                   ),
                   const SizedBox(height: 16),
                   
@@ -323,9 +315,15 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                       prefixIcon: Icon(Icons.card_membership),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => userRole == 'professional' && (value?.isEmpty ?? true || value == 'MN-') 
-                        ? 'El número de licencia es obligatorio' 
-                        : null,
+                    validator: (value) {
+                      if (value == null || value.isEmpty || value == 'MN-') {
+                        return 'El número de licencia es obligatorio';
+                      }
+                      if (!value.startsWith('MN-')) {
+                        return 'El formato debe ser MN-XXXXX';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
                   
@@ -349,9 +347,10 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                         specialityController.text = newValue;
                       }
                     },
-                    validator: (value) => userRole == 'professional' && (value == null || value.isEmpty)
-                        ? 'La especialidad es obligatoria'
-                        : null,
+                    validator: (value) => ValidationHelper.validateRequired(
+                      value,
+                      fieldName: 'La especialidad',
+                    ),
                   ),
                 ],
               ),
@@ -362,14 +361,14 @@ class RequiredProfileCompletion extends HookConsumerWidget {
     }
 
     // Build working hours step
-    Widget _buildWorkingHoursStep() {
+    Widget buildWorkingHoursStep() {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Horarios de Trabajo',
             style: TextStyle(
-              fontSize: 20, 
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Color(0xFF01303A),
             ),
@@ -388,7 +387,7 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                 children: [
                   // Working hours
                   const Text(
-                    'Horario de Atención', 
+                    'Horario de Atención',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -406,9 +405,10 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                             prefixIcon: Icon(Icons.access_time),
                             border: OutlineInputBorder(),
                           ),
-                          validator: (value) => userRole == 'professional' && (value?.isEmpty ?? true) 
-                              ? 'La hora de inicio es obligatoria' 
-                              : null,
+                          validator: (value) => ValidationHelper.validateRequired(
+                            value,
+                            fieldName: 'La hora de inicio',
+                          ),
                           readOnly: true,
                           onTap: () async {
                             final initialTime = TimeOfDay(
@@ -422,7 +422,8 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                             );
                             
                             if (pickedTime != null) {
-                              startTimeController.text = '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+                              startTimeController.text =
+                                  '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
                             }
                           },
                         ),
@@ -436,9 +437,10 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                             prefixIcon: Icon(Icons.access_time),
                             border: OutlineInputBorder(),
                           ),
-                          validator: (value) => userRole == 'professional' && (value?.isEmpty ?? true) 
-                              ? 'La hora de fin es obligatoria' 
-                              : null,
+                          validator: (value) => ValidationHelper.validateRequired(
+                            value,
+                            fieldName: 'La hora de fin',
+                          ),
                           readOnly: true,
                           onTap: () async {
                             final initialTime = TimeOfDay(
@@ -452,7 +454,8 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                             );
                             
                             if (pickedTime != null) {
-                              endTimeController.text = '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
+                              endTimeController.text =
+                                  '${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}';
                             }
                           },
                         ),
@@ -469,16 +472,18 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                       prefixIcon: Icon(Icons.timer),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) => userRole == 'professional' && (value?.isEmpty ?? true) 
-                        ? 'La duración del descanso es obligatoria' 
-                        : null,
+                    validator: (value) => ValidationHelper.combineValidators([
+                      (v) => ValidationHelper.validateRequired(v, fieldName: 'La duración del descanso'),
+                      ValidationHelper.validateNumeric,
+                      (v) => ValidationHelper.validateRange(v, 5, 120, fieldName: 'La duración'),
+                    ])(value),
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 24),
                   
                   // Working days
                   const Text(
-                    'Días de Trabajo *', 
+                    'Días de Trabajo *',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -501,8 +506,8 @@ class RequiredProfileCompletion extends HookConsumerWidget {
                   ),
                   
                   if (workDays.value.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
                       child: Text(
                         'Debe seleccionar al menos un día de trabajo',
                         style: TextStyle(color: Colors.red, fontSize: 12),
@@ -517,34 +522,33 @@ class RequiredProfileCompletion extends HookConsumerWidget {
     }
 
     // Build content based on current step
-    Widget _buildStepContent() {
+    Widget buildStepContent() {
       if (userRole == 'professional') {
         switch (currentStep.value) {
-          case 0: // Personal information
-            return _buildPersonalInfoStep();
-          case 1: // Professional information
-            return _buildProfessionalInfoStep();
-          case 2: // Working hours
-            return _buildWorkingHoursStep();
+          case 0:
+            return buildPersonalInfoStep();
+          case 1:
+            return buildProfessionalInfoStep();
+          case 2:
+            return buildWorkingHoursStep();
           default:
-            return _buildPersonalInfoStep();
+            return buildPersonalInfoStep();
         }
       } else {
-        return _buildPersonalInfoStep();
+        return buildPersonalInfoStep();
       }
     }
 
     // Save profile function
-    Future<void> _saveProfile() async {
-      if (!_formKey.value.currentState!.validate()) {
-        print('Form validation failed');
+    Future<void> saveProfile() async {
+      if (!formKey.value.currentState!.validate()) {
+        ErrorLogger.warning('Validación del formulario fallida');
+        navigationService.showWarning('Por favor complete todos los campos requeridos');
         return;
       }
       
       if (userRole == 'professional' && workDays.value.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Debe seleccionar al menos un día de trabajo')),
-        );
+        navigationService.showWarning('Debe seleccionar al menos un día de trabajo');
         return;
       }
       
@@ -553,151 +557,142 @@ class RequiredProfileCompletion extends HookConsumerWidget {
         errorMessage.value = null;
         
         if (user == null) {
-          errorMessage.value = 'No user logged in.';
-          return;
+          throw Exception('No hay usuario autenticado');
         }
         
         if (userRole == 'professional') {
-          // Create professional model
+          // Crear availability map
+          final availability = {
+            'workDays': workDays.value,
+            'startTime': startTimeController.text.trim(),
+            'endTime': endTimeController.text.trim(),
+            'breakDuration': int.tryParse(breakDurationController.text.trim()) ?? 30,
+          };
+
+          // Crear professional model
           final professional = ProfessionalModel(
-            uid: user.uid,
+            id: user.uid,
             firstName: firstNameController.text.trim(),
             lastName: lastNameController.text.trim(),
             email: user.email ?? '',
             phoneN: phoneController.text.trim(),
             dni: dniController.text.trim(),
-            address: addressController.text.trim(),
-            license: licenseController.text.trim(),
+            consultingAddress: addressController.text.trim(),
+            licenseNumber: licenseController.text.trim(),
             speciality: selectedSpeciality.value,
-            dob: dobController.text.isNotEmpty 
+            birthDate: dobController.text.isNotEmpty
                 ? DateTime.parse(dobController.text)
                 : null,
-            workDays: workDays.value,
-            startTime: startTimeController.text.trim(),
-            endTime: endTimeController.text.trim(),
-            breakDuration: int.tryParse(breakDurationController.text.trim()) ?? 30,
-            profileCompleted: true,
+            availability: availability,
+            status: 'active',
+            profileCompleted: true,  // ✅ MARCAR COMO COMPLETADO
           );
           
-          // Save to Firestore using the model
-          await FirebaseFirestore.instance
-              .collection('doctors')
-              .doc(user.uid)
-              .update(professional.toFirestore());
-        } else {
-          // Create a PatientModel for patient users
-          final patient = PatientModel(
-            uid: user.uid,
-            firstName: firstNameController.text.trim(),
-            lastName: lastNameController.text.trim(),
-            email: user.email ?? '',
-            phoneN: phoneController.text.trim(),
-            dni: dniController.text.trim(),
-            dob: dobController.text.isNotEmpty 
-                ? DateTime.parse(dobController.text)
-                : null,
-            profileCompleted: true,
-          );
+          // Validar datos del profesional
+          final validationError = professionalService.validateProfessionalData(professional);
+          if (validationError != null) {
+            throw Exception(validationError);
+          }
           
-          // Save to Firestore using the model
-          await FirebaseFirestore.instance
-              .collection('patients')
-              .doc(user.uid)
-              .update(patient.toFirestore());
-        }
-        
-        // Mostrar mensaje de éxito
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Perfil actualizado correctamente'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        
-        // PASO CRÍTICO: Recargar sesión para actualizar el flag isProfileComplete
-        await ref.read(sessionProvider.notifier).reloadSession();
-        
-        // Esperar un breve momento para asegurar que la sesión se haya actualizado
-        await Future.delayed(Duration(milliseconds: 300));
-        
-        // Actualizar estado del proveedor según el rol
-        if (userRole == 'professional') {
+          // Guardar usando el servicio
+          await professionalService.updateProfessional(user.uid, professional.toMap());
+          
+          // Actualizar el provider
           await ref.read(professionalProvider.notifier).refresh();
         } else {
+          // Crear patient model
+          final patient = PatientModel(
+            id: user.uid,
+            firstName: firstNameController.text.trim(),
+            lastName: lastNameController.text.trim(),
+            email: user.email ?? '',
+            phoneN: phoneController.text.trim(),
+            dni: dniController.text.trim(),
+            birthDate: dobController.text.isNotEmpty
+                ? DateTime.parse(dobController.text)
+                : null,
+            status: 'active',
+            profileCompleted: true,  // ✅ MARCAR COMO COMPLETADO
+          );
+          
+          // Validar datos del paciente
+          final validationError = patientService.validatePatientData(patient);
+          if (validationError != null) {
+            throw Exception(validationError);
+          }
+          
+          // Guardar usando el servicio
+          await patientService.updatePatient(user.uid, patient.toMap());
+          
+          // Actualizar el provider
           await ref.read(patientProfileProvider.notifier).refresh();
         }
         
-        // Ahora navegar a la pantalla correspondiente usando un método que exista en GoRouter
-        if (context.mounted) {
-          final router = GoRouter.of(context);
-          
-          if (userRole == 'professional') {
-            // Usar pushReplacement en lugar de replaceAll
-            router.pushReplacement(RoutePaths.professionalHome);
-          } else {
-            // Usar pushReplacement en lugar de replaceAll
-            router.pushReplacement(RoutePaths.patientHome);
-          }
-        }
-      } catch (e) {
-        errorMessage.value = 'Error al actualizar el perfil: ${e.toString()}';
+        // Recargar sesión
+        await ref.read(sessionProvider.notifier).reloadSession();
         
-        // También mostrar error en SnackBar
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+        // Pequeña espera para asegurar actualización
+        await Future.delayed(const Duration(milliseconds: 300));
+        
+        // Mostrar mensaje de éxito
+        navigationService.showSuccess('Perfil actualizado correctamente');
+        
+        // Navegar a home según rol
+        if (userRole == 'professional') {
+          navigationService.replaceTo(RoutePaths.professionalHome);
+        } else {
+          navigationService.replaceTo(RoutePaths.patientHome);
         }
+      } catch (e, st) {
+        ErrorLogger.logError('Error al actualizar el perfil', e, st);
+        errorMessage.value = e.toString();
+        navigationService.showError('Error al actualizar el perfil: ${e.toString()}');
       } finally {
         isLoading.value = false;
       }
     }
 
-    // Navigation buttons based on current step
-    Widget _buildNavigationButtons() {
+    // Navigation buttons
+    Widget buildNavigationButtons() {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Back button (hidden on first step)
+          // Back button
           if (currentStep.value > 0)
             ElevatedButton.icon(
-              onPressed: isLoading.value ? null : () {
-                currentStep.value--;
-              },
-              icon: Icon(Icons.arrow_back),
-              label: Text('Anterior'),
+              onPressed: isLoading.value
+                  ? null
+                  : () {
+                      currentStep.value--;
+                    },
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Anterior'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.grey[200],
                 foregroundColor: Colors.black87,
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
             )
           else
-            SizedBox(width: 120), // Spacer for alignment
+            const SizedBox(width: 120),
           
           // Next/Save button
           ElevatedButton.icon(
-            onPressed: isLoading.value ? null : () {
-              if (currentStep.value == steps.length - 1) {
-                // On last step, save the profile
-                _saveProfile();
-              } else if (_formKey.value.currentState!.validate()) {
-                // Move to next step only if current step is valid
-                currentStep.value++;
-              }
-            },
+            onPressed: isLoading.value
+                ? null
+                : () {
+                    if (currentStep.value == steps.length - 1) {
+                      saveProfile();
+                    } else if (formKey.value.currentState!.validate()) {
+                      currentStep.value++;
+                    }
+                  },
             icon: Icon(currentStep.value == steps.length - 1 ? Icons.save : Icons.arrow_forward),
             label: Text(currentStep.value == steps.length - 1 ? 'Guardar' : 'Siguiente'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF01303A),
+              backgroundColor: const Color(0xFF01303A),
               foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
         ],
@@ -705,162 +700,171 @@ class RequiredProfileCompletion extends HookConsumerWidget {
     }
 
     return WillPopScope(
-      // Prevent going back
       onWillPop: () async => false,
       child: Scaffold(
         backgroundColor: Colors.grey[100],
         appBar: AppBar(
-          title: Text('Completa tu Perfil'),
-          backgroundColor: Color(0xFF01303A),
+          title: const Text('Completa tu Perfil'),
+          backgroundColor: const Color(0xFF01303A),
           foregroundColor: Colors.white,
-          automaticallyImplyLeading: false, // Remove back button
+          automaticallyImplyLeading: false,
           elevation: 0,
         ),
-        body: isLoading.value 
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Form(
-                key: _formKey.value,
-                child: Column(
-                  children: [
-                    // Progress indicator and steps
-                    Container(
-                      color: Color(0xFF01303A),
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                            child: LinearProgressIndicator(
-                              value: (currentStep.value + 1) / steps.length,
-                              backgroundColor: Colors.white.withOpacity(0.3),
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Paso ${currentStep.value + 1} de ${steps.length}',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
-                                Text(
-                                  steps[currentStep.value],
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // Main content
-                    Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Info message
-                          Container(
-                            padding: EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.blue[200]!),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.info_outline, color: Colors.blue),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Completa tus datos para continuar',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Esta información es necesaria para utilizar la aplicación.',
-                                        style: TextStyle(fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 24),
-                          
-                          // Error message if present
-                          if (errorMessage.value != null)
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              margin: const EdgeInsets.only(bottom: 24),
-                              decoration: BoxDecoration(
-                                color: Colors.red[50],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.red[300]!),
+        body: isLoading.value
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                child: Form(
+                  key: formKey.value,
+                  child: Column(
+                    children: [
+                      // Progress indicator
+                      Container(
+                        color: const Color(0xFF01303A),
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              child: LinearProgressIndicator(
+                                value: (currentStep.value + 1) / steps.length,
+                                backgroundColor: Colors.white.withOpacity(0.3),
+                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                minHeight: 8,
+                                borderRadius: BorderRadius.circular(4),
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
                               child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Icon(Icons.error_outline, color: Colors.red),
-                                  SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      errorMessage.value!,
-                                      style: TextStyle(color: Colors.red[700]),
+                                  Text(
+                                    'Paso ${currentStep.value + 1} de ${steps.length}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    steps[currentStep.value],
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          
-                          // Step content
-                          _buildStepContent(),
-                          
-                          SizedBox(height: 32),
-                          
-                          // Navigation buttons
-                          _buildNavigationButtons(),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      
+                      // Main content
+                      Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Info message
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.blue[200]!),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.info_outline, color: Colors.blue),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: const [
+                                        Text(
+                                          'Completa tus datos para continuar',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Esta información es necesaria para utilizar la aplicación.',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            
+                            // Error message
+                            if (errorMessage.value != null)
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.only(bottom: 24),
+                                decoration: BoxDecoration(
+                                  color: Colors.red[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.red[300]!),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.error_outline, color: Colors.red),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        errorMessage.value!,
+                                        style: TextStyle(color: Colors.red[700]),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            
+                            // Step content
+                            buildStepContent(),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Navigation buttons
+                            buildNavigationButtons(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
       ),
     );
   }
   
-  Widget _buildDayChip(ValueNotifier<List<String>> workDays, String day, String displayName) {
+  Widget _buildDayChip(
+    ValueNotifier<List<String>> workDays,
+    String day,
+    String displayName,
+  ) {
     final isSelected = workDays.value.contains(day);
     
     return FilterChip(
       label: Text(displayName),
       selected: isSelected,
-      selectedColor: Color(0xFF01303A).withOpacity(0.15),
-      checkmarkColor: Color(0xFF01303A),
+      selectedColor: const Color(0xFF01303A).withOpacity(0.15),
+      checkmarkColor: const Color(0xFF01303A),
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(
-          color: isSelected ? Color(0xFF01303A) : Colors.grey[300]!,
+          color: isSelected ? const Color(0xFF01303A) : Colors.grey[300]!,
         ),
       ),
       labelStyle: TextStyle(
-        color: isSelected ? Color(0xFF01303A) : Colors.black87,
+        color: isSelected ? const Color(0xFF01303A) : Colors.black87,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
       onSelected: (selected) {

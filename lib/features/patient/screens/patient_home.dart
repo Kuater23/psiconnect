@@ -25,7 +25,7 @@ class _PatientHomeState extends State<PatientHome> {
   final TextEditingController _dniController = TextEditingController();
 
   String _email = "";
-  DateTime? _dob;
+  DateTime? _birthDate;  // ✅ Cambiado de _dob a _birthDate
 
   @override
   void initState() {
@@ -64,62 +64,57 @@ class _PatientHomeState extends State<PatientHome> {
       }
 
       String uid = user.uid;
-      print('Loading patient data for uid: $uid'); // Debug log
+      print('Loading patient data for uid: $uid');
 
-      DocumentSnapshot doc = await FirebaseFirestore.instance
+      DocumentSnapshot<Map<String, dynamic>> doc = await FirebaseFirestore.instance
           .collection('patients')
           .doc(uid)
           .get();
 
       if (doc.exists) {
-        print('Patient document exists'); // Debug log
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-        print('Patient data: $data'); // Debug log to see what we're getting
+        print('Patient document exists');
+        
+        // ✅ Usar PatientModel.fromFirestore para cargar los datos
+        final patient = PatientModel.fromFirestore(doc);
 
         if (mounted) {
           setState(() {
-            _firstNameController.text = data['firstName'] ?? "";
-            _lastNameController.text = data['lastName'] ?? "";
-            _email = data['email'] ?? user.email ?? "";
-            _phoneNController.text = data['phoneN'] ?? "";
-            _dniController.text = data['dni'] ?? "";
-
-            if (data['dob'] != null) {
-              if (data['dob'] is Timestamp) {
-                _dob = (data['dob'] as Timestamp).toDate();
-              } else if (data['dob'] is String) {
-                try {
-                  _dob = DateTime.parse(data['dob']);
-                } catch (e) {
-                  print('Failed to parse dob string: ${e.toString()}');
-                }
-              }
-            }
+            _firstNameController.text = patient.firstName ?? "";
+            _lastNameController.text = patient.lastName ?? "";
+            _email = patient.email ?? user.email ?? "";
+            _phoneNController.text = patient.phoneN ?? "";  // ✅ phoneN
+            _dniController.text = patient.dni ?? "";
+            _birthDate = patient.birthDate;  // ✅ birthDate
             _isLoading = false;
           });
         }
       } else {
-        print('Patient document does not exist'); // Debug log
+        print('Patient document does not exist');
 
-        // Check if user profile exists in the users collection
+        // Check if user profile exists in the doctors collection
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('doctors')
             .doc(uid)
             .get();
 
         if (userDoc.exists) {
-          print('User document exists, creating patient record'); // Debug log
+          print('User document exists, creating patient record');
           Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
 
-          // Create a new patient document with user data
-          await FirebaseFirestore.instance.collection('patients').doc(uid).set({
-            'firstName': userData['firstName'] ?? '',
-            'lastName': userData['lastName'] ?? '',
-            'email': userData['email'] ?? user.email ?? '',
-            'uid': uid,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+          // ✅ Crear un nuevo documento de paciente usando PatientModel
+          final newPatient = PatientModel(
+            id: uid,
+            firstName: userData['firstName'] ?? '',
+            lastName: userData['lastName'] ?? '',
+            email: userData['email'] ?? user.email ?? '',
+            profileCompleted: false,
+          );
+
+          // ✅ Guardar usando toMap()
+          await FirebaseFirestore.instance
+              .collection('patients')
+              .doc(uid)
+              .set(newPatient.toMap());
 
           // Reload data
           if (mounted) {
@@ -138,7 +133,7 @@ class _PatientHomeState extends State<PatientHome> {
         }
       }
     } catch (error) {
-      print('Error loading patient data: ${error.toString()}'); // Debug log
+      print('Error loading patient data: ${error.toString()}');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -162,23 +157,23 @@ class _PatientHomeState extends State<PatientHome> {
       if (user != null) {
         String uid = user.uid;
 
-        // Create a PatientModel with the updated values
+        // ✅ Crear PatientModel con los valores actualizados
         final patient = PatientModel(
-          uid: uid,
-          firstName: _firstNameController.text,
-          lastName: _lastNameController.text,
+          id: uid,  // ✅ id en lugar de uid
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
           email: _email,
-          phoneN: _phoneNController.text,
-          dni: _dniController.text,
-          dob: _dob,
+          phoneN: _phoneNController.text.trim(),  // ✅ phoneN
+          dni: _dniController.text.trim(),
+          birthDate: _birthDate,  // ✅ birthDate en lugar de dob
           profileCompleted: true,
         );
 
-        // Save to Firestore using the model's toFirestore method
+        // ✅ Guardar usando toMap() en lugar de toFirestore()
         await FirebaseFirestore.instance
             .collection('patients')
             .doc(uid)
-            .set(patient.toFirestore(), SetOptions(merge: true));
+            .set(patient.toMap(), SetOptions(merge: true));
 
         if (mounted) {
           setState(() {
@@ -186,7 +181,10 @@ class _PatientHomeState extends State<PatientHome> {
             _isEditing = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Datos guardados correctamente")),
+            SnackBar(
+              content: Text("Datos guardados correctamente"),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } else {
@@ -200,13 +198,16 @@ class _PatientHomeState extends State<PatientHome> {
         }
       }
     } catch (error) {
-      print('Error saving patient data: ${error.toString()}'); // Debug log
+      print('Error saving patient data: ${error.toString()}');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error al guardar los cambios")),
+          SnackBar(
+            content: Text("Error al guardar los cambios: ${error.toString()}"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -214,16 +215,20 @@ class _PatientHomeState extends State<PatientHome> {
 
   // Select date of birth
   Future<void> _pickDate() async {
-    DateTime initialDate = _dob ?? DateTime(2000, 1, 1);
+    DateTime initialDate = _birthDate ?? DateTime(2000, 1, 1);  // ✅ _birthDate
     DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
+      locale: const Locale('es', 'ES'),
+      helpText: 'Seleccione su fecha de nacimiento',
+      cancelText: 'Cancelar',
+      confirmText: 'Confirmar',
     );
     if (picked != null && mounted) {
       setState(() {
-        _dob = picked;
+        _birthDate = picked;  // ✅ _birthDate
       });
     }
   }
@@ -297,7 +302,7 @@ class _PatientHomeState extends State<PatientHome> {
                   _infoRow(
                     Icons.calendar_today_outlined, 
                     "Fecha de nacimiento", 
-                    _dob != null ? dateFormat.format(_dob!) : 'No asignada'
+                    _birthDate != null ? dateFormat.format(_birthDate!) : 'No asignada'  // ✅ _birthDate
                   ),
                 ],
               ),
@@ -318,6 +323,9 @@ class _PatientHomeState extends State<PatientHome> {
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
               minimumSize: Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
         ],
@@ -513,7 +521,7 @@ class _PatientHomeState extends State<PatientHome> {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  _dob != null ? dateFormat.format(_dob!) : 'Seleccione fecha',
+                                  _birthDate != null ? dateFormat.format(_birthDate!) : 'Seleccione fecha',  // ✅ _birthDate
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
@@ -552,6 +560,8 @@ class _PatientHomeState extends State<PatientHome> {
                       setState(() {
                         _isEditing = false;
                       });
+                      // Reload data to reset any unsaved changes
+                      _loadPatientData();
                     },
                     child: Text('Cancelar'),
                     style: TextButton.styleFrom(
@@ -565,8 +575,11 @@ class _PatientHomeState extends State<PatientHome> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ],
@@ -685,7 +698,14 @@ class _PatientHomeState extends State<PatientHome> {
                   CircularProgressIndicator(),
                   if (_errorMessage.isNotEmpty) ...[
                     SizedBox(height: 16),
-                    Text(_errorMessage, style: TextStyle(color: Colors.red)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                      child: Text(
+                        _errorMessage, 
+                        style: TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                     SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: _loadPatientData,

@@ -1,145 +1,171 @@
 // lib/features/auth/services/auth_service.dart
 
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '/core/exceptions/app_exception.dart';
+import '../../../core/services/error_logger.dart';
+import '../../../core/services/user_role_service.dart';
 
-final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService(FirebaseAuth.instance);
-});
+enum UserRole { patient, professional }
 
-/// Service for handling authentication related functionality
 class AuthService {
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-  
-  AuthService(this._auth);
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
 
-  /// Stream of auth state changes
+  final _auth = FirebaseAuth.instance;
+  final _db = FirebaseFirestore.instance;
+  final _roleService = UserRoleService();
+
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-  
-  /// Current authenticated user
   User? get currentUser => _auth.currentUser;
 
-  /// Sign in with email and password
-  Future<User?> signInWithEmail(String email, String password) async {
-    try {
-      final userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      // Convertir el error de Firebase a un error más amigable
-      switch (e.code) {
-        case 'user-not-found':
-          throw AuthException('No se encontró ningún usuario con este correo electrónico');
-        case 'wrong-password':
-          throw AuthException('Contraseña incorrecta');
-        case 'user-disabled':
-          throw AuthException('Esta cuenta ha sido deshabilitada');
-        case 'too-many-requests':
-          throw AuthException('Demasiados intentos fallidos. Por favor, intente más tarde');
-        default:
-          throw AuthException('Error al iniciar sesión: ${e.message}');
-      }
-    } catch (e) {
-      throw AuthException('Error al iniciar sesión: $e');
-    }
+  // ==================== Google Sign-In ====================
+  
+  Future<UserCredential> _googleWeb() async {
+    final provider = GoogleAuthProvider()
+      ..addScope('email')
+      ..setCustomParameters({'prompt': 'select_account'});
+    return _auth.signInWithPopup(provider);
   }
 
-  /// Register with email and password
-  Future<User?> registerWithEmail({
-    required String email,
-    required String password,
+  Future<UserCredential> _googleMobile() async {
+    final user = await GoogleSignIn().signIn();
+    if (user == null) {
+      throw Exception('Google sign-in cancelado por el usuario');
+    }
+    final auth = await user.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: auth.accessToken,
+      idToken: auth.idToken,
+    );
+    return _auth.signInWithCredential(credential);
+  }
+
+  /// Sign-in con Google y creación idempotente de perfil
+  Future<({User user, String role})> signInWithGoogleEnsureProfile({
+    UserRole? desiredRole,
   }) async {
     try {
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      final cred = kIsWeb ? await _googleWeb() : await _googleMobile();
+      final user = cred.user!;
+      
+      final role = await _ensureUserProfile(
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        desiredRole: desiredRole,
+      );
+      
+      return (user: user, role: role);
+    } catch (e, st) {
+      ErrorLogger.logError('Error en signInWithGoogleEnsureProfile', e, st);
+      rethrow;
+    }
+  }
+
+  Future<String> _ensureUserProfile({
+    required String uid,
+    String? email,
+    String? displayName,
+    String? photoURL,
+    UserRole? desiredRole,
+  }) async {
+    // Usar el servicio centralizado de roles
+    final currentRole = await _roleService.getUserRole(uid);
+    
+    if (currentRole == AppUserRole.professional) return 'professional';
+    if (currentRole == AppUserRole.patient) return 'patient';
+    if (currentRole == AppUserRole.admin) return 'admin';
+
+    // No existe perfil
+    if (desiredRole == null) return 'unknown';
+
+    final baseData = {
+      'email': email,
+      'displayName': displayName,
+      'photoURL': photoURL,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'status': 'active',
+    };
+
+    try {
+      if (desiredRole == UserRole.professional) {
+        await _db.collection('doctors').doc(uid).set(baseData, SetOptions(merge: true));
+        _roleService.clearCache(uid); // Limpiar caché después de crear
+        return 'professional';
+      } else {
+        await _db.collection('patients').doc(uid).set(baseData, SetOptions(merge: true));
+        _roleService.clearCache(uid);
+        return 'patient';
+      }
+    } catch (e, st) {
+      ErrorLogger.logError('Error creando perfil de usuario', e, st);
+      rethrow;
+    }
+  }
+
+  // ==================== Email/Password ====================
+  
+  Future<UserCredential> signInWithEmailPassword(String email, String password) async {
+    try {
+      return await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } catch (e, st) {
+      ErrorLogger.logError('Error en signInWithEmailPassword', e, st);
+      rethrow;
+    }
+  }
+
+  Future<UserCredential> createUserWithEmailPassword(
+    String email,
+    String password,
+    UserRole role,
+  ) async {
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
       
-      return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      // Convertir el error de Firebase a un error más amigable
-      switch (e.code) {
-        case 'email-already-in-use':
-          throw AuthException('Este correo electrónico ya está registrado');
-        case 'weak-password':
-          throw AuthException('La contraseña es demasiado débil');
-        case 'invalid-email':
-          throw AuthException('El formato del correo electrónico es inválido');
-        default:
-          throw AuthException('Error al registrarse: ${e.message}');
-      }
-    } catch (e) {
-      throw AuthException('Error al registrarse: $e');
-    }
-  }
-
-  /// Sign in with Google
-  Future<User?> signInWithGoogle() async {
-    try {
-      UserCredential userCredential;
+      await _ensureUserProfile(
+        uid: cred.user!.uid,
+        email: email,
+        desiredRole: role,
+      );
       
-      if (kIsWeb) {
-        // Web-specific Google sign-in
-        final googleProvider = GoogleAuthProvider();
-        googleProvider.addScope('email');
-        googleProvider.setCustomParameters({'prompt': 'select_account'});
-        
-        userCredential = await _auth.signInWithPopup(googleProvider);
-      } else {
-        // Mobile specific Google sign-in
-        final googleUser = await _googleSignIn.signIn();
-        if (googleUser == null) {
-          throw AuthException('Inicio de sesión con Google cancelado por el usuario');
-        }
-
-        final googleAuth = await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-
-        userCredential = await _auth.signInWithCredential(credential);
-      }
-
-      final user = userCredential.user;
-      if (user != null) {
-        // Simplemente devuelve el usuario, la verificación de existencia
-        // se hará en el SessionProvider
-        return user;
-      }
-      return null;
-    } catch (e) {
-      print('Error signing in with Google: $e');
+      return cred;
+    } catch (e, st) {
+      ErrorLogger.logError('Error en createUserWithEmailPassword', e, st);
       rethrow;
     }
   }
 
-  /// Sign out user
+  // ==================== Sign Out ====================
+  
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut();
-      await _auth.signOut();
-    } catch (e) {
-      print('Error signing out: $e');
+      await Future.wait([
+        _auth.signOut(),
+        if (!kIsWeb) GoogleSignIn().signOut(),
+      ]);
+      _roleService.clearCache(); // Limpiar todo el caché al salir
+    } catch (e, st) {
+      ErrorLogger.logError('Error en signOut', e, st);
       rethrow;
     }
   }
+
+  // ==================== Password Reset ====================
   
-  /// Send password reset email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
-    } catch (e) {
-      print('Error sending password reset email: $e');
+    } catch (e, st) {
+      ErrorLogger.logError('Error enviando email de recuperación', e, st);
       rethrow;
     }
   }

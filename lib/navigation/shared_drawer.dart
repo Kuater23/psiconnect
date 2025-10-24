@@ -2,6 +2,7 @@
 
 import 'package:Psiconnect/core/widgets/storage_image.dart';
 import 'package:Psiconnect/features/auth/models/user_session.dart';
+import 'package:Psiconnect/features/auth/providers/session_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '/navigation/router.dart';

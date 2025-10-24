@@ -13,6 +13,7 @@ import '/navigation/router.dart';
 import '/features/auth/providers/session_provider.dart';
 import '/core/widgets/responsive_widget.dart';
 import '/core/constants/app_constants.dart';
+import '../services/auth_service.dart';
 
 class LoginPage extends HookConsumerWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -99,39 +100,27 @@ Future<void> handleGoogleSignIn() async {
     
     if (user != null && context.mounted) {
       // Solo mostrar selección de rol para usuarios nuevos
-      showDialog(
+      final selectedRole = await showDialog<UserRole>(
         context: context,
         barrierDismissible: false,
-        builder: (BuildContext context) {
-          return RoleSelectionDialog(
-            onRoleSelected: (UserRole selectedRole) async {
-              // Cerrar el diálogo
-              Navigator.of(context).pop();
-              
-              try {
-                // Registrar el usuario con el rol seleccionado
-                final role = selectedRole == UserRole.professional 
-                    ? 'professional' 
-                    : 'patient';
-                
-                await ref.read(sessionProvider.notifier)
-                    .registerWithGoogle(role);
-                
-                // Navegar según el rol seleccionado usando pushReplacement
-                if (context.mounted) {
-                  if (selectedRole == UserRole.professional) {
-                    GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
-                  } else {
-                    GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
-                  }
-                }
-              } catch (e) {
-                errorMessage.value = 'Error al registrarse con Google: ${e.toString()}';
-              }
-            },
-          );
-        },
+        builder: (BuildContext context) => const RoleSelectionDialog(),
       );
+
+      if (selectedRole != null) {
+        try {
+          final role = selectedRole == UserRole.professional ? 'professional' : 'patient';
+          await ref.read(sessionProvider.notifier).registerWithGoogle(role);
+          if (context.mounted) {
+            if (selectedRole == UserRole.professional) {
+              GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
+            } else {
+              GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
+            }
+          }
+        } catch (e) {
+          errorMessage.value = 'Error al registrarse con Google: ${e.toString()}';
+        }
+      }
     } else if (context.mounted) {
       // Si user es null, es un usuario existente
       // Esperar a que la sesión se actualice y luego navegar según el rol
@@ -542,29 +531,35 @@ Future<void> handleGoogleSignIn() async {
                               ],
                             ),
                             child: OutlinedButton.icon(
-                              onPressed: isLoading.value ? null : handleGoogleSignIn,
-                              icon: SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: StorageImage(
-                                  imagePath:'images/google_logo.png',
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.g_mobiledata,
-                                      size: 20,
-                                      color: Colors.red,
+                              icon: const Icon(Icons.login),
+                              label: const Text('Ingresar con Google'),
+                              onPressed: () async {
+                                try {
+                                  final res = await AuthService().signInWithGoogleEnsureProfile();
+                                  var role = res.role;
+                                  if (role == 'unknown') {
+                                    final selected = await showDialog<UserRole>(
+                                      context: context,
+                                      builder: (_) => const RoleSelectionDialog(),
                                     );
-                                  },
-                                ),
-                              ),
-                              label: Text(
-                                'Continuar con Google',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
+                                    if (selected != null) {
+                                      role = (await AuthService()
+                                              .signInWithGoogleEnsureProfile(desiredRole: selected))
+                                          .role;
+                                    }
+                                  }
+
+                                  if (role == 'professional') {
+                                    // ...navigate to professional home...
+                                  } else if (role == 'patient') {
+                                    // ...navigate to patient home...
+                                  } else {
+                                    // ...handle error...
+                                  }
+                                } catch (e) {
+                                  // ...show error snackbar...
+                                }
+                              },
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 side: BorderSide(color: AppColors.primaryLight),

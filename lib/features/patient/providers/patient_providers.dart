@@ -10,93 +10,6 @@ import '/core/services/error_logger.dart';
 import '/features/appointments/models/appointment.dart';
 import '/features/auth/providers/session_provider.dart';
 
-/// Patient profile data class
-class PatientProfile {
-  final String? uid;
-  final String? firstName;
-  final String? lastName;
-  final String? email;
-  final String? phoneN;
-  final String? dni;
-  final DateTime? dob;
-  
-  PatientProfile({
-    this.uid,
-    this.firstName,
-    this.lastName,
-    this.email,
-    this.phoneN,
-    this.dni,
-    this.dob,
-  });
-  
-  /// Create PatientProfile from Firestore data
-  factory PatientProfile.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>?;
-    
-    if (data == null) {
-      return PatientProfile();
-    }
-    
-    DateTime? birthDate;
-    if (data['dob'] != null) {
-      if (data['dob'] is Timestamp) {
-        birthDate = (data['dob'] as Timestamp).toDate();
-      } else if (data['dob'] is String) {
-        try {
-          birthDate = DateTime.parse(data['dob']);
-        } catch (e) {
-          // Invalid date format
-        }
-      }
-    }
-    
-    return PatientProfile(
-      uid: doc.id,
-      firstName: data['firstName'],
-      lastName: data['lastName'],
-      email: data['email'],
-      phoneN: data['phoneN'],
-      dni: data['dni'],
-      dob: birthDate,
-    );
-  }
-  
-  /// Convert profile to Firestore data
-  Map<String, dynamic> toFirestore() {
-    return {
-      'firstName': firstName,
-      'lastName': lastName,
-      'email': email,
-      'phoneN': phoneN,
-      'dni': dni,
-      'dob': dob != null ? Timestamp.fromDate(dob!) : null,
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-  }
-  
-  /// Create a copy with updated fields
-  PatientProfile copyWith({
-    String? uid,
-    String? firstName,
-    String? lastName,
-    String? email,
-    String? phoneN,
-    String? dni,
-    DateTime? dob,
-  }) {
-    return PatientProfile(
-      uid: uid ?? this.uid,
-      firstName: firstName ?? this.firstName,
-      lastName: lastName ?? this.lastName,
-      email: email ?? this.email,
-      phoneN: phoneN ?? this.phoneN,
-      dni: dni ?? this.dni,
-      dob: dob ?? this.dob,
-    );
-  }
-}
-
 /// Provider for patient profile data
 final patientProfileProvider = StateNotifierProvider<PatientProfileNotifier, AsyncValue<PatientModel?>>((ref) {
   final user = ref.watch(sessionProvider);
@@ -123,9 +36,9 @@ final patientUpcomingAppointmentsProvider = StreamProvider.autoDispose<List<Appo
     return FirebaseFirestore.instance
         .collection('appointments')
         .where('patientId', isEqualTo: patientId)
-        .where('date', isGreaterThan: now.toIso8601String())
-        .where('status', whereIn: ['pending', 'confirmed'])
-        .orderBy('date')
+        .where('scheduledAt', isGreaterThanOrEqualTo: Timestamp.fromDate(now))
+        .where('status', whereIn: ['pending', 'scheduled'])
+        .orderBy('scheduledAt')
         .limit(5)
         .snapshots()
         .map((snapshot) => 
@@ -152,8 +65,8 @@ final patientPastAppointmentsProvider = StreamProvider.autoDispose<List<Appointm
     return FirebaseFirestore.instance
         .collection('appointments')
         .where('patientId', isEqualTo: patientId)
-        .where('date', isLessThan: now.toIso8601String())
-        .orderBy('date', descending: true)
+        .where('scheduledAt', isLessThan: Timestamp.fromDate(now))
+        .orderBy('scheduledAt', descending: true)
         .limit(10)
         .snapshots()
         .map((snapshot) => 
@@ -262,16 +175,18 @@ final patientProfileCompletionProvider = Provider.autoDispose<double>((ref) {
   
   return profileData.when(
     data: (profile) {
+      if (profile == null) return 0.0;
+      
       // Calculate completion percentage
       int totalFields = 6; // Total number of important profile fields
       int filledFields = 0;
       
-      if (profile?.firstName?.isNotEmpty ?? false) filledFields++;
-      if (profile?.lastName?.isNotEmpty ?? false) filledFields++;
-      if (profile?.phoneN?.isNotEmpty ?? false) filledFields++;
-      if (profile?.dni?.isNotEmpty ?? false) filledFields++;
-      if (profile?.email?.isNotEmpty ?? false) filledFields++;
-      if (profile?.dob != null) filledFields++;
+      if (profile.firstName?.isNotEmpty ?? false) filledFields++;
+      if (profile.lastName?.isNotEmpty ?? false) filledFields++;
+      if (profile.phoneN?.isNotEmpty ?? false) filledFields++;  // ✅ phoneN
+      if (profile.dni?.isNotEmpty ?? false) filledFields++;
+      if (profile.email?.isNotEmpty ?? false) filledFields++;
+      if (profile.birthDate != null) filledFields++;  // ✅ birthDate
       
       return filledFields / totalFields;
     },
@@ -285,33 +200,35 @@ class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientModel?>> {
   final String? _userId;
   final WebFirestoreService _firestoreService;
   
-  PatientProfileNotifier(this._userId, this._firestoreService) : super(AsyncValue.loading()) {
+  PatientProfileNotifier(this._userId, this._firestoreService) : super(const AsyncValue.loading()) {
     if (_userId != null) {
       _loadPatientData();
     } else {
-      state = AsyncValue.data(null);
+      state = const AsyncValue.data(null);
     }
   }
   
   /// Load patient data from Firestore
   Future<void> _loadPatientData() async {
     try {
-      state = AsyncValue.loading();
+      state = const AsyncValue.loading();
       
       if (_userId == null) {
-        state = AsyncValue.data(null);
+        state = const AsyncValue.data(null);
         return;
       }
       
       final doc = await _firestoreService.getDocument('patients', _userId!);
       
       if (doc == null || !doc.exists) {
-        state = AsyncValue.data(null);
+        state = const AsyncValue.data(null);
         return;
       }
       
-      // Use the model to create a proper PatientModel object
-      final patient = PatientModel.fromFirestore(doc);
+      // ✅ Use PatientModel.fromFirestore correctly
+      final patient = PatientModel.fromFirestore(
+        doc as DocumentSnapshot<Map<String, dynamic>>
+      );
       state = AsyncValue.data(patient);
       
     } catch (e, stackTrace) {
@@ -321,12 +238,13 @@ class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientModel?>> {
   }
 
   /// Update patient profile
+  /// ✅ Usa nombres de campos correctos: phoneN y birthDate
   Future<void> updateProfile({
     String? firstName,
     String? lastName,
-    String? phoneN,
+    String? phoneN,  // ✅ phoneN
     String? dni,
-    DateTime? dob,
+    DateTime? birthDate,  // ✅ birthDate (no dob)
   }) async {
     try {
       if (_userId == null) return;
@@ -338,21 +256,21 @@ class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientModel?>> {
       // Update state with loading but preserve previous data
       state = AsyncValue<PatientModel?>.loading().copyWithPrevious(state);
       
-      // Create updated profile using copyWith
+      // ✅ Create updated profile using copyWith with correct field names
       final updatedProfile = currentData.copyWith(
         firstName: firstName,
         lastName: lastName,
-        phoneN: phoneN,
+        phoneN: phoneN,  // ✅ phoneN
         dni: dni,
-        dob: dob,
-        profileCompleted: true
+        birthDate: birthDate,  // ✅ birthDate
+        status: 'active',
       );
       
-      // Save to Firestore
+      // ✅ Save to Firestore using toMap from BaseModel
       await _firestoreService.updateDocument(
         'patients',
         _userId!,
-        updatedProfile.toFirestore(),
+        updatedProfile.toMap(),  // ✅ toMap() en lugar de toFirestore()
       );
       
       // Update state with new data
@@ -374,7 +292,7 @@ class PatientProfileNotifier extends StateNotifier<AsyncValue<PatientModel?>> {
 
 /// Notifier for professional search
 class ProfessionalSearchNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
-  ProfessionalSearchNotifier() : super(AsyncValue.data([]));
+  ProfessionalSearchNotifier() : super(const AsyncValue.data([]));
   
   /// Search for professionals
   Future<void> searchProfessionals({
@@ -382,7 +300,7 @@ class ProfessionalSearchNotifier extends StateNotifier<AsyncValue<List<Map<Strin
     String? speciality,
   }) async {
     try {
-      state = AsyncValue.loading();
+      state = const AsyncValue.loading();
       
       Query query = FirebaseFirestore.instance
           .collection('doctors'); 
@@ -426,6 +344,6 @@ class ProfessionalSearchNotifier extends StateNotifier<AsyncValue<List<Map<Strin
   
   /// Clear search results
   void clearSearch() {
-    state = AsyncValue.data([]);
+    state = const AsyncValue.data([]);
   }
 }

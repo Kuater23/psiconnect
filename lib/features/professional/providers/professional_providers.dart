@@ -12,16 +12,22 @@ import '/features/appointments/models/appointment.dart';
 import '/features/auth/providers/session_provider.dart';
 import 'package:Psiconnect/features/professional/models/professional_model.dart';
 
-// Update the state to use ProfessionalModel
+/// Provider for professional profile data
 final professionalProvider = StateNotifierProvider<ProfessionalNotifier, AsyncValue<ProfessionalModel?>>((ref) {
-  return ProfessionalNotifier(WebFirestoreService());
+  final session = ref.watch(sessionProvider);
+  
+  if (session == null || session.role != 'professional') {
+    return ProfessionalNotifier(null, WebFirestoreService());
+  }
+  
+  return ProfessionalNotifier(session.uid, WebFirestoreService());
 });
 
 /// Provider for professional availability
 final professionalAvailabilityProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, doctorId) async {
   try {
     final firestoreService = WebFirestoreService();
-    final doc = await firestoreService.getDocument('professionals', doctorId);
+    final doc = await firestoreService.getDocument('doctors', doctorId);
     
     if (doc == null || !doc.exists) {
       return [];
@@ -30,18 +36,20 @@ final professionalAvailabilityProvider = FutureProvider.family<List<Map<String, 
     final data = doc.data() as Map<String, dynamic>;
     final availability = data['availability'] as Map<String, dynamic>? ?? {};
     
-    final List<String> days = List<String>.from(availability['days'] ?? []);
-    final String startTime = availability['start_time'] ?? '09:00';
-    final String endTime = availability['end_time'] ?? '17:00';
+    final List<String> workDays = List<String>.from(availability['workDays'] ?? []);
+    final String startTime = availability['startTime'] ?? '09:00';
+    final String endTime = availability['endTime'] ?? '17:00';
+    final int breakDuration = availability['breakDuration'] ?? 30;
     
     // Generate time slots for each available day
     final List<Map<String, dynamic>> availableSlots = [];
     
-    for (final day in days) {
+    for (final day in workDays) {
       availableSlots.add({
         'day': day,
         'startTime': startTime,
         'endTime': endTime,
+        'breakDuration': breakDuration,
       });
     }
     
@@ -67,8 +75,9 @@ final professionalUpcomingAppointmentsProvider = StreamProvider.autoDispose<List
     return FirebaseFirestore.instance
         .collection('appointments')
         .where('doctorId', isEqualTo: userId)
-        .where('date', isGreaterThan: now.toIso8601String())
-        .orderBy('date')
+        .where('scheduledAt', isGreaterThanOrEqualTo: Timestamp.fromDate(now))
+        .where('status', whereIn: ['pending', 'scheduled'])
+        .orderBy('scheduledAt')
         .limit(10)
         .snapshots()
         .map((snapshot) => 
@@ -76,6 +85,34 @@ final professionalUpcomingAppointmentsProvider = StreamProvider.autoDispose<List
         );
   } catch (e, stackTrace) {
     ErrorLogger.logError('Error fetching professional upcoming appointments', e, stackTrace);
+    return Stream.value([]);
+  }
+});
+
+/// Provider for professional's past appointments
+final professionalPastAppointmentsProvider = StreamProvider.autoDispose<List<Appointment>>((ref) {
+  final session = ref.watch(sessionProvider);
+  final userId = ref.watch(userIdProvider);
+  
+  if (session == null || session.role != 'professional' || userId == null) {
+    return Stream.value([]);
+  }
+  
+  final now = DateTime.now();
+  
+  try {
+    return FirebaseFirestore.instance
+        .collection('appointments')
+        .where('doctorId', isEqualTo: userId)
+        .where('scheduledAt', isLessThan: Timestamp.fromDate(now))
+        .orderBy('scheduledAt', descending: true)
+        .limit(10)
+        .snapshots()
+        .map((snapshot) => 
+          snapshot.docs.map((doc) => Appointment.fromFirestore(doc)).toList()
+        );
+  } catch (e, stackTrace) {
+    ErrorLogger.logError('Error fetching professional past appointments', e, stackTrace);
     return Stream.value([]);
   }
 });
@@ -98,7 +135,7 @@ final professionalPatientsProvider = StreamProvider.autoDispose<List<Map<String,
         .asyncMap((snapshot) async {
           // Extract unique patient IDs
           final Set<String> patientIds = snapshot.docs
-              .map((doc) => (doc.data() as Map<String, dynamic>)['patientId'] as String)
+              .map((doc) => (doc.data())['patientId'] as String)
               .toSet();
               
           // Fetch patient details
@@ -117,6 +154,7 @@ final professionalPatientsProvider = StreamProvider.autoDispose<List<Map<String,
                 'name': patientData['firstName'] ?? '',
                 'lastName': patientData['lastName'] ?? '',
                 'email': patientData['email'] ?? '',
+                'phoneN': patientData['phoneN'] ?? '',
                 'lastAppointment': _getLastAppointmentDate(snapshot.docs, patientId),
               });
             }
@@ -147,14 +185,15 @@ final professionalStatsProvider = FutureProvider.autoDispose<Map<String, dynamic
     final monthlyAppointments = await FirebaseFirestore.instance
         .collection('appointments')
         .where('doctorId', isEqualTo: userId)
-        .where('date', isGreaterThanOrEqualTo: startOfMonth.toIso8601String())
+        .where('scheduledAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
         .get();
     
     // Get upcoming appointments
     final upcomingAppointments = await FirebaseFirestore.instance
         .collection('appointments')
         .where('doctorId', isEqualTo: userId)
-        .where('date', isGreaterThan: now.toIso8601String())
+        .where('scheduledAt', isGreaterThanOrEqualTo: Timestamp.fromDate(now))
+        .where('status', whereIn: ['pending', 'scheduled'])
         .get();
     
     // Calculate stats
@@ -166,7 +205,7 @@ final professionalStatsProvider = FutureProvider.autoDispose<Map<String, dynamic
     int cancelledCount = 0;
     
     for (final doc in monthlyAppointments.docs) {
-      final data = doc.data() as Map<String, dynamic>;
+      final data = doc.data();
       final status = data['status'] as String? ?? '';
       
       if (status == 'completed') completedCount++;
@@ -186,41 +225,31 @@ final professionalStatsProvider = FutureProvider.autoDispose<Map<String, dynamic
   }
 });
 
-/// Provider for professional account completion status
+/// Provider for professional profile completion status
 final professionalProfileCompletionProvider = Provider.autoDispose<double>((ref) {
   final professionalState = ref.watch(professionalProvider);
   
-  // Initialize with 0 for loading or error states
-  if (professionalState is AsyncLoading) {
-    return 0.0;
-  }
-  
-  if (professionalState is AsyncError) {
-    return 0.0;
-  }
-  
-  // Get the actual professional model from the AsyncValue
-  final professional = professionalState.value;
-  
-  // If no professional data, return 0
-  if (professional == null) {
-    return 0.0;
-  }
-  
-  // Calculate completion percentage based on filled fields
-  int totalFields = 8; // Total number of important profile fields
-  int filledFields = 0;
-  
-  if (professional.firstName.isNotEmpty) filledFields++;
-  if (professional.lastName.isNotEmpty) filledFields++;
-  if (professional.address.isNotEmpty) filledFields++;
-  if (professional.phoneN.isNotEmpty) filledFields++;
-  if (professional.dni.isNotEmpty) filledFields++;
-  if (professional.license.isNotEmpty) filledFields++;
-  if (professional.workDays.isNotEmpty) filledFields++;
-  if (professional.startTime.isNotEmpty && professional.endTime.isNotEmpty) filledFields++;
-  
-  return filledFields / totalFields;
+  return professionalState.when(
+    data: (professional) {
+      if (professional == null) return 0.0;
+      
+      // Calculate completion percentage based on filled fields
+      int totalFields = 7; // Total number of important profile fields
+      int filledFields = 0;
+      
+      if (professional.firstName?.isNotEmpty ?? false) filledFields++;
+      if (professional.lastName?.isNotEmpty ?? false) filledFields++;
+      if (professional.consultingAddress?.isNotEmpty ?? false) filledFields++;
+      if (professional.phoneN?.isNotEmpty ?? false) filledFields++;
+      if (professional.dni?.isNotEmpty ?? false) filledFields++;
+      if (professional.licenseNumber?.isNotEmpty ?? false) filledFields++;
+      if (professional.availability != null && professional.availability!.isNotEmpty) filledFields++;
+      
+      return filledFields / totalFields;
+    },
+    loading: () => 0.0,
+    error: (_, __) => 0.0,
+  );
 });
 
 /// Helper function to get the last appointment date for a patient
@@ -232,225 +261,140 @@ String _getLastAppointmentDate(List<QueryDocumentSnapshot> docs, String patientI
   if (patientAppointments.isEmpty) return 'N/A';
   
   patientAppointments.sort((a, b) {
-    final dateA = (a.data() as Map<String, dynamic>)['date'] as String;
-    final dateB = (b.data() as Map<String, dynamic>)['date'] as String;
-    return dateB.compareTo(dateA); // Sort in descending order
+    final timestampA = (a.data() as Map<String, dynamic>)['scheduledAt'] as Timestamp?;
+    final timestampB = (b.data() as Map<String, dynamic>)['scheduledAt'] as Timestamp?;
+    
+    if (timestampA == null || timestampB == null) return 0;
+    
+    return timestampB.compareTo(timestampA); // Sort in descending order
   });
   
-  final lastAppointmentDate = (patientAppointments.first.data() as Map<String, dynamic>)['date'] as String;
+  final lastAppointmentTimestamp = (patientAppointments.first.data() as Map<String, dynamic>)['scheduledAt'] as Timestamp?;
+  
+  if (lastAppointmentTimestamp == null) return 'N/A';
   
   // Format the date
   try {
-    final dateTime = DateTime.parse(lastAppointmentDate);
+    final dateTime = lastAppointmentTimestamp.toDate();
     return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
   } catch (e) {
-    return lastAppointmentDate;
+    return 'N/A';
   }
 }
 
 /// Helper function to get month name
 String _getMonthName(int month) {
-  switch (month) {
-    case 1: return 'Enero';
-    case 2: return 'Febrero';
-    case 3: return 'Marzo';
-    case 4: return 'Abril';
-    case 5: return 'Mayo';
-    case 6: return 'Junio';
-    case 7: return 'Julio';
-    case 8: return 'Agosto';
-    case 9: return 'Septiembre';
-    case 10: return 'Octubre';
-    case 11: return 'Noviembre';
-    case 12: return 'Diciembre';
-    default: return '';
-  }
-}
-
-/// States for ProfessionalNotifier
-class ProfessionalState {
-  final String? uid;
-  final String? name;
-  final String? lastName;
-  final String? address;
-  final String? phone;
-  final String? documentNumber;
-  final String? documentType;
-  final String? licenseNumber;
-  final List<String> selectedDays;
-  final String? startTime;
-  final String? endTime;
-  final String? breakDuration; // Add this field
-  final bool isLoading;
-  final bool hasData;
-  final bool isEditing;
-  final String? error;
-
-  ProfessionalState({
-    this.uid,
-    this.name,
-    this.lastName,
-    this.address,
-    this.phone,
-    this.documentNumber,
-    this.documentType,
-    this.licenseNumber,
-    this.selectedDays = const [],
-    this.startTime,
-    this.endTime,
-    this.breakDuration, // Add this parameter to constructor
-    this.isLoading = false,
-    this.hasData = false,
-    this.isEditing = false,
-    this.error, // Add this parameter
-  });
-
-  // Update the copyWith method to include the breakDuration parameter
-  ProfessionalState copyWith({
-    String? uid,
-    String? name,
-    String? lastName,
-    String? address,
-    String? phone,
-    String? documentNumber,
-    String? documentType,
-    String? licenseNumber,
-    List<String>? selectedDays,
-    String? startTime,
-    String? endTime,
-    String? breakDuration, // Add this parameter
-    bool? isLoading,
-    bool? hasData,
-    bool? isEditing,
-    String? error, // Add this parameter
-  }) {
-    return ProfessionalState(
-      uid: uid ?? this.uid,
-      name: name ?? this.name,
-      lastName: lastName ?? this.lastName,
-      address: address ?? this.address,
-      phone: phone ?? this.phone,
-      documentNumber: documentNumber ?? this.documentNumber, 
-      documentType: documentType ?? this.documentType,
-      licenseNumber: licenseNumber ?? this.licenseNumber,
-      selectedDays: selectedDays ?? this.selectedDays,
-      startTime: startTime ?? this.startTime,
-      endTime: endTime ?? this.endTime,
-      breakDuration: breakDuration ?? this.breakDuration, // Use the parameter
-      isLoading: isLoading ?? this.isLoading,
-      hasData: hasData ?? this.hasData,
-      isEditing: isEditing ?? this.isEditing,
-      error: error ?? this.error,
-    );
-  }
+  const monthNames = [
+    '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  
+  return month >= 1 && month <= 12 ? monthNames[month] : '';
 }
 
 /// Notifier class for professional state
 class ProfessionalNotifier extends StateNotifier<AsyncValue<ProfessionalModel?>> {
+  final String? _userId;
   final WebFirestoreService _firestoreService;
 
-  ProfessionalNotifier(this._firestoreService)
+  ProfessionalNotifier(this._userId, this._firestoreService) 
       : super(const AsyncValue.loading()) {
-    _loadUserData(); // Load professional data when initialized
+    if (_userId != null) {
+      _loadProfessionalData();
+    } else {
+      state = const AsyncValue.data(null);
+    }
   }
 
   /// Load professional data from Firestore
-  Future<void> _loadUserData() async {
+  Future<void> _loadProfessionalData() async {
     try {
       state = const AsyncValue.loading();
-      final User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        state = AsyncValue.error("No user logged in", StackTrace.current);
+      
+      if (_userId == null) {
+        state = const AsyncValue.data(null);
         return;
       }
 
-      final doc = await _firestoreService.getDocument('doctors', user.uid);
+      final doc = await _firestoreService.getDocument('doctors', _userId!);
       
-      if (doc != null && doc.exists) {
-        // Use the factory constructor to create a model from Firestore data
-        final professional = ProfessionalModel.fromFirestore(doc);
-        state = AsyncValue.data(professional);
-      } else {
-        state = AsyncValue.data(null);
+      if (doc == null || !doc.exists) {
+        state = const AsyncValue.data(null);
+        return;
       }
+      
+      // ✅ Use ProfessionalModel.fromFirestore correctly
+      final professional = ProfessionalModel.fromFirestore(
+        doc as DocumentSnapshot<Map<String, dynamic>>
+      );
+      state = AsyncValue.data(professional);
+      
     } catch (e, stackTrace) {
       ErrorLogger.logError('Error loading professional data', e, stackTrace);
       state = AsyncValue.error(e, stackTrace);
     }
   }
 
-  /// Save professional data to Firestore
-  Future<void> saveUserData({
+  /// Update professional profile
+  /// ✅ Usa nombres de campos correctos según ProfessionalModel
+  Future<void> updateProfile({
     String? firstName,
     String? lastName,
-    String? address,
+    String? consultingAddress,
     String? phoneN,
     String? dni,
-    String? license,
-    List<String>? workDays,
-    String? startTime,
-    String? endTime,
-    int? breakDuration,
+    String? licenseNumber,
     String? speciality,
+    String? bio,
+    Map<String, dynamic>? availability,
+    double? consultationFee,
   }) async {
     try {
-      // Create a loading state that preserves the current data
+      if (_userId == null) return;
+      
+      // Get current state data
+      final currentData = state.value;
+      if (currentData == null) return;
+      
+      // Update state with loading but preserve previous data
       state = AsyncValue<ProfessionalModel?>.loading().copyWithPrevious(state);
       
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('No user logged in');
-      }
-      
-      // Get current model or create a minimal one
-      final currentModel = state.value ?? ProfessionalModel(
-        uid: user.uid,
-        firstName: '',
-        lastName: '',
-        email: user.email ?? '',
-        phoneN: '',
-        dni: '',
-        address: '',
-        license: '',
-        speciality: '',
-        workDays: [],
-        startTime: '09:00',
-        endTime: '17:00',
-      );
-      
-      // Create updated model using copyWith
-      final updatedModel = currentModel.copyWith(
+      // ✅ Create updated profile using copyWith with correct field names
+      final updatedProfile = currentData.copyWith(
         firstName: firstName,
         lastName: lastName,
-        address: address,
+        consultingAddress: consultingAddress,
         phoneN: phoneN,
         dni: dni,
-        license: license,
+        licenseNumber: licenseNumber,
         speciality: speciality,
-        workDays: workDays,
-        startTime: startTime,
-        endTime: endTime,
-        breakDuration: breakDuration,
+        bio: bio,
+        availability: availability,
+        consultationFee: consultationFee,
         profileCompleted: true,
+        status: 'active',
       );
       
-      // Save to Firestore using the model's toFirestore method
+      // ✅ Save to Firestore using toMap from BaseModel
       await _firestoreService.updateDocument(
         'doctors',
-        user.uid,
-        updatedModel.toFirestore(),
+        _userId!,
+        updatedProfile.toMap(),
       );
       
-      // Update state with the new model
-      state = AsyncValue.data(updatedModel);
+      // Update state with new data
+      state = AsyncValue.data(updatedProfile);
     } catch (e, stackTrace) {
-      ErrorLogger.logError('Error saving professional data', e, stackTrace);
+      ErrorLogger.logError('Error updating professional profile', e, stackTrace);
       state = AsyncValue.error(e, stackTrace);
+      throw DataException('Error updating profile: ${e.toString()}');
     }
   }
 
-  /// Reload professional data
+  /// Refresh professional data
   Future<void> refresh() async {
-    await _loadUserData();
+    if (_userId != null) {
+      await _loadProfessionalData();
+    }
   }
 }

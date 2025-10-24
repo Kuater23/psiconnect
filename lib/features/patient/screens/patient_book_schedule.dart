@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:Psiconnect/navigation/shared_drawer.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'dart:async';
-import 'package:Psiconnect/features/appointments/services/doctor_patient_service.dart';
+import '../../appointments/services/doctor_patient_service.dart';
 
 class PatientBookSchedule extends StatefulWidget {
   @override
@@ -23,6 +23,7 @@ class _PatientBookScheduleState extends State<PatientBookSchedule> {
   bool isLoading = false;
   String? errorMessage;
   final _appointmentCompletedController = StreamController<bool>.broadcast();
+  final DoctorPatientService _doctorPatientService = DoctorPatientService();
   
   // Obtener ID del paciente actual desde Firebase Auth
   String? get currentPatientId => FirebaseAuth.instance.currentUser?.uid;

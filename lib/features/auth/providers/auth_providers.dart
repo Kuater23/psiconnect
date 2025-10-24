@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../services/auth_service.dart';
 
 /// Estados que representan el flujo de autenticación
@@ -52,7 +53,7 @@ class AuthState {
 }
 
 final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService(FirebaseAuth.instance);
+  return AuthService();
 });
 
 /// Controlador que gestiona el estado de autenticación
@@ -107,8 +108,12 @@ class AuthController extends StateNotifier<AuthState> {
     try {
       state = state.copyWith(status: AuthStatus.loading);
       
-      // Llama al método signInWithEmail con los parámetros posicionales
-      final user = await _authService.signInWithEmail(email, password);
+      // Usar directamente FirebaseAuth para iniciar sesión con email y contraseña
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      final user = userCredential.user;
       
       if (user != null) {
         await _authenticateUser(user);
@@ -149,11 +154,12 @@ class AuthController extends StateNotifier<AuthState> {
       // Determine role based on presence of doctor-specific fields
       final String role = (license != null && speciality != null) ? 'doctor' : 'patient';
       
-      // Register with basic email auth - sin el parámetro role
-      final user = await _authService.registerWithEmail(
+      // Register with Firebase Auth directly
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      final user = userCredential.user;
       
       if (user != null) {
         // Crear documento en la colección correspondiente después de autenticar
@@ -255,12 +261,11 @@ class AuthController extends StateNotifier<AuthState> {
       throw Exception('Error al crear el perfil de usuario: $e');
     }
   }
-
   /// Inicia sesión con Google
   Future<void> signInWithGoogle() async {
     try {
       state = state.copyWith(status: AuthStatus.loading);
-      final user = await _authService.signInWithGoogle();
+      final user = await _signInWithGoogle();
       if (user != null) {
         await _authenticateUser(user);
       } else {
@@ -277,10 +282,38 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  /// Helper que realiza el flujo de Google Sign-In usando google_sign_in y firebase_auth
+  Future<User?> _signInWithGoogle() async {
+    // Inicia el flujo de autenticación con Google
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+    if (googleUser == null) {
+      // El usuario canceló la operación
+      return null;
+    }
+
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    return userCredential.user;
+  }
+
   /// Cierra la sesión del usuario actual
   Future<void> signOut() async {
     try {
-      await _authService.signOut();
+      // Sign out from Firebase Auth
+      await FirebaseAuth.instance.signOut();
+
+      // Also attempt to sign out from GoogleSignIn if used
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {
+        // ignore Google sign-out errors
+      }
+
       state = state.copyWith(
         user: null,
         status: AuthStatus.unauthenticated,

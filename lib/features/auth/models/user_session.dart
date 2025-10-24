@@ -1,15 +1,31 @@
 class UserSession {
   final String uid;
-  final String? email;
+  final String email;
   final String role;
-  final String? displayName;
+  final String displayName;
   final bool isProfileComplete;
 
-  UserSession({
+  const UserSession({
     required this.uid,
-    this.email,
+    required this.email,
     required this.role,
-    this.displayName,
+    this.displayName = '',
     this.isProfileComplete = false,
   });
+
+  UserSession copyWith({
+    String? uid,
+    String? email,
+    String? role,
+    String? displayName,
+    bool? isProfileComplete,
+  }) {
+    return UserSession(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      displayName: displayName ?? this.displayName,
+      isProfileComplete: isProfileComplete ?? this.isProfileComplete,
+    );
+  }
 }

@@ -1,257 +1,325 @@
 // lib/features/appointments/services/appointment_service.dart
 
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
-import '/core/exceptions/app_exception.dart';
-import '/core/services/error_logger.dart';
+import '../models/appointment.dart';
+import '../repositories/appointment_repository.dart';
 import 'doctor_patient_service.dart';
-
-final appointmentServiceProvider = Provider<AppointmentService>((ref) {
-  return AppointmentService();
-});
+import '../../../core/services/error_logger.dart';
 
 class AppointmentService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final DoctorPatientService _doctorPatientService = DoctorPatientService();
+  static final AppointmentService _instance = AppointmentService._internal();
+  factory AppointmentService() => _instance;
+  AppointmentService._internal();
 
-  // Optimized cache settings for web
-  AppointmentService() {
-    if (kIsWeb) {
-      _configureForWeb();
-    }
-  }
+  final _repository = AppointmentRepository();
+  final _doctorPatientService = DoctorPatientService();
+  final _firestore = FirebaseFirestore.instance;
 
-  void _configureForWeb() {
-    _firestore.settings = const Settings(
-      cacheSizeBytes: 40 * 1024 * 1024, // 40MB cache for appointments
-      persistenceEnabled: true,
-    );
-  }
+  // ==================== CRUD Operations ====================
 
-  // Get appointments filtered by professional with web optimizations
-  Stream<QuerySnapshot> getAppointmentsByProfessional(String doctorId) {
-    print('Buscando citas para doctor con ID: $doctorId');
-    
-    try {
-      return _firestore
-          .collection('appointments')
-          .where('doctorId', isEqualTo: doctorId) // Asegúrate que este campo coincide exactamente con tu BD
-          .orderBy('date', descending: true)
-          .snapshots();
-    } catch (e, stackTrace) {
-      print('Error en consulta de Firebase: $e');
-      ErrorLogger.logError(
-        'Error getting professional appointments', 
-        e, 
-        stackTrace,
-        additionalData: {'doctorId': doctorId}
-      );
-      rethrow;
-    }
-  }
-
-  Stream<QuerySnapshot> getAppointmentsByPatient(String patientId) {
-    try {
-      return _firestore
-          .collection('appointments')
-          .where('patientId', isEqualTo: patientId)
-          .orderBy('date', descending: true)
-          .snapshots();
-    } catch (e, stackTrace) {
-      ErrorLogger.logError(
-        'Error getting patient appointments', 
-        e, 
-        stackTrace,
-        additionalData: {'patientId': patientId}
-      );
-      rethrow;
-    }
-  }
-
-  Future<String?> createAppointment({
+  /// Crear cita con relación doctor-paciente atómica
+  Future<String> createAppointment({
     required String patientId,
     required String doctorId,
-    required DateTime date,
-    required String details,
+    required DateTime scheduledAt,
+    String? patientName,
+    String? doctorName,
+    String? doctorSpeciality,
+    String? details,
+    bool isVirtual = false,
     String? location,
     String? meetingLink,
-    bool isVirtual = false,
   }) async {
     try {
-      print('🔄 Creando cita: doctorId=$doctorId, patientId=$patientId');
-      
-      final appointmentData = {
+      // Validar que el horario esté disponible
+      final isAvailable = await _repository.isTimeSlotAvailable(
+        doctorId: doctorId,
+        scheduledAt: scheduledAt,
+      );
+
+      if (!isAvailable) {
+        throw Exception('El horario seleccionado no está disponible');
+      }
+
+      final appointment = Appointment(
+        patientId: patientId,
+        doctorId: doctorId,
+        patientName: patientName,
+        doctorName: doctorName,
+        doctorSpeciality: doctorSpeciality,
+        scheduledAt: scheduledAt,
+        details: details,
+        isVirtual: isVirtual,
+        location: location,
+        meetingLink: meetingLink,
+        status: 'scheduled',
+      );
+
+      final appointmentId = await _firestore.runTransaction((tx) async {
+        // 1. Crear la cita
+        final ref = _firestore.collection('appointments').doc();
+        tx.set(ref, appointment.toMap());
+
+        // 2. Crear/actualizar relación doctor-paciente
+        final relationId = '${doctorId}_$patientId';
+        final relRef = _firestore.collection('doctor_patients').doc(relationId);
+        final snap = await tx.get(relRef);
+
+        if (snap.exists) {
+          tx.update(relRef, {
+            'lastUpdated': FieldValue.serverTimestamp(),
+            'updateCount': FieldValue.increment(1),
+            'lastUpdateSource': 'appointment_service',
+            'status': 'active',
+          });
+        } else {
+          tx.set(relRef, {
+            'doctorId': doctorId,
+            'patientId': patientId,
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastUpdated': FieldValue.serverTimestamp(),
+            'status': 'active',
+            'updateCount': 1,
+            'source': 'appointment_service',
+          });
+        }
+
+        return ref.id;
+      });
+
+      ErrorLogger.info('Cita creada exitosamente', {'appointmentId': appointmentId});
+      return appointmentId;
+    } catch (e, st) {
+      ErrorLogger.logError('Error creando cita', e, st, additionalData: {
         'patientId': patientId,
         'doctorId': doctorId,
-        'date': date.toIso8601String(),
-        'details': details,
-        'status': 'pending',
-        'isVirtual': isVirtual,
-        'created_at': FieldValue.serverTimestamp(),
-      };
-      
-      if (location != null) {
-        appointmentData['location'] = location;
-      }
-      
-      if (isVirtual && meetingLink != null) {
-        appointmentData['meetingLink'] = meetingLink;
-      }
-      
-      // Crear la cita
-      final docRef = await _firestore.collection('appointments').add(appointmentData);
-      
-      print('✅ Cita creada con ID: ${docRef.id}');
-      
-      // IMPORTANTE: Crear relación doctor-paciente después de crear la cita
-      await _doctorPatientService.createOrUpdateRelation(
+        'scheduledAt': scheduledAt.toIso8601String(),
+      });
+      rethrow;
+    }
+  }
+
+  Future<Appointment?> getAppointment(String id) async {
+    try {
+      return await _repository.read(id);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo cita', e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> updateAppointment(String id, Map<String, dynamic> data) async {
+    try {
+      await _repository.update(id, data);
+    } catch (e, st) {
+      ErrorLogger.logError('Error actualizando cita', e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAppointment(String id) async {
+    try {
+      await _repository.delete(id);
+    } catch (e, st) {
+      ErrorLogger.logError('Error eliminando cita', e, st);
+      rethrow;
+    }
+  }
+
+  // ==================== Métodos de Negocio ====================
+
+  Future<List<Appointment>> getPatientAppointments(String patientId) async {
+    try {
+      return await _repository.getByPatient(patientId);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo citas del paciente', e, st);
+      rethrow;
+    }
+  }
+
+  Stream<List<Appointment>> streamPatientAppointments(String patientId) {
+    return _repository.streamByPatient(patientId);
+  }
+
+  Future<List<Appointment>> getDoctorAppointments(String doctorId) async {
+    try {
+      return await _repository.getByDoctor(doctorId);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo citas del doctor', e, st);
+      rethrow;
+    }
+  }
+
+  Stream<List<Appointment>> streamDoctorAppointments(String doctorId) {
+    return _repository.streamByDoctor(doctorId);
+  }
+
+  Future<List<Appointment>> getScheduledByPatient(String patientId) async {
+    try {
+      return await _repository.getScheduledByPatient(patientId);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo citas programadas del paciente', e, st);
+      rethrow;
+    }
+  }
+
+  Stream<List<Appointment>> streamScheduledByPatient(String patientId) {
+    return _repository.streamScheduledByPatient(patientId);
+  }
+
+  Future<List<Appointment>> getScheduledByDoctor(String doctorId) async {
+    try {
+      return await _repository.getScheduledByDoctor(doctorId);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo citas programadas del doctor', e, st);
+      rethrow;
+    }
+  }
+
+  Stream<List<Appointment>> streamScheduledByDoctor(String doctorId) {
+    return _repository.streamScheduledByDoctor(doctorId);
+  }
+
+  Future<List<Appointment>> getTodayAppointmentsByDoctor(String doctorId) async {
+    try {
+      return await _repository.getTodayByDoctor(doctorId);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo citas del día', e, st);
+      rethrow;
+    }
+  }
+
+  Future<List<Appointment>> getUpcomingByPatient(String patientId, {int days = 7}) async {
+    try {
+      return await _repository.getUpcomingByPatient(patientId, days: days);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo próximas citas del paciente', e, st);
+      rethrow;
+    }
+  }
+
+  Future<List<Appointment>> getUpcomingByDoctor(String doctorId, {int days = 7}) async {
+    try {
+      return await _repository.getUpcomingByDoctor(doctorId, days: days);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo próximas citas del doctor', e, st);
+      rethrow;
+    }
+  }
+
+  Future<bool> isTimeSlotAvailable({
+    required String doctorId,
+    required DateTime scheduledAt,
+    String? excludeAppointmentId,
+  }) async {
+    try {
+      return await _repository.isTimeSlotAvailable(
         doctorId: doctorId,
-        patientId: patientId,
-        source: 'appointment_service',
+        scheduledAt: scheduledAt,
+        excludeAppointmentId: excludeAppointmentId,
       );
-      
-      return docRef.id;
-    } catch (e) {
-      print('❌ Error creando cita: $e');
-      throw Exception('Error al crear la cita: ${e.toString()}');
+    } catch (e, st) {
+      ErrorLogger.logError('Error verificando disponibilidad', e, st);
+      return false;
     }
   }
 
-  // Update appointment status with improved error handling
-  Future<void> updateAppointmentStatus(String appointmentId, String status) async {
+  Future<void> cancelAppointment(String appointmentId, String reason) async {
     try {
-      await _firestore.collection('appointments').doc(appointmentId).update({
-        'status': status,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-      
-      ErrorLogger.logEvent(
-        'Appointment status updated',
-        parameters: {'appointmentId': appointmentId, 'status': status}
-      );
-    } catch (e, stackTrace) {
-      ErrorLogger.logError(
-        'Error updating appointment status', 
-        e, 
-        stackTrace,
-        additionalData: {'appointmentId': appointmentId, 'status': status}
-      );
-      throw DataException('Error al actualizar el estado de la cita: ${e.toString()}');
+      await _repository.cancelAppointment(appointmentId, reason);
+      ErrorLogger.info('Cita cancelada', {'appointmentId': appointmentId, 'reason': reason});
+    } catch (e, st) {
+      ErrorLogger.logError('Error cancelando cita', e, st);
+      rethrow;
     }
   }
 
-  // Get appointment details with optimized caching
-  Future<DocumentSnapshot> getAppointmentDetails(String appointmentId) async {
+  Future<void> completeAppointment(String appointmentId, {String? notes}) async {
     try {
-      return await _firestore
-          .collection('appointments')
-          .doc(appointmentId)
-          .get(const GetOptions(source: Source.serverAndCache));
-    } catch (e, stackTrace) {
-      ErrorLogger.logError(
-        'Error getting appointment details', 
-        e, 
-        stackTrace,
-        additionalData: {'appointmentId': appointmentId}
-      );
-      throw DataException('Error al obtener los detalles de la cita: ${e.toString()}');
+      await _repository.completeAppointment(appointmentId, notes: notes);
+      ErrorLogger.info('Cita completada', {'appointmentId': appointmentId});
+    } catch (e, st) {
+      ErrorLogger.logError('Error completando cita', e, st);
+      rethrow;
     }
   }
 
-  // Cancel appointment with transaction to ensure consistency
-  Future<void> cancelAppointment(String appointmentId, {String? cancelReason}) async {
+  Future<void> rescheduleAppointment(String appointmentId, DateTime newScheduledAt) async {
     try {
-      await _firestore.runTransaction((transaction) async {
-        final docRef = _firestore.collection('appointments').doc(appointmentId);
-        final snapshot = await transaction.get(docRef);
-        
-        if (!snapshot.exists) {
-          throw DataException('La cita no existe');
-        }
-        
-        transaction.update(docRef, {
-          'status': 'cancelled',
-          'cancelReason': cancelReason,
-          'cancelled_at': FieldValue.serverTimestamp(),
-        });
+      final appointment = await _repository.read(appointmentId);
+      if (appointment == null) {
+        throw Exception('Cita no encontrada');
+      }
+
+      final isAvailable = await _repository.isTimeSlotAvailable(
+        doctorId: appointment.doctorId,
+        scheduledAt: newScheduledAt,
+        excludeAppointmentId: appointmentId,
+      );
+
+      if (!isAvailable) {
+        throw Exception('El nuevo horario no está disponible');
+      }
+
+      await _repository.rescheduleAppointment(appointmentId, newScheduledAt);
+      ErrorLogger.info('Cita reagendada', {
+        'appointmentId': appointmentId,
+        'newScheduledAt': newScheduledAt.toIso8601String(),
       });
-      
-      ErrorLogger.logEvent(
-        'Appointment cancelled',
-        parameters: {'appointmentId': appointmentId}
-      );
-    } catch (e, stackTrace) {
-      ErrorLogger.logError(
-        'Error cancelling appointment', 
-        e, 
-        stackTrace,
-        additionalData: {'appointmentId': appointmentId}
-      );
-      throw DataException('Error al cancelar la cita: ${e.toString()}');
+    } catch (e, st) {
+      ErrorLogger.logError('Error reagendando cita', e, st);
+      rethrow;
     }
   }
-  
-  // Add patient notes to appointment
-  Future<void> addPatientNotes(String appointmentId, String notes) async {
+
+  Future<Map<String, int>> getDoctorStats(String doctorId) async {
     try {
-      await _firestore.collection('appointments').doc(appointmentId).update({
-        'patientNotes': notes,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-    } catch (e, stackTrace) {
-      ErrorLogger.logError(
-        'Error adding patient notes', 
-        e, 
-        stackTrace,
-        additionalData: {'appointmentId': appointmentId}
-      );
-      throw DataException('Error al guardar las notas del paciente: ${e.toString()}');
+      return await _repository.getDoctorStats(doctorId);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo estadísticas del doctor', e, st);
+      return {};
     }
   }
-  
-  // Add professional notes to appointment
-  Future<void> addProfessionalNotes(String appointmentId, String notes) async {
+
+  Future<Map<String, int>> getPatientStats(String patientId) async {
     try {
-      await _firestore.collection('appointments').doc(appointmentId).update({
-        'professionalNotes': notes,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-    } catch (e, stackTrace) {
-      ErrorLogger.logError(
-        'Error adding professional notes', 
-        e, 
-        stackTrace,
-        additionalData: {'appointmentId': appointmentId}
-      );
-      throw DataException('Error al guardar las notas del profesional: ${e.toString()}');
+      return await _repository.getPatientStats(patientId);
+    } catch (e, st) {
+      ErrorLogger.logError('Error obteniendo estadísticas del paciente', e, st);
+      return {};
     }
   }
-  
-  // Get upcoming appointments for dashboard
-  Future<List<QueryDocumentSnapshot>> getUpcomingAppointments(String userId, String role, {int limit = 5}) async {
-    try {
-      final now = DateTime.now().toIso8601String();
-      final roleField = role == 'professional' ? 'doctorId' : 'patientId';
-      
-      final querySnapshot = await _firestore
-          .collection('appointments')
-          .where(roleField, isEqualTo: userId)
-          .where('date', isGreaterThan: now)
-          .where('status', whereIn: ['pending', 'confirmed'])
-          .orderBy('date')
-          .limit(limit)
-          .get();
-          
-      return querySnapshot.docs;
-    } catch (e, stackTrace) {
-      ErrorLogger.logError(
-        'Error getting upcoming appointments', 
-        e, 
-        stackTrace,
-        additionalData: {'userId': userId, 'role': role}
-      );
-      throw DataException('Error al obtener las próximas citas: ${e.toString()}');
+
+  // ==================== Validaciones ====================
+
+  String? validateAppointmentData({
+    required String patientId,
+    required String doctorId,
+    required DateTime scheduledAt,
+    bool isVirtual = false,
+    String? location,
+    String? meetingLink,
+  }) {
+    if (patientId.isEmpty) {
+      return 'ID de paciente requerido';
     }
+
+    if (doctorId.isEmpty) {
+      return 'ID de doctor requerido';
+    }
+
+    if (scheduledAt.isBefore(DateTime.now())) {
+      return 'La fecha debe ser futura';
+    }
+
+    if (isVirtual && (meetingLink == null || meetingLink.isEmpty)) {
+      return 'Link de reunión requerido para citas virtuales';
+    }
+
+    if (!isVirtual && (location == null || location.isEmpty)) {
+      return 'Ubicación requerida para citas presenciales';
+    }
+
+    return null;
   }
 }

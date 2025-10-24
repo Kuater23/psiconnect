@@ -100,7 +100,7 @@ final ThemeData darkTheme = ThemeData(
   ),
   // Optimize font rendering for web
   textTheme: _createTextTheme(isDark: true),
-  cardTheme: CardTheme(
+  cardTheme: CardThemeData(
     elevation: 2,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),

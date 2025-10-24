@@ -7,32 +7,51 @@ class ErrorLogger {
   /// Log error with contextual information
   static void logError(
     String message,
-    Object error,
+    dynamic error,
     StackTrace stackTrace, {
     Map<String, dynamic>? additionalData,
   }) {
-    // In debug mode, print to console for development
     if (kDebugMode) {
-      print('================= ERROR =================');
-      print('Message: $message');
+      // ignore: avoid_print
+      print('❌ ERROR: $message');
+      // ignore: avoid_print
       print('Error: $error');
-      print('Stack Trace:\n${stackTrace.toString().split('\n').take(10).join('\n')}');
+      // ignore: avoid_print
+      print('StackTrace: $stackTrace');
       if (additionalData != null) {
-        print('Additional data: $additionalData');
+        // ignore: avoid_print
+        print('Additional Data: $additionalData');
       }
-      print('=========================================');
     }
-    
-    // In production, you could send to a monitoring service
-    // Example: Firebase Crashlytics, Sentry, etc.
-    
-    // For now, we just log to console in both cases, but structure is ready for extension
-    if (!kDebugMode) {
-      // Store errors in localStorage for web
-      _storeErrorInLocalStorage(message, error.toString());
+
+    // TODO: Integrar con Firebase Crashlytics o Sentry en producción
+    // FirebaseCrashlytics.instance.recordError(error, stackTrace, reason: message);
+  }
+
+  /// Log informational messages
+  static void info(String message, [Map<String, dynamic>? data]) {
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print('ℹ️ INFO: $message${data != null ? ' | $data' : ''}');
     }
   }
-  
+
+  /// Log warning messages
+  static void warning(String message, [Map<String, dynamic>? data]) {
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print('⚠️ WARNING: $message${data != null ? ' | $data' : ''}');
+    }
+  }
+
+  /// Log debug messages (only in debug mode)
+  static void debug(String message, [Map<String, dynamic>? data]) {
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print('🐛 DEBUG: $message${data != null ? ' | $data' : ''}');
+    }
+  }
+
   /// Log non-critical events (info, warning)
   static void logEvent(
     String eventName, {
@@ -40,21 +59,25 @@ class ErrorLogger {
     LogLevel level = LogLevel.info,
   }) {
     if (kDebugMode) {
-      print('================= ${level.name.toUpperCase()} =================');
-      print('Event: $eventName');
-      if (parameters != null) {
-        print('Parameters: $parameters');
-      }
-      print('=========================================');
+      final emoji = _getEmojiForLevel(level);
+      // ignore: avoid_print
+      print('$emoji ${level.name.toUpperCase()}: $eventName${parameters != null ? ' | $parameters' : ''}');
     }
+
+    // TODO: Integrar con Firebase Analytics en producción
+    // FirebaseAnalytics.instance.logEvent(name: eventName, parameters: parameters);
   }
-  
-  /// Store error in localStorage for web debugging
-  static void _storeErrorInLocalStorage(String message, String errorDetails) {
-    if (kIsWeb) {
-      // This would use dart:js to interact with localStorage
-      // In a real implementation, we'd use a js interop package
-      // to store errors for debugging purposes
+
+  static String _getEmojiForLevel(LogLevel level) {
+    switch (level) {
+      case LogLevel.debug:
+        return '🐛';
+      case LogLevel.info:
+        return 'ℹ️';
+      case LogLevel.warning:
+        return '⚠️';
+      case LogLevel.error:
+        return '❌';
     }
   }
 }

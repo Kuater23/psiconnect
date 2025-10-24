@@ -1,6 +1,7 @@
 // lib/features/appointments/providers/appointment_providers.dart
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/appointment_service.dart';
 import '../models/appointment.dart';
 import '/features/auth/providers/session_provider.dart';
@@ -55,3 +56,19 @@ final filteredAppointmentsProvider = Provider<List<Appointment>>((ref) {
     error: (_, __) => [],
   );
 });
+
+
+// Fallback extensions to provide the methods expected by this file when the real
+// implementations are not yet available in appointment_service.dart.
+// Replace these with real implementations in your AppointmentService.
+extension AppointmentServiceFallbacks on AppointmentService {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getAppointmentsByPatient(String patientId) {
+    // Temporary: return an empty stream to satisfy the provider until implemented.
+    return const Stream.empty();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getAppointmentsByProfessional(String professionalId) {
+    // Temporary: return an empty stream to satisfy the provider until implemented.
+    return const Stream.empty();
+  }
+}

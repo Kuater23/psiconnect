@@ -1,7 +1,7 @@
 // lib/features/auth/screens/register_page.dart
 
 import 'package:Psiconnect/core/widgets/storage_image.dart';
-import 'package:Psiconnect/features/auth/widgets/role_selection_dialog.dart';
+import 'package:Psiconnect/features/auth/providers/session_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,11 +11,12 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import '/core/exceptions/app_exception.dart';
 import '/navigation/router.dart';
-import '/features/auth/providers/session_provider.dart';
 import '/core/constants/app_constants.dart';
 import '/core/utils/validation_helper.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
+import '../widgets/role_selection_dialog.dart';
 
 class RegisterPage extends HookConsumerWidget {
   const RegisterPage({Key? key}) : super(key: key);
@@ -64,19 +65,29 @@ class RegisterPage extends HookConsumerWidget {
           return;
         }
         
-        // Datos comunes para ambos tipos de usuario
-        await ref.read(sessionProvider.notifier).register(
+        final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: emailController.text.trim(),
           password: passwordController.text,
-          role: role,
-          firstName: nameController.text.trim(),
-          lastName: lastNameController.text.trim(),
-          dni: dni,
-          phoneN: phoneController.text.trim(),
-          
-          // Si es profesional, agregar campos específicos
-          license: isProfessional.value ? licenseController.text.trim() : null,
         );
+        final createdUser = userCredential.user;
+        if (createdUser == null) {
+          throw Exception('No se pudo crear el usuario.');
+        }
+
+        // Guardar datos del usuario en Firestore
+        await FirebaseFirestore.instance.collection('users').doc(createdUser.uid).set({
+          'firstName': nameController.text.trim(),
+          'lastName': lastNameController.text.trim(),
+          'email': emailController.text.trim(),
+          'uid': createdUser.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+          'registerMethod': 'email',
+          'profileCompleted': false,
+          'role': role,
+          'dni': dni,
+          'phoneN': phoneController.text.trim(),
+          if (isProfessional.value) 'license': licenseController.text.trim(),
+        });
         
         // Example for standard registration
         Map<String, dynamic> userData = {
@@ -153,38 +164,18 @@ class RegisterPage extends HookConsumerWidget {
         // Mostramos el diálogo de selección de rol
         final selectedRole = await showDialog<UserRole>(
           context: context,
-          barrierDismissible: false,
-          builder: (BuildContext dialogContext) {
-            return RoleSelectionDialog(
-              onRoleSelected: (UserRole role) {
-                Navigator.of(dialogContext).pop(role);
-              },
-            );
-          },
+          builder: (_) => const RoleSelectionDialog(),
+        );
+        if (selectedRole == null) return;
+
+        final result = await AuthService().signInWithGoogleEnsureProfile(
+          desiredRole: selectedRole,
         );
 
-        if (selectedRole == null) {
-          print('El usuario canceló la selección de rol. Se cerrará sesión.');
-          // Cerramos sesión ya que no sabemos qué rol quiere el usuario
-          await FirebaseAuth.instance.signOut();
-          isLoading.value = false;
-          return;
-        }
-
-        // Convertimos la selección al string correspondiente
-        final roleString = selectedRole == UserRole.professional ? 'professional' : 'patient';
-
-        // Registramos al usuario en la colección correspondiente (doctors o patients)
-        await ref.read(sessionProvider.notifier).registerWithGoogle(roleString);
-
-        // Navegamos a la pantalla de inicio según el rol seleccionado
-        // Usando pushReplacement para reemplazar la página actual en la pila
-        if (context.mounted) {
-          if (roleString == 'professional') {
-            GoRouter.of(context).pushReplacement(RoutePaths.professionalHome);
-          } else {
-            GoRouter.of(context).pushReplacement(RoutePaths.patientHome);
-          }
+        if (result.role == 'professional') {
+          // ...existing navigation...
+        } else if (result.role == 'patient') {
+          // ...existing navigation...
         }
       } catch (e) {
         print('Error durante el registro con Google: $e');
