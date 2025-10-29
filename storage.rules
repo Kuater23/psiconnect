@@ -1,31 +1,36 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Función para verificar si el usuario es un profesional
+    function isSignedIn() { return request.auth != null; }
+
+    // Check if requester is a doctor user in Firestore
     function isProfessional() {
-      return request.auth != null;
+      return isSignedIn() &&
+             exists(/databases/(default)/documents/doctors/$(request.auth.uid));
     }
-    
-    // Regla predeterminada - denegar todo
+
+    // doctor_patients/{doctorId_patientId}
+    function hasRelation(patientId) {
+      return isSignedIn() &&
+             patientId != null &&
+             exists(/databases/(default)/documents/doctor_patients/$(request.auth.uid + '_' + patientId));
+    }
+
+    // All else denied by default
     match /{allPaths=**} {
       allow read, write: if false;
     }
-    
-    // Permitir acceso a documentos de pacientes
-    match /patient_documents/{patientId}/{documentName} {
-      // Simplificado - cualquier usuario autenticado puede subir documentos
-      allow read, write: if request.auth != null;
+
+    // Objects are stored under patient_documents/{patientId}/{fileName}
+    match /patient_documents/{patientId}/{fileName} {
+      allow read, write, delete: if isProfessional() && hasRelation(patientId);
     }
-    
-    // Permitir lectura pública de todas las imágenes
+
+    // Keep your public images as before (optional)
     match /images/{imageId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isSignedIn();
     }
-    
-    // Permitir lectura pública para todas las subcarpetas de imágenes
-    match /images/{folder}/{imageId} {
-      allow read: if true;
-    }
+    match /images/{folder}/{imageId} { allow read: if true; }
   }
 }
